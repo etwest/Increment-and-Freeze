@@ -1,13 +1,13 @@
-CC = g++ -std=c++11 -Wall
+CXX = g++
+CXXFLAGS = -g -std=c++11 -Wall -I./include
+vpath %.h include
+vpath %.cpp src
 
-simulatePaging: src/simulation.cpp LRU_RAM.o Clock_RAM.o include/params.h
-	$(CC) src/simulation.cpp LRU_RAM.o Clock_RAM.o -o simulatePaging
+simulatePaging: simulation.cpp LRU_RAM.o Clock_RAM.o params.h OSTree.o
+	$(CXX) $^ -o simulatePaging $(CXXFLAGS)
 
-LRU_RAM.o: src/LRU_RAM.cpp include/RAM.h
-	$(CC) -c src/LRU_RAM.cpp
-
-Clock_RAM.o: src/Clock_RAM.cpp include/RAM.h
-	$(CC) -c src/Clock_RAM.cpp
+%.o: %.cpp %.h
+	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
 .PHONY: clean
 clean:
