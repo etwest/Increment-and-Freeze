@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstddef>
+#include <utility>
 
 class OSTree
 {
@@ -18,10 +19,12 @@ class OSTree
 		void insert(uint64_t ts, uint64_t val);
 		void remove(size_t rank);
 		//uint64_t rank(size_t rank); //what element is rank X
-		size_t find(uint64_t ts); //what rank is X at
+		std::pair<size_t, uint64_t> find(uint64_t ts); //what rank is X at
 
 		OSTree(uint64_t, uint64_t);
 		size_t getWeight() { return weight; };
+		OSTree* getRight() { return right; };
+		uint64_t getVal() { return value; };
 };
 
 class OSTreeHead
@@ -44,9 +47,23 @@ class OSTreeHead
 			else
 				head->remove(rank);
 		};
-		size_t find(uint64_t ts) //what rank is X at
+		std::pair<size_t, uint64_t> find(uint64_t ts) //what rank is X at
 		{
 			assert(head != nullptr);
-			head->find(ts);
+			return head->find(ts);
 		};
+
+		//TODO: This can be done during remove instead
+		uint64_t getLast()
+		{
+			assert(head != nullptr);
+			OSTree* ptr = head;
+			while(ptr->getRight() != nullptr)
+				ptr = ptr->getRight();
+			return ptr->getVal();
+		}
+		size_t getWeight()
+		{
+			return head == nullptr? 0 : head->getWeight();
+		}
 };

@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <fstream>
 #include "params.h"
+#include <OSTree.h>
 
 typedef uint64_t (*hash_func_t)(const void *, size_t, uint64_t);
 
@@ -79,14 +80,14 @@ private:
 	std::list<Page *> free_pages;
 	std::vector<Page *> memory;
 
-	std::list<Page *> LRU_queue;
-	std::unordered_map<uint64_t, std::list<Page *>::iterator> mapToQueue;
+	OSTreeHead LRU_queue;
+	std::unordered_map<uint64_t, uint64_t> mapToQueue;
 	std::unordered_map<uint64_t, Page *> page_table;
 public:
 	LRU_RAM(uint64_t size, uint32_t page);
 	void memory_access(uint64_t virtual_addr);
 	Page *evict_oldest();
-	void moveFrontQueue(std::list<Page *>::iterator queue_elm);
+	void moveFrontQueue(uint64_t curts, uint64_t newts);
 };
 
 class Clock_RAM : public RAM {

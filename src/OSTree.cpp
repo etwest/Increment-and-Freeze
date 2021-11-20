@@ -4,12 +4,12 @@ OSTree::OSTree(uint64_t ts, uint64_t value)
 : ts(ts), value(value)
 {
 	weight = 1;
-}	
+};
 
 void OSTree::insert(uint64_t newts, uint64_t newval)
 {
 	assert(newts != ts);
-	if (newts < ts)
+	if (newts > ts)
 	{
 		if (left == nullptr)
 		{
@@ -75,9 +75,14 @@ void OSTree::remove(size_t rank)
 			delete left;
 			left = nullptr;
 		}
-		else
+		else if (lweight != 0)
 		{
 			left->remove(rank);
+		}
+		else	
+		{
+			assert(false);
+			weight++;
 		}
 	}	
 	else
@@ -87,23 +92,28 @@ void OSTree::remove(size_t rank)
 			delete right;
 			right = nullptr;
 		}
-		else
+		else if (rweight != 0)
 		{
 			right->remove(rank - left->weight - 1);
+		}
+		else	
+		{
+			assert(false);
+			weight++;
 		}
 	}
 }
 
 //Assume: The timestamp we're getting the rank of is in the tree
-size_t OSTree::find(uint64_t searchts)
+std::pair<size_t, uint64_t> OSTree::find(uint64_t searchts)
 {
 	size_t lweight = left == nullptr? 0 : left->weight;
 
 	if (searchts == ts)
 	{
-		return lweight;
+		return {lweight, value};
 	}
-	else if (searchts < ts)
+	else if (searchts > ts)
 	{
 		assert(left != nullptr);
 		return left->find(searchts);
@@ -111,6 +121,8 @@ size_t OSTree::find(uint64_t searchts)
 	else
 	{
 		assert(right != nullptr);
-		return lweight+1 + right->find(searchts);
+		std::pair<size_t, uint64_t> answer = right->find(searchts);
+		answer.first += 1 +lweight;
+		return answer;
 	}
 }

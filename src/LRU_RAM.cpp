@@ -18,7 +18,7 @@ void LRU_RAM::memory_access(uint64_t virtual_addr) {
 
 	if (page_table.count(virtual_addr) > 0 && page_table[virtual_addr]->get_virt() == virtual_addr) {
 		page_table[virtual_addr]->access_page(ts); // this is a memory access to the page stored in memory (it should update timestamp)
-		moveFrontQueue(mapToQueue[virtual_addr]); // move this page to the front of the LRU queue
+		moveFrontQueue(mapToQueue[virtual_addr], ts); // move this page to the front of the LRU queue
 	} else {
 		// if there are free pages then use one of them
 		Page *p;
@@ -30,25 +30,25 @@ void LRU_RAM::memory_access(uint64_t virtual_addr) {
 		}
 		p->place_page(virtual_addr, ts);
 		page_table[p->get_virt()] = p;
-		LRU_queue.push_front(p);
-        mapToQueue[virtual_addr] = LRU_queue.begin();
+		LRU_queue.insert(ts, p->get_virt());
+        mapToQueue[virtual_addr] = ts;
 		page_faults++;
 	}
 }
 
 Page *LRU_RAM::evict_oldest() {
-	Page *old_page = LRU_queue.back();
-
-    LRU_queue.pop_back();
-    mapToQueue.erase(old_page->get_virt());
-    return old_page;
+	//unmap virtual address
+	uint64_t virt = LRU_queue.getLast();
+    mapToQueue.erase(virt);
+	LRU_queue.remove(LRU_queue.getWeight()-1);
+    return page_table[virt];
 }
 
-void LRU_RAM::moveFrontQueue(std::list<Page *>::iterator queue_elm) {
-    Page *p = *queue_elm;
+void LRU_RAM::moveFrontQueue(uint64_t curts, uint64_t newts) {
+	std::pair<size_t, uint64_t> found = LRU_queue.find(curts);
 
-    LRU_queue.erase(queue_elm);
-    LRU_queue.push_front(p);
+    LRU_queue.remove(found.first);
+    LRU_queue.insert(newts, found.second);
 
-    mapToQueue[p->get_virt()] = LRU_queue.begin();
+    mapToQueue[found.second] = newts;
 }
