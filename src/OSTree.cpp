@@ -46,29 +46,45 @@ void OSTree::remove(size_t rank)
 {
 	assert(rank < weight);	
 	assert(weight > 1);
+	if (left == nullptr)
+		assert(weight == 1 + right->weight);
+	else if (right == nullptr)
+		assert(weight == 1 + left->weight);
+	else
+		assert(weight == 1 + left->weight + right->weight);
 	weight--;
 	
 	size_t lweight = left == nullptr? 0 : left->weight;
 	size_t rweight = right == nullptr? 0 : right->weight;
 
-	if (lweight == rank-1)
+	if (lweight == rank)
 	{
-		OSTree* heavy = lweight > rweight ? left: right;	
-		//we are heavy now!
-		ts = heavy->ts;
-		value = heavy->value;
-
-		if (heavy->left == nullptr)
+		OSTree* deleteMe = lweight > rweight ? left->getRightmost(): right->getLeftmost();	
+		// We can't delete outselves, but we can pretend the be the next element!
+		ts = deleteMe->ts;
+		value = deleteMe->value;
+		if (lweight > rweight)
 		{
-			right = heavy->right;
-			delete heavy;
+			if (lweight == 1)
+			{
+				delete left;
+				left = nullptr;
+			}
+			else
+				left->remove(lweight-1);	
 		}
 		else
 		{
-			heavy->remove(heavy->left->weight+1);
+			if (rweight == 1)
+			{
+				delete right;
+				right = nullptr;
+			}
+			else
+				right->remove(0);
 		}
 	}
-	else if (left->weight < rank-1)
+	else if (rank < lweight)
 	{
 		if (lweight == 1)
 		{

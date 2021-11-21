@@ -27,11 +27,13 @@ void LRU_RAM::memory_access(uint64_t virtual_addr) {
 			free_pages.pop_front();
 		} else {
 			p = evict_oldest();
+			//page_table.erase(p->get_virt());
 		}
 		p->place_page(virtual_addr, ts);
 		page_table[p->get_virt()] = p;
 		LRU_queue.insert(ts, p->get_virt());
-        mapToQueue[virtual_addr] = ts;
+        mapToQueue[p->get_virt()] = ts;
+		assert(p->get_virt() ==  virtual_addr);
 		page_faults++;
 	}
 }
@@ -44,8 +46,8 @@ Page *LRU_RAM::evict_oldest() {
     return page_table[virt];
 }
 
-void LRU_RAM::moveFrontQueue(uint64_t curts, uint64_t newts) {
-	std::pair<size_t, uint64_t> found = LRU_queue.find(curts);
+void LRU_RAM::moveFrontQueue(uint64_t oldts, uint64_t newts) {
+	std::pair<size_t, uint64_t> found = LRU_queue.find(oldts);
 
     LRU_queue.remove(found.first);
     LRU_queue.insert(newts, found.second);

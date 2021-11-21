@@ -25,6 +25,18 @@ class OSTree
 		size_t getWeight() { return weight; };
 		OSTree* getRight() { return right; };
 		uint64_t getVal() { return value; };
+		OSTree* getLeftmost()
+		{
+			if (left == nullptr)
+				return this;
+			return left->getLeftmost();
+		};
+		OSTree* getRightmost()
+		{
+			if (right == nullptr)
+				return this;
+			return right->getRightmost();
+		};
 };
 
 class OSTreeHead
@@ -57,10 +69,7 @@ class OSTreeHead
 		uint64_t getLast()
 		{
 			assert(head != nullptr);
-			OSTree* ptr = head;
-			while(ptr->getRight() != nullptr)
-				ptr = ptr->getRight();
-			return ptr->getVal();
+			return head->getRightmost()->getVal();
 		}
 		size_t getWeight()
 		{
