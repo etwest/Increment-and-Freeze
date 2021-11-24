@@ -4,10 +4,10 @@ vpath %.h include
 vpath %.cpp src
 
 simulatePaging: simulation.cpp LRU_RAM.o Clock_RAM.o params.h OSTree.o
-	$(CXX) $^ -o simulatePaging $(CXXFLAGS)
+	$(CXX) $(CXXFLAGS) $< LRU_RAM.o Clock_RAM.o OSTree.o -o simulatePaging
 
 %.o: %.cpp %.h
-	$(CXX) -c $< -o $@ $(CXXFLAGS)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 .PHONY: clean
 clean:

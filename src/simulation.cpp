@@ -74,12 +74,10 @@ std::vector<uint32_t> zipfian_simulator(bool print=false) {
 
 
 int main() {
-	// unique_access_simulator();
-
 	uint32_t lru_total = 0;
 	uint32_t clk_total = 0;
 
-	uint32_t trials = 50;
+	uint32_t trials = 1;
 
 	std::mt19937 rand(SEED);
 	for (int i = 0; i < trials; i++) {

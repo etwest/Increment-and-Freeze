@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <fstream>
 #include "params.h"
-#include <OSTree.h>
+#include "OSTree.h"
 
 typedef uint64_t (*hash_func_t)(const void *, size_t, uint64_t);
 
@@ -81,7 +81,6 @@ private:
 	std::vector<Page *> memory;
 
 	OSTreeHead LRU_queue;
-	std::unordered_map<uint64_t, uint64_t> mapToQueue;
 	std::unordered_map<uint64_t, Page *> page_table;
 public:
 	LRU_RAM(uint64_t size, uint32_t page);

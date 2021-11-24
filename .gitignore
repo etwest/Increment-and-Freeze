@@ -3,3 +3,4 @@ simulatePaging
 tags
 delme
 *.swp
+*.dSYM
