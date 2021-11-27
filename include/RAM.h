@@ -79,14 +79,18 @@ class LRU_RAM : public RAM {
 private:
 	std::list<Page *> free_pages;
 	std::vector<Page *> memory;
-
+	std::vector<uint64_t> page_faults;
+	uint32_t num_pages;
 	OSTreeHead LRU_queue;
 	std::unordered_map<uint64_t, Page *> page_table;
 public:
 	LRU_RAM(uint64_t size, uint32_t page);
+	~LRU_RAM();
 	void memory_access(uint64_t virtual_addr);
 	Page *evict_oldest();
-	void moveFrontQueue(uint64_t curts, uint64_t newts);
+	size_t moveFrontQueue(uint64_t curts, uint64_t newts);
+	void printSuccessFunction();
+	std::vector<uint64_t> getSuccessFunction();
 };
 
 class Clock_RAM : public RAM {

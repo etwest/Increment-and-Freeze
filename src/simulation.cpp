@@ -5,11 +5,10 @@
 #include <utility>
 #include <random>
 
-std::vector<uint32_t> working_set_simulator(uint32_t seed, bool print=false) {
+std::vector<uint64_t> working_set_simulator(uint32_t seed, bool print=false) {
 	std::set<uint64_t> unique_pages;
 
 	LRU_RAM *lru = new LRU_RAM(MEM_SIZE, PAGE_SIZE);
-	Clock_RAM *clk = new Clock_RAM(MEM_SIZE, PAGE_SIZE);
 
 	// printf("Representative Workload\n");
 	uint64_t working_size  = WORKING_SET * (MEM_SIZE / PAGE_SIZE);
@@ -26,16 +25,16 @@ std::vector<uint32_t> working_set_simulator(uint32_t seed, bool print=false) {
 
 		// printf("Memory access %i\n", i);
 		lru->memory_access(v_addr);
-		clk->memory_access(v_addr);
 
 		unique_pages.insert(v_addr);
 	}
 	if (print) {
-		printf("LRU:   "); lru->print();
-		printf("CLOCK: "); clk->print();
 		printf("Out of %llu memory accesses with %lu unique virtual pages\n", ACCESSES, unique_pages.size());
+		lru->printSuccessFunction();
 	}
-	return {lru->get_faults(), clk->get_faults()};
+	std::vector<uint64_t> toret = lru->getSuccessFunction();
+	delete lru;
+	return toret;
 }
 
 std::vector<uint32_t> zipfian_simulator(bool print=false) {
@@ -74,22 +73,25 @@ std::vector<uint32_t> zipfian_simulator(bool print=false) {
 
 
 int main() {
-	uint32_t lru_total = 0;
-	uint32_t clk_total = 0;
-
-	uint32_t trials = 1;
+	std::vector<uint64_t> lru_total;
+	uint32_t trials = 10;
 
 	std::mt19937 rand(SEED);
 	for (int i = 0; i < trials; i++) {
-		std::vector<uint32_t> result = working_set_simulator(rand());
-		lru_total += result[0];
-		clk_total += result[1];
+		std::vector<uint64_t> result = working_set_simulator(rand());
+		lru_total.resize(result.size());
+
+		for (uint32_t page = 1; page < result.size(); page++)
+		{
+			lru_total[page] += result[page];
+		}
 		printf("Trial: %i\r", i); std::fflush(stdout);
 	}
-
-	printf("Final Statistics\n");
-	printf("LRU Average Page Faults     = %f\n", ((double)lru_total) / trials);
-	printf("CLOCK Average Page Faults   = %f\n", ((double)clk_total) / trials);
-	
+	printf("Final Statistics (%d)\n", lru_total.size());
+	for (uint32_t page = 1; page < lru_total.size(); page++)
+	{
+		lru_total[page] /= trials;
+		printf("%u: %lu\n", page, lru_total[page]);
+	}
 	// zipfian_simulator(true);
 }

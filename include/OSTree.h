@@ -49,7 +49,8 @@ class OSTree
 class OSTreeHead
 {
 	public:
-		OSTree* head;
+		OSTree* head = nullptr;
+		~OSTreeHead() {if (head != nullptr) delete head;};
 		void insert(uint64_t ts, uint64_t val)
 		{
 			if (head == nullptr)
