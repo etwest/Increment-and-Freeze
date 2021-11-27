@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <utility>
+#include <vector>
 
 class OSTree
 {
@@ -12,9 +13,11 @@ class OSTree
 		
 		uint64_t ts;
 		uint64_t value;
+
+		std::vector<std::pair<uint64_t, uint64_t>> to_array();
 		
 		void rebalance();
-		void check_balance();
+		bool bad_balance();
 	public:
 		void insert(uint64_t ts, uint64_t val);
 		void remove(size_t rank);
@@ -22,6 +25,8 @@ class OSTree
 		std::pair<size_t, uint64_t> find(uint64_t ts); //what rank is X at
 
 		OSTree(uint64_t, uint64_t);
+		~OSTree();
+
 		size_t getWeight() { return weight; };
 		OSTree* getRight() { return right; };
 		uint64_t getVal() { return value; };
