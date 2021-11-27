@@ -172,7 +172,8 @@ std::vector<std::pair<uint64_t, uint64_t>> OSTree::to_array()
 	}
 	larr.push_back({ts, value});
 	// TODO: what happens if rarr is empty
-	return larr.insert(larr.end(), rarr.begin(), rarr.end());
+	larr.insert(larr.end(), rarr.begin(), rarr.end());
+	return larr;
 }
 		
 void OSTree::rebalance()
@@ -183,19 +184,28 @@ void OSTree::rebalance()
 	value = arr_rep[mid].second;
 
 	left  = rebalance_helper(left,  arr_rep, 0, mid - 1);
-	right = rebalance_helper(right, mid + 1, arr_rep.size() - 1);
-
+	right = rebalance_helper(right, arr_rep, mid + 1, arr_rep.size() - 1);
+	// total weight shouldn't change
+	// and the weight should still be consistent
+	assert(weight == 1 + left->weight + right->weight);
 }
 
-OSTree *OSTree::rebalance_helper(OSTree *child, std::vector<std::pair<uint64_t, uint64_t>> array, 
+OSTree *OSTree::rebalance_helper(OSTree *child, std::vector<std::pair<uint64_t, uint64_t>> arr_rep, 
   size_t first, size_t last)
 {
+	// We should definitely at least exist
+	if (child == nullptr)
+	{
+		child = new OSTree(0,0);
+	}
 	size_t mid   = ((last - first) / 2) + first;
 	child->ts    = arr_rep[mid].first;
 	child->value = arr_rep[mid].second;
+	weight = 1 + last-first;
 
 	if (first == last) // basecase
 	{
+		// Just us-- no children
 		if (child->left != nullptr) 
 		{
 			delete child->left;
@@ -206,15 +216,37 @@ OSTree *OSTree::rebalance_helper(OSTree *child, std::vector<std::pair<uint64_t, 
 			delete child->right;
 			child->right = nullptr;
 		}
-		return child;
 	}
+	else if (first == last-1)
+	{
+		if (first == mid) // Child to the right
+		{
+			if (child->left != nullptr) 
+			{
+				delete child->left;
+				child->left = nullptr;
+			}
+			child->right = child->rebalance_helper(child->right, arr_rep, mid + 1, last);
+		}
+		else // Child to the left
+		{
+			if (child->right != nullptr)
+			{
+				delete child->right;
+				child->right = nullptr;
+			}
+			child->left = child->rebalance_helper(child->left, arr_rep, first, mid - 1);
+		}
 
-	if (child->left == nullptr)
-		child->left = new OSTree();
-	if (child->right == nullptr)
-		child->right = new OSTree();
-	child->left  = child->rebalance_helper(child->left, arr_rep, first, mid - 1);
-	child->right = child->rebalance_helper(child->right, mid + 1, last);
+	}
+	else
+	{
+		child->left  = child->rebalance_helper(child->left, arr_rep, first, mid - 1);
+		child->right = child->rebalance_helper(child->right, arr_rep, mid + 1, last);
+	}
+	size_t lweight = left == nullptr? 0 : left->weight;
+	size_t rweight = right == nullptr? 0 : right->weight;
+	assert(weight == lweight + rweight + 1);
 	return child;
 }
 
