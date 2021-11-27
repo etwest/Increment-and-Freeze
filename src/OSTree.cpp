@@ -201,7 +201,7 @@ OSTree *OSTree::rebalance_helper(OSTree *child, std::vector<std::pair<uint64_t, 
 	size_t mid   = ((last - first) / 2) + first;
 	child->ts    = arr_rep[mid].first;
 	child->value = arr_rep[mid].second;
-	weight = 1 + last-first;
+	child->weight = 1 + last-first;
 
 	if (first == last) // basecase
 	{
@@ -244,9 +244,9 @@ OSTree *OSTree::rebalance_helper(OSTree *child, std::vector<std::pair<uint64_t, 
 		child->left  = child->rebalance_helper(child->left, arr_rep, first, mid - 1);
 		child->right = child->rebalance_helper(child->right, arr_rep, mid + 1, last);
 	}
-	size_t lweight = left == nullptr? 0 : left->weight;
-	size_t rweight = right == nullptr? 0 : right->weight;
-	assert(weight == lweight + rweight + 1);
+	size_t lweight = child->left == nullptr? 0 : child->left->weight;
+	size_t rweight = child->right == nullptr? 0 : child->right->weight;
+	assert(child->weight == lweight + rweight + 1);
 	return child;
 }
 
