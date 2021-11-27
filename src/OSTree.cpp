@@ -190,7 +190,7 @@ void OSTree::rebalance()
 	assert(weight == 1 + left->weight + right->weight);
 }
 
-OSTree *OSTree::rebalance_helper(OSTree *child, std::vector<std::pair<uint64_t, uint64_t>> arr_rep, 
+OSTree *OSTree::rebalance_helper(OSTree *child, std::vector<std::pair<uint64_t, uint64_t>>& arr_rep, 
   size_t first, size_t last)
 {
 	// We should definitely at least exist

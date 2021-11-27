@@ -17,7 +17,7 @@ class OSTree
 		std::vector<std::pair<uint64_t, uint64_t>> to_array();
 		
 		void rebalance();
-		OSTree *rebalance_helper(OSTree *child, std::vector<std::pair<uint64_t, uint64_t>> array, 
+		OSTree *rebalance_helper(OSTree *child, std::vector<std::pair<uint64_t, uint64_t>>& array, 
 		size_t first, size_t last);
 		bool bad_balance();
 	public:
