@@ -85,13 +85,13 @@ int main() {
 		{
 			lru_total[page] += result[page];
 		}
-		printf("Trial: %i\r", i); std::fflush(stdout);
+		printf("# Trial: %i\r", i); std::fflush(stdout);
 	}
-	printf("Final Statistics (%d)\n", lru_total.size());
+	printf("# Final Statistics (%d)\n", lru_total.size());
 	for (uint32_t page = 1; page < lru_total.size(); page++)
 	{
 		lru_total[page] /= trials;
-		printf("%u: %lu\n", page, lru_total[page]);
+		printf("%u:%lu\n", page, lru_total[page]);
 	}
 	// zipfian_simulator(true);
 }

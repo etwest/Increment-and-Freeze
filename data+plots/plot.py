@@ -15,19 +15,20 @@ for file in args.txt_files:
 		while(line[0] == '#'):
 			line = inFile.readline()
 
-		timestamps = []
-		older_count = []
+		memory_sizes = []
+		faults = []
 		while(line != ""):
 			data = line.split(":")
-			ts = int(data[0].rstrip())
-			older = float(data[1].rstrip())
+			memsize = int(data[0].rstrip())
+			nfaults = int(data[1].rstrip())
 
-			timestamps.append(ts)
-			older_count.append(older)
+			memory_sizes.append(memsize)
+			faults.append(nfaults)
 			
 			line = inFile.readline()
 
-		plt.scatter(timestamps, older_count, s=2)
-		plt.tight_layout()
-		plt.savefig("images/{0}".format(file.split(".")[0]))
+		plt.plot(memory_sizes, faults)
+		#plt.tight_layout()
+		#plt.savefig("images/{0}".format(file.split(".")[0]))
+		plt.savefig("IMAGE.png")
 		plt.clf()
