@@ -37,7 +37,7 @@ std::vector<uint64_t> working_set_simulator(uint32_t seed, bool print=false) {
 	return toret;
 }
 
-std::vector<uint32_t> zipfian_simulator(bool print=false) {
+std::vector<uint64_t> zipfian_simulator(bool print=false) {
 	std::ifstream zipf_data(ZIPH_FILE);
 	if (!zipf_data.is_open()) {
 		printf("Failed to open zipf file\n");
@@ -47,7 +47,6 @@ std::vector<uint32_t> zipfian_simulator(bool print=false) {
 	std::set<uint64_t> unique_pages;
 
 	LRU_RAM *lru = new LRU_RAM(MEM_SIZE, PAGE_SIZE);
-	Clock_RAM *clk = new Clock_RAM(MEM_SIZE, PAGE_SIZE);
 	uint64_t accesses = 0;
 
 	printf("Zipfian Workload\n");
@@ -55,20 +54,20 @@ std::vector<uint32_t> zipfian_simulator(bool print=false) {
 	while(getline(zipf_data, line)) {
 		uint64_t v_addr = std::stol(line);
 		lru->memory_access(v_addr);
-		clk->memory_access(v_addr);
 		accesses++;
 
 		unique_pages.insert(v_addr);
 	}
 
 	if (print) {
-		printf("LRU:   "); lru->print();
-		printf("CLOCK: "); clk->print();
-		printf("Out of %llu memory accesses with %lu unique virtual pages\n", accesses, unique_pages.size());
+		printf("Out of %llu memory accesses with %lu unique virtual pages\n", ACCESSES, unique_pages.size());
+		lru->printSuccessFunction();
 	}
 	zipf_data.close();
 
-	return {lru->get_faults(), clk->get_faults()};
+	std::vector<uint64_t> toret = lru->getSuccessFunction();
+	delete lru;
+	return toret;
 }
 
 
@@ -85,13 +84,19 @@ int main() {
 		{
 			lru_total[page] += result[page];
 		}
-		printf("# Trial: %i\r", i); std::fflush(stdout);
+		printf("Trial: %i\r", i); std::fflush(stdout);
 	}
-	printf("# Final Statistics (%d)\n", lru_total.size());
+
+	// output the page fault information
+	std::ofstream out(OUT_FILE);
+	out << "# Final Statistics"  << std::endl;
+	out << "# Memory Size = "    << MEM_SIZE << std::endl;
+	out << "# Total Accesses = " << ACCESSES << std::endl;
 	for (uint32_t page = 1; page < lru_total.size(); page++)
 	{
 		lru_total[page] /= trials;
-		printf("%u:%lu\n", page, lru_total[page]);
+		out << page << ":" << lru_total[page] << std::endl;
 	}
+
 	// zipfian_simulator(true);
 }

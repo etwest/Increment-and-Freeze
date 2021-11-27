@@ -3,8 +3,8 @@ CXXFLAGS = -std=c++11 -Wall -I./include -O3
 vpath %.h include
 vpath %.cpp src
 
-simulatePaging: simulation.cpp LRU_RAM.o Clock_RAM.o params.h OSTree.o
-	$(CXX) $(CXXFLAGS) $< LRU_RAM.o Clock_RAM.o OSTree.o -o simulatePaging
+simulatePaging: simulation.cpp LRU_RAM.o params.h OSTree.o
+	$(CXX) $(CXXFLAGS) $< LRU_RAM.o OSTree.o -o simulatePaging
 
 %.o: %.cpp %.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@

@@ -63,6 +63,7 @@ protected:
 	uint64_t access_number = 0;
 public:
 	RAM(uint64_t size, uint32_t page): memory_size(size), page_size(page) {}
+	virtual ~RAM() {};
 	virtual void memory_access(uint64_t virtual_addr) = 0;
 	uint64_t inline get_memory_size() {return memory_size;}
 	uint32_t inline get_page_size() {return page_size;}
@@ -91,22 +92,6 @@ public:
 	size_t moveFrontQueue(uint64_t curts, uint64_t newts);
 	void printSuccessFunction();
 	std::vector<uint64_t> getSuccessFunction();
-};
-
-class Clock_RAM : public RAM {
-private:
-	std::list<Page *> free_pages;
-	std::vector<Page *> memory;
-
-	std::unordered_map<uint64_t, Page *> page_table;
-	uint32_t hand = 0;
-	void inline inc_hand() {
-		hand = (hand + 1) % memory.size();
-	}
-public:
-	Clock_RAM(uint64_t size, uint32_t page);
-	void memory_access(uint64_t virtual_addr);
-	Page *evict_clock();
 };
 
 #endif
