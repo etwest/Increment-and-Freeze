@@ -8,7 +8,7 @@
 std::vector<uint64_t> working_set_simulator(uint32_t seed, bool print=false) {
 	std::set<uint64_t> unique_pages;
 
-	LRU_RAM *lru = new LRU_RAM(MEM_SIZE, PAGE_SIZE);
+	LRU_Size_Simulation *lru = new LRU_Size_Simulation(MEM_SIZE, PAGE_SIZE);
 
 	// printf("Representative Workload\n");
 	uint64_t working_size  = WORKING_SET * (MEM_SIZE / PAGE_SIZE);
@@ -46,7 +46,7 @@ std::vector<uint64_t> zipfian_simulator(bool print=false) {
 
 	std::set<uint64_t> unique_pages;
 
-	LRU_RAM *lru = new LRU_RAM(MEM_SIZE, PAGE_SIZE);
+	LRU_Size_Simulation *lru = new LRU_Size_Simulation(MEM_SIZE, PAGE_SIZE);
 	uint64_t accesses = 0;
 
 	printf("Zipfian Workload\n");

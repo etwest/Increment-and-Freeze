@@ -6,3 +6,4 @@ delme
 *.dSYM
 *.out*
 *.DS_Store
+fault_results.txt

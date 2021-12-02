@@ -76,7 +76,13 @@ public:
 	}
 };
 
-class LRU_RAM : public RAM {
+/*
+ * An LRU_Size_Simulation simulates LRU running on every possible
+ * memory size from 1 to MEM_SIZE.
+ * Returns a success function which gives the number of page faults
+ * for every memory size.
+ */
+class LRU_Size_Simulation : public RAM {
 private:
 	std::list<Page *> free_pages;
 	std::vector<Page *> memory;
@@ -85,8 +91,8 @@ private:
 	OSTreeHead LRU_queue;
 	std::unordered_map<uint64_t, Page *> page_table;
 public:
-	LRU_RAM(uint64_t size, uint32_t page);
-	~LRU_RAM();
+	LRU_Size_Simulation(uint64_t size, uint32_t page);
+	~LRU_Size_Simulation();
 	void memory_access(uint64_t virtual_addr);
 	Page *evict_oldest();
 	size_t moveFrontQueue(uint64_t curts, uint64_t newts);

@@ -1,7 +1,7 @@
 #include "../include/RAM.h"
 #include <iostream>
 
-LRU_RAM::LRU_RAM(uint64_t size, uint32_t page): RAM(size, page) {
+LRU_Size_Simulation::LRU_Size_Simulation(uint64_t size, uint32_t page): RAM(size, page) {
 	num_pages = memory_size / page_size;
 
 	for (int i = 0; i < num_pages; i++) {
@@ -14,13 +14,13 @@ LRU_RAM::LRU_RAM(uint64_t size, uint32_t page): RAM(size, page) {
 
 	// printf("Created LRU memory with %u pages\n", num_pages);
 }
-LRU_RAM::~LRU_RAM() {
+LRU_Size_Simulation::~LRU_Size_Simulation() {
 	for (int i = 0; i < num_pages; i++) {
 		delete memory[i];
 	}
 }
 
-void LRU_RAM::memory_access(uint64_t virtual_addr) {
+void LRU_Size_Simulation::memory_access(uint64_t virtual_addr) {
 	uint64_t ts = access_number++;
 
 	if (page_table.count(virtual_addr) > 0 && page_table[virtual_addr]->get_virt() == virtual_addr) {
@@ -45,14 +45,14 @@ void LRU_RAM::memory_access(uint64_t virtual_addr) {
 	}
 }
 
-Page *LRU_RAM::evict_oldest() {
+Page *LRU_Size_Simulation::evict_oldest() {
 	//unmap virtual address
 	uint64_t virt = LRU_queue.getLast();
 	LRU_queue.remove(LRU_queue.getWeight()-1);
     return page_table[virt];
 }
 
-size_t LRU_RAM::moveFrontQueue(uint64_t oldts, uint64_t newts) {
+size_t LRU_Size_Simulation::moveFrontQueue(uint64_t oldts, uint64_t newts) {
 	std::pair<size_t, uint64_t> found = LRU_queue.find(oldts);
 	
     LRU_queue.remove(found.first);
@@ -60,7 +60,7 @@ size_t LRU_RAM::moveFrontQueue(uint64_t oldts, uint64_t newts) {
 	return found.first;
 }
 
-std::vector<uint64_t> LRU_RAM::getSuccessFunction()
+std::vector<uint64_t> LRU_Size_Simulation::getSuccessFunction()
 {
 	uint64_t nfaults = 0;
 	std::vector<uint64_t> faults(num_pages+1);
@@ -73,7 +73,7 @@ std::vector<uint64_t> LRU_RAM::getSuccessFunction()
 	return faults;
 }
 
-void LRU_RAM::printSuccessFunction()
+void LRU_Size_Simulation::printSuccessFunction()
 {
 	std::vector<uint64_t> faults = getSuccessFunction();
 	for (uint32_t page = 1; page <= num_pages; page++)
