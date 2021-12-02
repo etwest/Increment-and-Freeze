@@ -5,11 +5,10 @@
 #include <utility>
 #include <random>
 
-std::vector<uint32_t> working_set_simulator(uint32_t seed, bool print=false) {
+std::vector<uint64_t> working_set_simulator(uint32_t seed, bool print=false) {
 	std::set<uint64_t> unique_pages;
 
-	LRU_RAM *lru = new LRU_RAM(MEM_SIZE, PAGE_SIZE);
-	Clock_RAM *clk = new Clock_RAM(MEM_SIZE, PAGE_SIZE);
+	LRU_Size_Simulation *lru = new LRU_Size_Simulation(MEM_SIZE, PAGE_SIZE);
 
 	// printf("Representative Workload\n");
 	uint64_t working_size  = WORKING_SET * (MEM_SIZE / PAGE_SIZE);
@@ -26,19 +25,19 @@ std::vector<uint32_t> working_set_simulator(uint32_t seed, bool print=false) {
 
 		// printf("Memory access %i\n", i);
 		lru->memory_access(v_addr);
-		clk->memory_access(v_addr);
 
 		unique_pages.insert(v_addr);
 	}
 	if (print) {
-		printf("LRU:   "); lru->print();
-		printf("CLOCK: "); clk->print();
 		printf("Out of %llu memory accesses with %lu unique virtual pages\n", ACCESSES, unique_pages.size());
+		lru->printSuccessFunction();
 	}
-	return {lru->get_faults(), clk->get_faults()};
+	std::vector<uint64_t> toret = lru->getSuccessFunction();
+	delete lru;
+	return toret;
 }
 
-std::vector<uint32_t> zipfian_simulator(bool print=false) {
+std::vector<uint64_t> zipfian_simulator(bool print=false) {
 	std::ifstream zipf_data(ZIPH_FILE);
 	if (!zipf_data.is_open()) {
 		printf("Failed to open zipf file\n");
@@ -47,8 +46,7 @@ std::vector<uint32_t> zipfian_simulator(bool print=false) {
 
 	std::set<uint64_t> unique_pages;
 
-	LRU_RAM *lru = new LRU_RAM(MEM_SIZE, PAGE_SIZE);
-	Clock_RAM *clk = new Clock_RAM(MEM_SIZE, PAGE_SIZE);
+	LRU_Size_Simulation *lru = new LRU_Size_Simulation(MEM_SIZE, PAGE_SIZE);
 	uint64_t accesses = 0;
 
 	printf("Zipfian Workload\n");
@@ -56,42 +54,49 @@ std::vector<uint32_t> zipfian_simulator(bool print=false) {
 	while(getline(zipf_data, line)) {
 		uint64_t v_addr = std::stol(line);
 		lru->memory_access(v_addr);
-		clk->memory_access(v_addr);
 		accesses++;
 
 		unique_pages.insert(v_addr);
 	}
 
 	if (print) {
-		printf("LRU:   "); lru->print();
-		printf("CLOCK: "); clk->print();
-		printf("Out of %llu memory accesses with %lu unique virtual pages\n", accesses, unique_pages.size());
+		printf("Out of %llu memory accesses with %lu unique virtual pages\n", ACCESSES, unique_pages.size());
+		lru->printSuccessFunction();
 	}
 	zipf_data.close();
 
-	return {lru->get_faults(), clk->get_faults()};
+	std::vector<uint64_t> toret = lru->getSuccessFunction();
+	delete lru;
+	return toret;
 }
 
 
 int main() {
-	// unique_access_simulator();
-
-	uint32_t lru_total = 0;
-	uint32_t clk_total = 0;
-
-	uint32_t trials = 50;
+	std::vector<uint64_t> lru_total;
+	uint32_t trials = 10;
 
 	std::mt19937 rand(SEED);
 	for (int i = 0; i < trials; i++) {
-		std::vector<uint32_t> result = working_set_simulator(rand());
-		lru_total += result[0];
-		clk_total += result[1];
+		std::vector<uint64_t> result = working_set_simulator(rand());
+		lru_total.resize(result.size());
+
+		for (uint32_t page = 1; page < result.size(); page++)
+		{
+			lru_total[page] += result[page];
+		}
 		printf("Trial: %i\r", i); std::fflush(stdout);
 	}
 
-	printf("Final Statistics\n");
-	printf("LRU Average Page Faults     = %f\n", ((double)lru_total) / trials);
-	printf("CLOCK Average Page Faults   = %f\n", ((double)clk_total) / trials);
-	
+	// output the page fault information
+	std::ofstream out(OUT_FILE);
+	out << "# Final Statistics"  << std::endl;
+	out << "# Memory Size = "    << MEM_SIZE << std::endl;
+	out << "# Total Accesses = " << ACCESSES << std::endl;
+	for (uint32_t page = 1; page < lru_total.size(); page++)
+	{
+		lru_total[page] /= trials;
+		out << page << ":" << lru_total[page] << std::endl;
+	}
+
 	// zipfian_simulator(true);
 }

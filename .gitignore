@@ -1,0 +1,9 @@
+*.o
+simulatePaging
+tags
+delme
+*.swp
+*.dSYM
+*.out*
+*.DS_Store
+fault_results.txt
