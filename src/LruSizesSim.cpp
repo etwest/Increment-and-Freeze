@@ -1,7 +1,7 @@
 #include "../include/RAM.h"
 #include <iostream>
 
-LRU_Size_Simulation::LRU_Size_Simulation(uint64_t size, uint32_t page): RAM(size, page) {
+LruSizesSim::LruSizesSim(uint64_t size, uint32_t page): RAM(size, page) {
     num_pages = memory_size / page_size;
 
     for (int i = 0; i < num_pages; i++) {
@@ -14,26 +14,29 @@ LRU_Size_Simulation::LRU_Size_Simulation(uint64_t size, uint32_t page): RAM(size
 
     // printf("Created LRU memory with %u pages\n", num_pages);
 }
-LRU_Size_Simulation::~LRU_Size_Simulation() {
+LruSizesSim::~LruSizesSim() {
     for (int i = 0; i < num_pages; i++) {
         delete memory[i];
     }
 }
 
-void LRU_Size_Simulation::memory_access(uint64_t virtual_addr) {
+void LruSizesSim::memory_access(uint64_t virtual_addr) {
     uint64_t ts = access_number++;
 
     if (page_table.count(virtual_addr) > 0 && page_table[virtual_addr]->get_virt() == virtual_addr) {
-        page_faults[moveFrontQueue(page_table[virtual_addr]->last_touched(), ts)]++; // move this page to the front of the LRU queue
-        page_table[virtual_addr]->access_page(ts); // this is a memory access to the page stored in memory (it should update timestamp)
-    } else {
+    	// Page in memory so move it to the front of the LRU queue
+        page_faults[move_front_queue(page_table[virtual_addr]->last_touched(), ts)]++;
+        page_table[virtual_addr]->access_page(ts); // update timestamp of the page
+    } 
+    else {
         // if there are free pages then use one of them
         page_faults[num_pages]++;
         Page *p;
         if (free_pages.size() > 0) {
             p = free_pages.front();
             free_pages.pop_front();
-        } else {
+        } 
+        else { // no free pages so evict the oldest page
             p = evict_oldest();
             //page_table.erase(p->get_virt());
         }
@@ -45,14 +48,14 @@ void LRU_Size_Simulation::memory_access(uint64_t virtual_addr) {
     }
 }
 
-Page *LRU_Size_Simulation::evict_oldest() {
+Page *LruSizesSim::evict_oldest() {
     //unmap virtual address
-    uint64_t virt = LRU_queue.getLast();
-    LRU_queue.remove(LRU_queue.getWeight()-1);
+    uint64_t virt = LRU_queue.get_last();
+    LRU_queue.remove(LRU_queue.get_weight()-1);
     return page_table[virt];
 }
 
-size_t LRU_Size_Simulation::moveFrontQueue(uint64_t oldts, uint64_t newts) {
+size_t LruSizesSim::move_front_queue(uint64_t oldts, uint64_t newts) {
     std::pair<size_t, uint64_t> found = LRU_queue.find(oldts);
 
     LRU_queue.remove(found.first);
@@ -60,12 +63,10 @@ size_t LRU_Size_Simulation::moveFrontQueue(uint64_t oldts, uint64_t newts) {
     return found.first;
 }
 
-std::vector<uint64_t> LRU_Size_Simulation::getSuccessFunction()
-{
+std::vector<uint64_t> LruSizesSim::get_success_function() {
     uint64_t nfaults = 0;
     std::vector<uint64_t> faults(num_pages+1);
-    for (uint32_t page = num_pages; page > 0; page--)
-    {
+    for (uint32_t page = num_pages; page > 0; page--) {
         nfaults += page_faults[page];
         faults[page] = nfaults;
     }
@@ -73,11 +74,9 @@ std::vector<uint64_t> LRU_Size_Simulation::getSuccessFunction()
     return faults;
 }
 
-void LRU_Size_Simulation::printSuccessFunction()
-{
-    std::vector<uint64_t> faults = getSuccessFunction();
-    for (uint32_t page = 1; page <= num_pages; page++)
-    {
+void LruSizesSim::print_success_function() {
+    std::vector<uint64_t> faults = get_success_function();
+    for (uint32_t page = 1; page <= num_pages; page++) {
         std::cout << page << ": " << faults[page] << std::endl;
     }
 }

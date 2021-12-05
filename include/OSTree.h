@@ -4,8 +4,7 @@
 #include <utility>
 #include <vector>
 
-class OSTree
-{
+class OSTree {
     private:
         size_t weight;
         OSTree* left = nullptr;
@@ -29,58 +28,52 @@ class OSTree
         OSTree(uint64_t, uint64_t);
         ~OSTree();
 
-        size_t getWeight() { return weight; };
-        OSTree* getRight() { return right; };
-        uint64_t getVal() { return value; };
-        OSTree* getLeftmost()
-        {
+        size_t get_weight() { return weight; };
+        OSTree* get_right() { return right; };
+        OSTree* get_left()  { return left; };
+        uint64_t get_val()  { return value; };
+
+        OSTree* get_leftmost() {
             if (left == nullptr)
                 return this;
-            return left->getLeftmost();
+            return left->get_leftmost();
         };
-        OSTree* getRightmost()
-        {
+        OSTree* get_rightmost() {
             if (right == nullptr)
                 return this;
-            return right->getRightmost();
+            return right->get_rightmost();
         };
 };
 
-class OSTreeHead
-{
+class OSTreeHead {
     public:
         OSTree* head = nullptr;
         ~OSTreeHead() {if (head != nullptr) delete head;};
-        void insert(uint64_t ts, uint64_t val)
-        {
+        void insert(uint64_t ts, uint64_t val) {
             if (head == nullptr)
                 head = new OSTree(ts, val);
             else
                 head->insert(ts, val);
         };
-        void remove(size_t rank)
-        {
+        void remove(size_t rank) {
             assert(head != nullptr);
-            assert(rank < head->getWeight());
-            if (head->getWeight()== 1)
+            assert(rank < head->get_weight());
+            if (head->get_weight()== 1)
                 delete head;
             else
                 head->remove(rank);
         };
-        std::pair<size_t, uint64_t> find(uint64_t ts) //what rank is X at
-        {
+        std::pair<size_t, uint64_t> find(uint64_t ts) {
             assert(head != nullptr);
             return head->find(ts);
         };
 
         //TODO: This can be done during remove instead
-        uint64_t getLast()
-        {
+        uint64_t get_last() {
             assert(head != nullptr);
-            return head->getRightmost()->getVal();
+            return head->get_rightmost()->get_val();
         }
-        size_t getWeight()
-        {
-            return head == nullptr? 0 : head->getWeight();
+        size_t get_weight() {
+            return head == nullptr? 0 : head->get_weight();
         }
 };
