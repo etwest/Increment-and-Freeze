@@ -11,60 +11,77 @@
 // This class represents a single physical page 
 class Page {
     private:
-        uint64_t last_accessed = 0;
-        uint64_t virtual_addr = 0;
-        uint64_t physical_addr;
-        bool free  = true;
+        uint64_t last_accessed = 0;   // timestamp of last access
+        uint64_t virtual_addr = 0;    // virtual page mapped to this location
+        const uint64_t physical_addr;
+        bool free = true;
     public:
+        /*
+         * Creates a new page object
+         * phy:      the unique physical address associated with this page
+         * returns   a new page object
+         */
         Page(uint64_t phy) : physical_addr(phy) {}
 
-        inline uint64_t get_phys() {
-            return physical_addr;
-        }
-        inline uint64_t get_virt() {
-            return virtual_addr;
-        }
-        inline uint64_t last_touched() {
-            return last_accessed;
-        }
+        // getters for the private member variables
+        inline uint64_t get_phys()     { return physical_addr; }
+        inline uint64_t get_virt()     { return virtual_addr; }
+        inline uint64_t last_touched() { return last_accessed; }
+        inline bool is_free()          { return free; }
+
+        // 
+        inline void access_page(uint64_t timestamp) { last_accessed = timestamp; }
+        
+
+        /*
+         * Maps a new virtual address to this page and updates timestamp
+         * v_addr:     the virtual address to map to this page
+         * timestamp:  the timestamp of the memory access that caused the map
+         * returns     nothing
+         */
         inline void place_page(uint64_t v_addr, uint64_t timestamp) {
             virtual_addr = v_addr;
             last_accessed = timestamp;
             free = false;
         }
+
+        /*
+         * Evicts the current virtual address from this page
+         * and marks the page as free
+         * returns   nothing
+         */
         inline void evict_page() {
             virtual_addr = 0;
             free = true;
-        }
-        inline void access_page(uint64_t timestamp) {
-            last_accessed = timestamp;
-        }
-        inline bool is_free() {
-            return free;
         }
 };
 
 class RAM {
     protected:
-        uint64_t memory_size;
-        uint32_t page_size;
-        uint32_t page_faults = 0;
-        uint64_t access_number = 0;
+        const uint64_t memory_size;
+        const uint32_t page_size;
+        const uint32_t num_pages;
+        uint64_t access_number = 0; // simulated timestamp
     public:
-        RAM(uint64_t size, uint32_t page): memory_size(size), page_size(page) {}
+        /*
+         * Creates a RAM object, serves as a base constructor
+         * size:     the size of the memory to simulate
+         * page:     the size of an individual page
+         * returns   a new RAM object
+         */
+        RAM(uint64_t size, uint32_t page) : memory_size(size), page_size(page), num_pages(size/page) {}
         virtual ~RAM() {};
 
+        /*
+         * Perform a memory access upon a given virtual page
+         * virtual_addr:   the virtual address to access
+         * returns         nothing
+         */
         virtual void memory_access(uint64_t virtual_addr) = 0;
+
+        // getters
         inline uint64_t get_memory_size() {return memory_size;}
         inline uint32_t get_page_size() {return page_size;}
-
-        void print() {
-            printf("number of page_faults %u memory size %llu page size %u\n",
-                    page_faults, memory_size, page_size);
-        }
-        uint32_t get_faults() {
-            return page_faults;
-        }
 };
 
 /*
@@ -75,20 +92,54 @@ class RAM {
  */
 class LruSizesSim : public RAM {
     private:
-        std::list<Page *> free_pages;
-        std::vector<Page *> memory;
-        std::vector<uint64_t> page_faults;
-        uint32_t num_pages;
-        OSTreeHead LRU_queue;
-        std::unordered_map<uint64_t, Page *> page_table;
+        std::list<Page *> free_pages;                    // a list of unmapped pages
+        std::vector<Page *> memory;                      // vector of all the pages
+        std::vector<uint64_t> page_faults;               // vector used to construct success function
+        OSTreeHead LRU_queue;                            // order statistics tree for LRU depth
+        std::unordered_map<uint64_t, Page *> page_table; // map from v_addr to page
     public:
+        /*
+         * Construct an LRUSizesSim
+         * size:     the size of memory
+         * page:     the size of a page
+         * returns   a new LRUSizesSim object
+         */
         LruSizesSim(uint64_t size, uint32_t page);
         ~LruSizesSim();
+
+        /*
+         * Performs a memory access upon a given virtual page
+         * updates the page_faults vector based upon where the page
+         * was found within the LRU_queue
+         * virtual_addr:   the virtual address to access
+         * returns         nothing
+         */
         void memory_access(uint64_t virtual_addr);
+
+        /*
+         * Evict the oldest page in memory to make room for a new page
+         * returns   the page to evict to make room
+         */
         Page *evict_oldest();
-        size_t move_front_queue(uint64_t curts, uint64_t newts);
-        void print_success_function();
+
+        /*
+         * Moves a page with a given timestamp to the front of the queue
+         * and inserts the page back into the queue with an updated timestamp
+         * old_ts:   the current timestamp of the page being accessed
+         * new_ts:   the timestamp of the access 
+         * returns   the rank of the page with old_ts in the LRU_queue
+         */
+        size_t move_front_queue(uint64_t old_ts, uint64_t new_ts);
+
+        /*
+         * Get the success function. The success function gives the number of
+         * page faults with every memory size from 1 to MEM_SIZE
+         * returns   the success function in a vector
+         */
         std::vector<uint64_t> get_success_function();
+
+        // print the success function by calling get_success_function
+        void print_success_function();
 };
 
 #endif
