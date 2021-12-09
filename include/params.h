@@ -13,8 +13,8 @@
 #define PAGE_SIZE   (KB << 2)   // size of a page
 
 // params for the representative workload
-#define WORKING_SET .95         // the size of the commonly accessed pages relative to main memory
-#define WORKLOAD    1.5         // the total size of all accessed pages relative to main memory
+#define WORKING_SET (MB << 9)   // size of the commonly accessed pages
+#define WORKLOAD    1.5         // size of uncommonly accessed pages relative to working set
 #define LOCALITY    .9          // with what probability to we access a common page
 #define ACCESSES    (1 * M)     // the number of memory accesses
 

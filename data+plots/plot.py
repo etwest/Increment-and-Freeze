@@ -29,6 +29,5 @@ for file in args.txt_files:
 
 		plt.plot(memory_sizes, faults)
 		#plt.tight_layout()
-		#plt.savefig("images/{0}".format(file.split(".")[0]))
-		plt.savefig("images/IMAGE.png")
+		plt.show()
 		plt.clf()

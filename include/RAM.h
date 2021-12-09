@@ -29,7 +29,7 @@ class Page {
         inline uint64_t last_touched() { return last_accessed; }
         inline bool is_free()          { return free; }
 
-        // 
+        // update the timestamp of this page
         inline void access_page(uint64_t timestamp) { last_accessed = timestamp; }
         
 
