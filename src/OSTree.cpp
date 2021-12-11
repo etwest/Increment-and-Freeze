@@ -4,8 +4,7 @@
 
 // All new trees have weight 1, as there are no children
 OSTree::OSTree(uint64_t ts, uint64_t value)
-    : ts(ts), value(value) {
-    weight = 1;
+    : weight(1), ts(ts), value(value) {
 };
 
 OSTree::~OSTree() = default;
@@ -103,10 +102,8 @@ std::pair<size_t, uint64_t> OSTree::find(uint64_t searchts) const {
     }
     else { //check right
         assert(right != nullptr);
-        std::pair<size_t, uint64_t> answer = right->find(searchts);
-        // We skip over leftweight elements plus ourselves
-        answer.first += 1 +lweight;
-        return answer;
+        auto [rank, found_value] = right->find(searchts);
+        return {rank + 1 + lweight, found_value};
     }
 }
 
