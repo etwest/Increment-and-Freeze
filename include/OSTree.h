@@ -41,7 +41,7 @@ class OSTree {
          *          If it does not exist, we create it.
          *          If it exists and should not, we delete its subtree
         */
-  std::unique_ptr<OSTree> rebalance_helper(
+        std::unique_ptr<OSTree> rebalance_helper(
                 std::unique_ptr<OSTree> child,
                 std::vector<std::pair<uint64_t, uint64_t>>& array,
                 size_t first, size_t last);
