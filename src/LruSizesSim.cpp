@@ -3,7 +3,7 @@
 
 // construct the LRUSizesSim object
 LruSizesSim::LruSizesSim(uint64_t size, uint32_t page): RAM(size, page) {
-    for (int i = 0; i < num_pages; i++) {
+    for (uint32_t i = 0; i < num_pages; i++) {
         Page *p = new Page(i * page_size);
 
         free_pages.push_back(p);
@@ -16,7 +16,7 @@ LruSizesSim::LruSizesSim(uint64_t size, uint32_t page): RAM(size, page) {
 
 // free the pages in the memory
 LruSizesSim::~LruSizesSim() {
-    for (int i = 0; i < num_pages; i++) {
+    for (uint32_t i = 0; i < num_pages; i++) {
         delete memory[i];
     }
 }

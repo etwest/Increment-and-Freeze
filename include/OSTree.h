@@ -36,11 +36,11 @@ class OSTree {
          * first:   first element we must place in our subtree
          * last:    last element we must place in our subtree, inclusive
          * Recursively builds a balanced tree.
-         * Hint:    If a node exists, we adjust its values to desired. 
-         *          If it does not exist, we create it. 
+         * Hint:    If a node exists, we adjust its values to desired.
+         *          If it does not exist, we create it.
          *          If it exists and should not, we delete its subtree
         */
-        OSTree *rebalance_helper(OSTree *child, std::vector<std::pair<uint64_t, uint64_t>>& array, 
+        OSTree *rebalance_helper(OSTree *child, std::vector<std::pair<uint64_t, uint64_t>>& array,
                 size_t first, size_t last);
         //Returns whether or not the subtree needs to be rebalanced
         //true ->   must be rebalanced
@@ -59,7 +59,7 @@ class OSTree {
         void remove(size_t rank);
 
         //uint64_t rank(size_t rank); //what element is rank X
-        
+
         /* Returns the rank and value of element with key ts
          * ts:      The key to search for
          * Note:    ts must exist in the tree
@@ -95,7 +95,7 @@ class OSTree {
 };
 
 /* Manages an OSTree
- * Handles edge cases 
+ * Handles edge cases
 */
 class OSTreeHead {
     public:
@@ -104,8 +104,8 @@ class OSTreeHead {
 
         //Destructs the head and entire managed tree, recursively
         ~OSTreeHead() {if (head != nullptr) delete head;};
-        
-        
+
+
         /* Inserts a new node into the OSTree
          * ts: key to be inserted
          * val: value to be inserted
