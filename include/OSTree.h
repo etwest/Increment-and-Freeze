@@ -9,11 +9,13 @@
 // Must be managed by OSTreeHead
 class OSTree {
     private:
+        using Uptr = std::unique_ptr<OSTree>;
+
         // The count of nodes in the tree, including yourself
         // The weight of a nullptr is 0.
         size_t weight;
-        std::unique_ptr<OSTree> left;
-        std::unique_ptr<OSTree> right;
+        Uptr left;
+        Uptr right;
 
         // Timestamp
         uint64_t ts;
@@ -23,16 +25,16 @@ class OSTree {
         /* Puts the nodes of the tree in, in order, into array starting at
          * index.  Updates index to point at the first empty slot.
          */
-        static void to_array(std::unique_ptr<OSTree> ost, std::vector<std::unique_ptr<OSTree>> &array, size_t &index);
+        static void to_array(Uptr ost, std::vector<Uptr> &array, size_t &index);
         // Convert the nodes in array, which are sorted, into balanced tree.
         // lo and hi are a half-open range. All ranges should be half open.
-        static std::unique_ptr<OSTree> from_array(std::vector<std::unique_ptr<OSTree>> &array, size_t lo, size_t hi);
+        static Uptr from_array(std::vector<Uptr> &array, size_t lo, size_t hi);
 
         /* Rebalances the tree, including rerooting
         * Hint: Should only be called when bad_balance() returns true
         *       To retain an amortized rebalance cost of O(1)
         */
-        static std::unique_ptr<OSTree> rebalance(std::unique_ptr<OSTree>);
+        static void rebalance(Uptr &ost);
 
         //Returns whether or not the subtree needs to be rebalanced
         //true ->   must be rebalanced
@@ -46,18 +48,16 @@ class OSTree {
          * ts:  The key to sort on.
          * val: The value to store
          * May rebalance the tree
-         * Returns the new root of the tree.
-         * Precondition: There's no unique_pointer to the tree.
         */
-        static std::unique_ptr<OSTree> insert(std::unique_ptr<OSTree> ost,
-                                              uint64_t ts, uint64_t val);
+        static void insert(Uptr &ost, uint64_t ts,
+                           uint64_t val);
         /* Removes the element with rank predecessors
          * May rebalance the tree
          * Returns the new root.  Stores the deleted node in removed_node.
         */
-        static std::unique_ptr<OSTree> remove(
-            std::unique_ptr<OSTree> ost, size_t rank,
-            std::unique_ptr<OSTree> &removed_node);
+        static void remove(
+            Uptr &ost, size_t rank,
+            Uptr &removed_node);
 
         //uint64_t rank(size_t rank); //what element is rank X
 
@@ -76,6 +76,8 @@ class OSTree {
         ~OSTree();
 
         size_t get_weight() { return weight; };
+        static size_t get_weight(const Uptr &ost) { return ost ? ost->weight : 0; }
+
         //OSTree* get_right() { return right; };
         //OSTree* get_left()  { return left; };
         uint64_t get_val()  { return value; };
@@ -112,7 +114,7 @@ class OSTreeHead {
          * val: value to be inserted
         */
         void insert(uint64_t ts, uint64_t val) {
-          head = OSTree::insert(std::move(head), ts, val);
+          OSTree::insert(head, ts, val);
         };
 
         /* removes a node from the OSTree
@@ -120,7 +122,8 @@ class OSTreeHead {
         */
         void remove(size_t rank) {
             std::unique_ptr<OSTree> deleted;
-            head = OSTree::remove(std::move(head), rank, deleted);
+            OSTree::remove(head, rank, deleted);
+            assert(deleted);
         };
 
         /* returns a <rank, value> pair given a key
