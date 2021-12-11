@@ -6,17 +6,11 @@ OSTree::OSTree(uint64_t ts, uint64_t value)
     weight = 1;
 };
 
-// Recursively delete the subtrees
-OSTree::~OSTree() {
-    if (left != nullptr)
-        delete left;
-    if (right != nullptr)
-        delete right;
-}
+OSTree::~OSTree() = default;
 
 void OSTree::insert(uint64_t newts, uint64_t newval) {
     assert(newts != ts);
-    
+
     // Ensure the tree is balanced on the way down
     // The tree may get out of balance after inserting,
     // but only by 1 element
@@ -27,13 +21,13 @@ void OSTree::insert(uint64_t newts, uint64_t newval) {
     // the element with oldest/smallest timestamp is the rightmost
     if (newts > ts) {
         if (left == nullptr)
-            left = new OSTree(newts, newval);
+            left = std::make_unique<OSTree>(newts, newval);
         else
             left->insert(newts, newval);
     }
     else {
         if (right == nullptr)
-            right = new OSTree(newts, newval);
+            right = std::make_unique<OSTree>(newts, newval);
         else
             right->insert(newts, newval);
     }
@@ -51,7 +45,7 @@ void OSTree::insert(uint64_t newts, uint64_t newval) {
 // Removes a child with rank predecessors
 void OSTree::remove(size_t rank) {
     //Ensure the element exists and there is a child to remove
-    assert(rank < weight);	
+    assert(rank < weight);
     assert(weight > 1);
 
     // Ensure that the weights are still maintained properly
@@ -74,28 +68,26 @@ void OSTree::remove(size_t rank) {
     size_t rweight = right == nullptr? 0 : right->weight;
 
     // Delete ourself
-    // Instead of invoking the memory manager on ourselves, we impersonate 
+    // Instead of invoking the memory manager on ourselves, we impersonate
     // the next or previous element and delete that instead
     // Such element must exist, as weight > 1
     if (lweight == rank) {
         //For the sake of balance, delete from the heaviest side.
-        OSTree* deleteMe = lweight > rweight ? left->get_rightmost(): right->get_leftmost();	
+        OSTree* deleteMe = lweight > rweight ? left->get_rightmost(): right->get_leftmost();
         // We can't delete outselves, but we can pretend the be the next element!
         ts = deleteMe->ts;
         value = deleteMe->value;
         if (lweight > rweight) {
             // Recursive base case
             if (lweight == 1) {
-                delete left;
                 left = nullptr;
             }
             else
-                left->remove(lweight-1);	
+                left->remove(lweight-1);
         }
         else {
             //Recursive base case
             if (rweight == 1) {
-                delete right;
                 right = nullptr;
             }
             else
@@ -104,9 +96,8 @@ void OSTree::remove(size_t rank) {
     }
     else if (rank < lweight) {
         //delete from the left subtree
-        
+
         if (lweight == 1) {
-            delete left;
             left = nullptr;
         }
         else if (lweight != 0)
@@ -114,12 +105,11 @@ void OSTree::remove(size_t rank) {
             left->remove(rank);
         else
             assert(false);
-    }	
+    }
     else {
         // delete from the right subtree
-        
+
         if (rweight == 1) {
-            delete right;
             right = nullptr;
         }
         else if (rweight != 0)
@@ -139,7 +129,7 @@ std::pair<size_t, uint64_t> OSTree::find(uint64_t searchts) {
     else if (searchts > ts) { //check left
         assert(left != nullptr);
         return left->find(searchts);
-    }	
+    }
     else { //check right
         assert(right != nullptr);
         std::pair<size_t, uint64_t> answer = right->find(searchts);
@@ -177,18 +167,22 @@ void OSTree::rebalance() {
     value = arr_rep[mid].second;
 
     // rebuild the left and right subtrees
-    left  = rebalance_helper(left,  arr_rep, 0, mid - 1);
-    right = rebalance_helper(right, arr_rep, mid + 1, arr_rep.size() - 1);
+    left  = rebalance_helper(std::move(left),
+                             arr_rep, 0, mid - 1);
+    right = rebalance_helper(std::move(right),
+                             arr_rep, mid + 1, arr_rep.size() - 1);
     // total weight shouldn't change
     // and the weight should still be consistent
     assert(weight == 1 + left->weight + right->weight);
 }
 
-OSTree *OSTree::rebalance_helper(OSTree *child, std::vector<std::pair<uint64_t, uint64_t>>& arr_rep, 
-        size_t first, size_t last) {
+std::unique_ptr<OSTree> OSTree::rebalance_helper(
+    std::unique_ptr<OSTree> child,
+    std::vector<std::pair<uint64_t, uint64_t>>& arr_rep,
+    size_t first, size_t last) {
     // We should definitely at least exist
     if (child == nullptr)
-        child = new OSTree(0,0);
+        child = std::make_unique<OSTree>(0,0);
 
     //Find the middle element without integer overflow
     size_t mid   = ((last - first) / 2) + first;
@@ -200,35 +194,27 @@ OSTree *OSTree::rebalance_helper(OSTree *child, std::vector<std::pair<uint64_t, 
 
     if (first == last) { // basecase
         // Just us-- delete the children
-        if (child->left != nullptr) {
-            delete child->left;
-            child->left = nullptr;
-        }
-        if (child->right != nullptr) {
-            delete child->right;
-            child->right = nullptr;
-        }
+        child->left = nullptr;
+        child->right = nullptr;
     }
     else if (first == last-1) { // second base case: two elements
         if (first == mid) { // Child to the right
             if (child->left != nullptr) {
-                delete child->left;
                 child->left = nullptr;
             }
-            child->right = child->rebalance_helper(child->right, arr_rep, mid + 1, last);
+            child->right = child->rebalance_helper(std::move(child->right), arr_rep, mid + 1, last);
         }
         else { // Child to the left
             if (child->right != nullptr) {
-                delete child->right;
                 child->right = nullptr;
             }
-            child->left = child->rebalance_helper(child->left, arr_rep, first, mid - 1);
+            child->left = child->rebalance_helper(std::move(child->left), arr_rep, first, mid - 1);
         }
 
     }
     else { //recursively rebuild both left and right
-        child->left  = child->rebalance_helper(child->left, arr_rep, first, mid - 1);
-        child->right = child->rebalance_helper(child->right, arr_rep, mid + 1, last);
+        child->left  = child->rebalance_helper(std::move(child->left), arr_rep, first, mid - 1);
+        child->right = child->rebalance_helper(std::move(child->right), arr_rep, mid + 1, last);
     }
     //ensure weights were properly set during rebulding
     size_t lweight = child->left == nullptr? 0 : child->left->weight;

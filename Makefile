@@ -1,5 +1,5 @@
-CXX = g++
-CXXFLAGS = -std=c++11 -Wall -I./include -O3
+CXX = clang++
+CXXFLAGS = -std=c++20 -Wall -I./include -O3
 vpath %.h include
 vpath %.cpp src
 

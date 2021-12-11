@@ -1,4 +1,5 @@
 #include "../include/RAM.h"
+#include <cinttypes>
 #include <set>
 #include <fstream>
 #include <stdlib.h>
@@ -10,7 +11,7 @@
  * A majority of accesses are made to a somewhat small working_set while the rest
  * are made randomly to a much larger amount of memory
  * seed:     the seed to the random number generator
- * print:    if true print out the results of the simulation 
+ * print:    if true print out the results of the simulation
  * returns   the success function
  */
 std::vector<uint64_t> working_set_simulator(uint32_t seed, bool print=false) {
@@ -38,7 +39,7 @@ std::vector<uint64_t> working_set_simulator(uint32_t seed, bool print=false) {
     }
     if (print) {
         // print the success function if requested
-        printf("Out of %llu memory accesses with %lu unique virtual pages\n", ACCESSES, unique_pages.size());
+        printf("Out of %" PRIu64 " memory accesses with %lu unique virtual pages\n", ACCESSES, unique_pages.size());
         lru->print_success_function();
     }
     std::vector<uint64_t> toret = lru->get_success_function();
@@ -49,7 +50,7 @@ std::vector<uint64_t> working_set_simulator(uint32_t seed, bool print=false) {
 /*
  * Runs a predefined sequence of memory accesses given by a Zipfian distribution
  * this sequence of pages is found in ZIPH_FILE
- * print:    if true print out the results of the simulation 
+ * print:    if true print out the results of the simulation
  * returns   the success function
  */
 std::vector<uint64_t> zipfian_simulator(bool print=false) {
@@ -79,7 +80,7 @@ std::vector<uint64_t> zipfian_simulator(bool print=false) {
 
     if (print) {
         // print the success function if requested
-        printf("Out of %llu memory accesses with %lu unique virtual pages\n", ACCESSES, unique_pages.size());
+        printf("Out of %" PRIu64 " memory accesses with %lu unique virtual pages\n", ACCESSES, unique_pages.size());
         lru->print_success_function();
     }
 
@@ -98,7 +99,7 @@ int main() {
     uint32_t trials = 10;
 
     std::mt19937 rand(SEED); // use params seed to make rand() gen for simulator seeds
-    
+
     // run each trial
     for (int i = 0; i < trials; i++) {
         // run the simulator

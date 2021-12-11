@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstddef>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -11,8 +12,8 @@ class OSTree {
         // The count of nodes in the tree, including yourself
         // The weight of a nullptr is 0.
         size_t weight;
-        OSTree* left = nullptr;
-        OSTree* right = nullptr;
+        std::unique_ptr<OSTree> left;
+        std::unique_ptr<OSTree> right;
 
         // Timestamp
         uint64_t ts;
@@ -40,7 +41,9 @@ class OSTree {
          *          If it does not exist, we create it.
          *          If it exists and should not, we delete its subtree
         */
-        OSTree *rebalance_helper(OSTree *child, std::vector<std::pair<uint64_t, uint64_t>>& array,
+  std::unique_ptr<OSTree> rebalance_helper(
+                std::unique_ptr<OSTree> child,
+                std::vector<std::pair<uint64_t, uint64_t>>& array,
                 size_t first, size_t last);
         //Returns whether or not the subtree needs to be rebalanced
         //true ->   must be rebalanced
@@ -75,8 +78,8 @@ class OSTree {
         ~OSTree();
 
         size_t get_weight() { return weight; };
-        OSTree* get_right() { return right; };
-        OSTree* get_left()  { return left; };
+        //OSTree* get_right() { return right; };
+        //OSTree* get_left()  { return left; };
         uint64_t get_val()  { return value; };
 
 
@@ -100,10 +103,10 @@ class OSTree {
 class OSTreeHead {
     public:
         //Pointer to the root of the managed OSTree
-        OSTree* head = nullptr;
+        std::unique_ptr<OSTree> head = nullptr;
 
         //Destructs the head and entire managed tree, recursively
-        ~OSTreeHead() {if (head != nullptr) delete head;};
+        ~OSTreeHead() = default;
 
 
         /* Inserts a new node into the OSTree
@@ -112,7 +115,7 @@ class OSTreeHead {
         */
         void insert(uint64_t ts, uint64_t val) {
             if (head == nullptr)
-                head = new OSTree(ts, val);
+                head = std::make_unique<OSTree>(ts, val);
             else
                 head->insert(ts, val);
         };
@@ -125,7 +128,6 @@ class OSTreeHead {
             assert(rank < head->get_weight());
             if (head->get_weight()== 1)
             {
-                delete head;
                 head = nullptr;
             }
             else
