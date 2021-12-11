@@ -1,10 +1,13 @@
 CXX = clang++
-CXXFLAGS = -std=c++20 -Wall -I./include -O3
+CXXFLAGS = -std=c++20 -Wall -I./include -O3 -g
 vpath %.h include
 vpath %.cpp src
 
-simulatePaging: simulation.cpp LruSizesSim.o OSTree.o params.h RAM.h
+simulatePaging: simulation.o LruSizesSim.o OSTree.o params.h RAM.h
 	$(CXX) $(CXXFLAGS) $< LruSizesSim.o OSTree.o -o simulatePaging
+
+LruSizesSim.o simulatinon.o: include/RAM.h include/params.h include/OSTree.h
+OSTree.o: include/OSTree.h
 
 %.o: %.cpp %.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@

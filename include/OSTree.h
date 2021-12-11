@@ -20,46 +20,44 @@ class OSTree {
         // Value-- such as address
         uint64_t value;
 
-        /* Returns a sorted array of <timestamp, value> pairs
-         * Used to rebalance the tree
-        */
-        std::vector<std::pair<uint64_t, uint64_t>> to_array();
+        /* Puts the nodes of the tree in, in order, into array starting at
+         * index.  Updates index to point at the first empty slot.
+         */
+        static void to_array(std::unique_ptr<OSTree> ost, std::vector<std::unique_ptr<OSTree>> &array, size_t &index);
+        // Convert the nodes in array, which are sorted, into balanced tree.
+        // lo and hi are a half-open range. All ranges should be half open.
+        static std::unique_ptr<OSTree> from_array(std::vector<std::unique_ptr<OSTree>> &array, size_t lo, size_t hi);
 
         /* Rebalances the tree, including rerooting
         * Hint: Should only be called when bad_balance() returns true
         *       To retain an amortized rebalance cost of O(1)
         */
-        void rebalance();
+        static std::unique_ptr<OSTree> rebalance(std::unique_ptr<OSTree>);
 
-        /* Returns the left (or right) child pointer passed in, or a new one if null.
-         * child:   (possibly null) child pointer
-         * array:   sorted array
-         * first:   first element we must place in our subtree
-         * last:    last element we must place in our subtree, inclusive
-         * Recursively builds a balanced tree.
-         * Hint:    If a node exists, we adjust its values to desired.
-         *          If it does not exist, we create it.
-         *          If it exists and should not, we delete its subtree
-        */
-        std::unique_ptr<OSTree> rebalance_helper(
-                std::unique_ptr<OSTree> child,
-                std::vector<std::pair<uint64_t, uint64_t>>& array,
-                size_t first, size_t last);
         //Returns whether or not the subtree needs to be rebalanced
         //true ->   must be rebalanced
         //false -> should not be rebalanced
-        bool bad_balance();
+        bool bad_balance() const;
+
+        // Check the representation invariants: The weights are correct and it's sorted right.
+        void validate() const;
     public:
         /* Inserts a new entry into the tree with key/timestamp ts and value val
          * ts:  The key to sort on.
          * val: The value to store
          * May rebalance the tree
+         * Returns the new root of the tree.
+         * Precondition: There's no unique_pointer to the tree.
         */
-        void insert(uint64_t ts, uint64_t val);
+        static std::unique_ptr<OSTree> insert(std::unique_ptr<OSTree> ost,
+                                              uint64_t ts, uint64_t val);
         /* Removes the element with rank predecessors
          * May rebalance the tree
+         * Returns the new root.  Stores the deleted node in removed_node.
         */
-        void remove(size_t rank);
+        static std::unique_ptr<OSTree> remove(
+            std::unique_ptr<OSTree> ost, size_t rank,
+            std::unique_ptr<OSTree> &removed_node);
 
         //uint64_t rank(size_t rank); //what element is rank X
 
@@ -67,7 +65,7 @@ class OSTree {
          * ts:      The key to search for
          * Note:    ts must exist in the tree
         */
-        std::pair<size_t, uint64_t> find(uint64_t ts); //what rank is X at
+        std::pair<size_t, uint64_t> find(uint64_t ts) const; //what rank is X at
 
         /* Constructs a new Order Statistic tree node
          * ts:  key
@@ -114,24 +112,15 @@ class OSTreeHead {
          * val: value to be inserted
         */
         void insert(uint64_t ts, uint64_t val) {
-            if (head == nullptr)
-                head = std::make_unique<OSTree>(ts, val);
-            else
-                head->insert(ts, val);
+          head = OSTree::insert(std::move(head), ts, val);
         };
 
         /* removes a node from the OSTree
          * rank: rank of node to be removed
         */
         void remove(size_t rank) {
-            assert(head != nullptr);
-            assert(rank < head->get_weight());
-            if (head->get_weight()== 1)
-            {
-                head = nullptr;
-            }
-            else
-                head->remove(rank);
+            std::unique_ptr<OSTree> deleted;
+            head = OSTree::remove(std::move(head), rank, deleted);
         };
 
         /* returns a <rank, value> pair given a key
