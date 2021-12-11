@@ -1,5 +1,7 @@
 #include "OSTree.h"
 
+#include <iostream>
+
 // All new trees have weight 1, as there are no children
 OSTree::OSTree(uint64_t ts, uint64_t value)
     : ts(ts), value(value) {
@@ -30,7 +32,7 @@ void OSTree::insert(Uptr &ost, uint64_t newts, uint64_t newval) {
     ost->weight++;
 
     ost->validate();
-  } 
+  }
 }
 
 void OSTree::validate() const {
@@ -38,10 +40,10 @@ void OSTree::validate() const {
   size_t right_weight = get_weight(right);
   assert(weight == 1 + left_weight + right_weight);
   if (left) {
-    assert(left->ts < ts);
+    assert(left->ts > ts);
   }
   if (right) {
-    assert(ts < right->ts);
+    assert(ts > right->ts);
   }
 }
 
@@ -58,7 +60,6 @@ void OSTree::remove(Uptr &ost, size_t rank, Uptr &removed_node) {
     // depth of the tree.
 
     size_t lweight = get_weight(ost->left);
-    //size_t rweight = ost->right ? ost->right->weight : 0;
 
     if (lweight == rank) {
       // Delete ourself.
@@ -92,7 +93,7 @@ void OSTree::remove(Uptr &ost, size_t rank, Uptr &removed_node) {
 
 //Assume: The timestamp we're getting the rank of is in the tree
 std::pair<size_t, uint64_t> OSTree::find(uint64_t searchts) const {
-    size_t lweight = left == nullptr? 0 : left->weight;
+    size_t lweight = get_weight(left);
 
     if (searchts == ts) //return ourselves
         return {lweight, value};
@@ -147,8 +148,8 @@ void OSTree::rebalance(std::unique_ptr<OSTree> &ost) {
 // Returns true if either subtree + the parent has twice the weight of the other.
 // hint: The parent must be included to prevent infinite rebalance in the 2 node case
 bool OSTree::bad_balance() const {
-    size_t lweight = left == nullptr? 1 : left->weight + 1;
-    size_t rweight = right == nullptr? 1 : right->weight + 1;
+    size_t lweight = get_weight(left) + 1;
+    size_t rweight = get_weight(right) + 1;
 
     return lweight > 2 * rweight || rweight > 2 * lweight;
 }
