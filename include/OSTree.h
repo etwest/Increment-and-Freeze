@@ -117,13 +117,14 @@ class OSTreeHead {
           OSTree::insert(head, ts, val);
         };
 
-        /* removes a node from the OSTree
+        /* removes a node from the OSTree and returns its value
          * rank: rank of node to be removed
         */
-        void remove(size_t rank) {
+        uint64_t remove(size_t rank) {
             std::unique_ptr<OSTree> deleted;
             OSTree::remove(head, rank, deleted);
             assert(deleted);
+            return deleted->get_val();
         };
 
         /* returns a <rank, value> pair given a key

@@ -57,8 +57,8 @@ void LruSizesSim::memory_access(uint64_t virtual_addr) {
 // identify the oldest page and remove it from the LRU_queue
 Page *LruSizesSim::evict_oldest() {
     //unmap virtual address
-    uint64_t virt = LRU_queue.get_last();
-    LRU_queue.remove(LRU_queue.get_weight()-1);
+    //uint64_t virt = LRU_queue.get_last();
+    uint64_t virt = LRU_queue.remove(LRU_queue.get_weight()-1);
     return page_table[virt];
 }
 

@@ -1,6 +1,6 @@
 CXX = clang++
 OPTFLAGS = -O3
-CXXFLAGS = -std=c++20 -Wall -I./include $(OPTFLAGS) -g
+CXXFLAGS = -std=c++2a -Wall -I./include $(OPTFLAGS) -g
 vpath %.h include
 vpath %.cpp src
 

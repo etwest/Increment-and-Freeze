@@ -71,13 +71,13 @@ void OSTree::remove(Uptr &ost, size_t rank, Uptr &removed_node) {
         ost = std::move(removed_node->left);
       } else {
         // Remove the leftmost child of the right subtree and make it be the root.
-        std::unique_ptr<OSTree> leftmost_of_rightmost;
-        remove(ost->right, 0, leftmost_of_rightmost);
-        leftmost_of_rightmost->left = std::move(ost->left);
-        leftmost_of_rightmost->right = std::move(ost->right);
-        leftmost_of_rightmost->weight = ost->weight - 1;
+        std::unique_ptr<OSTree> leftmost_of_right;
+        remove(ost->right, 0, leftmost_of_right);
+        leftmost_of_right->left = std::move(ost->left);
+        leftmost_of_right->right = std::move(ost->right);
+        leftmost_of_right->weight = ost->weight - 1;
         removed_node = std::move(ost);
-        ost = std::move(leftmost_of_rightmost);
+        ost = std::move(leftmost_of_right);
       }
     } else if (rank < lweight) {
       // Delete from the left subtree.
