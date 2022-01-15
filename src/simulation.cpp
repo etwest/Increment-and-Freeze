@@ -1,4 +1,5 @@
 #include "../include/RAM.h"
+#include "IncrementAndKill.h"
 #include <cinttypes>
 #include <set>
 #include <fstream>
@@ -94,6 +95,14 @@ std::vector<uint64_t> zipfian_simulator(bool print=false) {
 
 int main() {
 
+  IncrementAndKill algo;
+  for (int i = 0; i < 10; i++)
+  {
+    algo.memory_access(5 - (i/2));
+  }
+
+  algo.get_success_function();
+  return 1;
     // run many trials of the working_set_simulator
     std::vector<uint64_t> lru_total;
     uint32_t trials = 10;

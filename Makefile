@@ -4,8 +4,8 @@ CXXFLAGS = -std=c++2a -Wall -I./include $(OPTFLAGS) -g
 vpath %.h include
 vpath %.cpp src
 
-simulatePaging: simulation.o LruSizesSim.o OSTree.o params.h RAM.h
-	$(CXX) $(CXXFLAGS) $< LruSizesSim.o OSTree.o -o simulatePaging
+simulatePaging: simulation.o LruSizesSim.o OSTree.o IncrementAndKill.o
+	$(CXX) $(CXXFLAGS) $^ -o simulatePaging
 
 LruSizesSim.o simulation.o: include/RAM.h include/params.h include/OSTree.h
 OSTree.o: include/OSTree.h
