@@ -2,20 +2,43 @@
 
 #include "CacheSim.h"
 
-enum OpType {Increment, Kill};
+#include <cassert>
 
-class Op{
-  //Do we increment or kill?
-  OpType type;
-  // Increment start index / Kill index
+enum OpType {Null, Increment, Kill};
+
+class Op {
+ private:
+  OpType type;     // Do we increment or kill?
+  uint64_t start;  // Increment start index / Kill index
+  uint64_t end;    // Increment End index
+  uint64_t r;      // Increment amount
+
+ public:
+  // create an increment
+  Op(uint64_t start, uint64_t end)
+      : type(Increment), start(start), end(end), r(1){};
+
+  // create a kill
+  Op(uint64_t kill) : type(Kill), start(kill){};
+
+  // create a new Op by projecting another one
+  Op(Op oth_op, uint64_t proj_start, uint64_t proj_end);
+
+  Op& operator+=(Op& oth) {
+    assert(oth.type == Increment);
+    assert(type == Increment);
+    assert(start == oth.start);
+    assert(end == oth.end);
+
+    r += oth.r;
+    return *this;
+  }
+};
+
+struct proj_sequence {
+  std::vector<Op> sequence;
   uint64_t start;
-  // Increment End index
   uint64_t end;
-  // Increment amount
-  uint64_t r;
-
-  Op(uint64_t start, uint64_t end): type(Increment), start(start), end(end), r(1){};
-  Op(uint64_t kill): type(Kill), start(kill) {};
 };
 
 class IncrementAndKill: public CacheSim {
@@ -32,4 +55,3 @@ class IncrementAndKill: public CacheSim {
     IncrementAndKill() = default;
     ~IncrementAndKill() = default;
 };
-
