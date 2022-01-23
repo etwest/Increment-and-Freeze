@@ -36,7 +36,7 @@ class Op {
 };
 
 struct proj_sequence {
-  std::vector<Op> sequence;
+  std::vector<Op> op_seq;
   uint64_t start;
   uint64_t end;
 };

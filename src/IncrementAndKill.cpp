@@ -1,6 +1,7 @@
 #include "IncrementAndKill.h"
 
 #include <algorithm>
+#include <stack>
 
 void IncrementAndKill::memory_access(uint64_t addr) {
   requests.push_back({addr, access_number++});
@@ -38,12 +39,52 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
 
   // Generate the list of operations
   std::vector<Op> operations;
-  for (int i = 0; i < requests.size(); i++) {
+  for (uint64_t i = 0; i < requests.size(); i++) {
     operations.push_back(Op(prev(i)+1, i-1)); // Increment(prev(i)+1, i-1, 1)
     operations.push_back(Op(prev(i)));        // Kill(prev(i))
   }
 
-  // begin the 'recursive' process (probably use a stack or something)
+  // begin the 'recursive' process
+  std::stack<proj_sequence> rec_stack;
+  proj_sequence init_seq;
+  init_seq.op_seq = operations;
+  init_seq.start  = 0;
+  init_seq.end    = requests.size() - 1;
+  rec_stack.push(init_seq);
+
+  while (!rec_stack.empty()) {
+    proj_sequence cur = rec_stack.top();
+    rec_stack.pop();
+
+    // base case
+    if (cur.start == cur.end) {
+
+    }
+    // recursive case
+    else {
+      uint64_t mid = (cur.end - cur.start) / 2 + cur.start;
+      
+      // generate projected sequence for first half
+      proj_sequence fst_half;
+      fst_half.start = cur.start;
+      fst_half.end = mid;
+      for (uint64_t i = 0; i < cur.op_seq.size(); i++) {
+        Op proj_op = Op(cur.op_seq[i], fst_half.start, fst_half.end);
+        fst_half.op_seq.push_back(proj_op);
+      }
+      rec_stack.push(fst_half);
+
+      // generate projected sequence for second half
+      proj_sequence snd_half;
+      snd_half.start = mid + 1;
+      snd_half.end = cur.end;
+      for (uint64_t i = 0; i < cur.op_seq.size(); i++) {
+        Op proj_op = Op(cur.op_seq[i], snd_half.start, snd_half.end);
+        snd_half.op_seq.push_back(proj_op);
+      }
+      rec_stack.push(snd_half);
+    }
+  }
 
   return std::vector<uint64_t>();
 }
