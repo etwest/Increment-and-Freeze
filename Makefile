@@ -9,7 +9,7 @@ vpath %.cpp src
 simulatePaging: simulation.o LruSizesSim.o OSTree.o IncrementAndKill.o
 	$(CXX) $(CXXFLAGS) $^ -o simulatePaging
 
-LruSizesSim.o simulation.o: include/RAM.h include/params.h include/OSTree.h
+LruSizesSim.o simulation.o: include/RAM.h include/params.h include/OSTree.h include/CacheSim.h
 OSTree.o: include/OSTree.h
 
 %.o: %.cpp %.h

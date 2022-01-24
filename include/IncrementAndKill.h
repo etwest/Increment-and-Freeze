@@ -85,6 +85,7 @@ class IncrementAndKill: public CacheSim {
     std::vector<tuple> requests;
     std::vector<tuple> prevnext;
     void calculate_prevnext();
+    std::vector<uint64_t> get_distance_vector();
     uint64_t& prev(uint64_t i) {return prevnext[i].first;}
     uint64_t& next(uint64_t i) {return prevnext[i].second;}
   public:

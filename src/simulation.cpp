@@ -101,7 +101,7 @@ int main() {
     algo.memory_access(5 - (i/2));
   }
 
-  algo.get_success_function();
+  algo.print_success_function();
   return 1;
     // run many trials of the working_set_simulator
     std::vector<uint64_t> lru_total;

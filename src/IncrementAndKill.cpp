@@ -36,10 +36,9 @@ void IncrementAndKill::calculate_prevnext() {
   }
 }
 
-std::vector<uint64_t> IncrementAndKill::get_success_function() {
-  calculate_prevnext();
+std::vector<uint64_t> IncrementAndKill::get_distance_vector() {
   std::vector<uint64_t> distance_vector;
-  distance_vector.resize(requests.size());
+  distance_vector.resize(requests.size()+1);
 
   // Generate the list of operations
   std::vector<Op> operations;
@@ -65,9 +64,9 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
     // if Kill, Inc, then distance = 0 -> sequence = [... p_x, p_x ...]
     if (cur.start == cur.end) {
       if (cur.op_seq.size() > 0 && cur.op_seq[0].get_type() == Increment)
-        distance_vector[cur.start-1] = cur.op_seq[0].get_r();
+        distance_vector[cur.start] = cur.op_seq[0].get_r();
       else
-        distance_vector[cur.start-1] = 0;
+        distance_vector[cur.start] = 0;
     }
     // recursive case
     else {
@@ -89,11 +88,32 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
     }
   }
 
-  for (uint64_t i = 0; i < distance_vector.size(); i++) {
-    std::cout << i << ": " << requests[i].first << " -- " << distance_vector[i] << std::endl;
+  for (uint64_t i = 1; i < distance_vector.size(); i++) {
+    std::cout << i << ": " << requests[i-1].first << " -- " << distance_vector[i] << std::endl;
   }
 
-  return std::vector<uint64_t>();
+  return distance_vector;
+}
+
+std::vector<uint64_t> IncrementAndKill::get_success_function() {
+  calculate_prevnext();
+  auto distances = get_distance_vector();
+
+  // a point representation of successes
+  std::vector<uint64_t> success(distances.size());
+  for (uint64_t i = 1; i < distances.size(); i++)
+  {
+    if (prev(i+1) != 0) 
+      success[distances[prev(i+1)]+1]++;
+  }
+  // integrate
+  uint64_t running_count = 0;
+  for (uint64_t i = 1; i < success.size(); i++)
+  {
+    running_count += success[i];
+    success[i] = running_count;
+  }
+  return success;
 }
 
 // Create a new Operation by projecting another
