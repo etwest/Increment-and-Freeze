@@ -1,6 +1,8 @@
-CXX = clang++
+CXX = g++
 OPTFLAGS = -O3
-CXXFLAGS = -std=c++2a -Wall -I./include $(OPTFLAGS) -g
+DEFAULTFLAGS = -std=c++2a -Wall -I./include
+CXXFLAGS = $(DEFAULTFLAGS) $(OPTFLAGS)
+
 vpath %.h include
 vpath %.cpp src
 
@@ -16,3 +18,7 @@ OSTree.o: include/OSTree.h
 .PHONY: clean
 clean:
 	rm -f *.o simulatePaging
+
+.PHONY: debug
+debug: CXXFLAGS = $(DEFAULTFLAGS) -g
+debug: simulatePaging

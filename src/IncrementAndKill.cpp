@@ -42,54 +42,53 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
   // Generate the list of operations
   std::vector<Op> operations;
   operations.reserve(2 * requests.size());
-  for (uint64_t i = 0; i < requests.size(); i++) {
+  for (uint64_t i = 1; i <= requests.size(); i++) {
     operations.push_back(Op(prev(i)+1, i-1)); // Increment(prev(i)+1, i-1, 1)
     operations.push_back(Op(prev(i)));        // Kill(prev(i))
   }
 
   // begin the 'recursive' process
-  std::stack<proj_sequence> rec_stack;
-  proj_sequence init_seq;
+  std::stack<ProjSequence> rec_stack;
+  ProjSequence init_seq(0, requests.size() - 1);
   init_seq.op_seq = operations;
-  init_seq.start  = 0;
-  init_seq.end    = requests.size() - 1;
   rec_stack.push(init_seq);
 
   while (!rec_stack.empty()) {
-    proj_sequence cur = rec_stack.top();
+    ProjSequence cur = rec_stack.top();
     rec_stack.pop();
 
     // base case
+    // start == end -> d_i [operations]
+    // operations = [Inc, Kill], [Kill, Inc]
+    // if Kill, Inc, then distance = 0 -> sequence = [... p_x, p_x ...]
     if (cur.start == cur.end) {
       if (cur.op_seq.size() > 0 && cur.op_seq[0].get_type() == Increment)
         distance_vector.push_back(cur.op_seq[0].get_r());
       else
-        distance_vector.push_back(requests.size());
+        distance_vector.push_back(0);
     }
     // recursive case
     else {
       uint64_t mid = (cur.end - cur.start) / 2 + cur.start;
       
       // generate projected sequence for first half
-      proj_sequence fst_half;
-      fst_half.start = cur.start;
-      fst_half.end = mid;
+      ProjSequence fst_half(cur.start, mid);
       for (uint64_t i = 0; i < cur.op_seq.size(); i++) {
-        Op proj_op = Op(cur.op_seq[i], fst_half.start, fst_half.end);
-        fst_half.op_seq.push_back(proj_op);
+        fst_half.add_op(cur.op_seq[i]);
       }
       rec_stack.push(fst_half);
 
       // generate projected sequence for second half
-      proj_sequence snd_half;
-      snd_half.start = mid + 1;
-      snd_half.end = cur.end;
+      ProjSequence snd_half(mid + 1, cur.end);
       for (uint64_t i = 0; i < cur.op_seq.size(); i++) {
-        Op proj_op = Op(cur.op_seq[i], snd_half.start, snd_half.end);
-        snd_half.op_seq.push_back(proj_op);
+        snd_half.add_op(cur.op_seq[i]);
       }
       rec_stack.push(snd_half);
     }
+  }
+
+  for (uint64_t i = 0; i < distance_vector.size(); i++) {
+    std::cout << i << ": " << requests[i].first << " -- " << distance_vector[i] << std::endl;
   }
 
   return std::vector<uint64_t>();
@@ -99,7 +98,7 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
 Op::Op(Op oth_op, uint64_t proj_start, uint64_t proj_end) {
   // check if Op becomes Null
   if ((oth_op.type == Increment && oth_op.end < proj_start) ||
-      oth_op.start > proj_end) {
+      oth_op.start > proj_end || oth_op.end < oth_op.start) {
     type = Null;
     return;
   }
