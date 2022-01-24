@@ -33,6 +33,9 @@ class Op {
     r += oth.r;
     return *this;
   }
+
+  OpType get_type() {return type;}
+  uint64_t get_r()  {return r;}
 };
 
 struct proj_sequence {

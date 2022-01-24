@@ -36,9 +36,12 @@ void IncrementAndKill::calculate_prevnext() {
 
 std::vector<uint64_t> IncrementAndKill::get_success_function() {
   calculate_prevnext();
+  std::vector<uint64_t> distance_vector;
+  distance_vector.reserve(requests.size());
 
   // Generate the list of operations
   std::vector<Op> operations;
+  operations.reserve(2 * requests.size());
   for (uint64_t i = 0; i < requests.size(); i++) {
     operations.push_back(Op(prev(i)+1, i-1)); // Increment(prev(i)+1, i-1, 1)
     operations.push_back(Op(prev(i)));        // Kill(prev(i))
@@ -58,7 +61,10 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
 
     // base case
     if (cur.start == cur.end) {
-
+      if (cur.op_seq.size() > 0 && cur.op_seq[0].get_type() == Increment)
+        distance_vector.push_back(cur.op_seq[0].get_r());
+      else
+        distance_vector.push_back(requests.size());
     }
     // recursive case
     else {
