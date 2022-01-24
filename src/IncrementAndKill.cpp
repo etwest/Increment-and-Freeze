@@ -1,7 +1,7 @@
 #include "IncrementAndKill.h"
 
 #include <algorithm>
-#include <stack>
+#include <queue>
 
 void IncrementAndKill::memory_access(uint64_t addr) {
   requests.push_back({addr, access_number++});
@@ -10,13 +10,15 @@ void IncrementAndKill::memory_access(uint64_t addr) {
 void IncrementAndKill::calculate_prevnext() {
   // put all requests of the same addr next to each other
   // then order those by access_number
-  std::sort(requests.begin(), requests.end());
+  auto requestcopy = requests;
+  
+  std::sort(requestcopy.begin(), requestcopy.end());
 
-  prevnext.resize(requests.size() + 1);
+  prevnext.resize(requestcopy.size() + 1);
 
   tuple last; // i-1th element
-  for (int i = 0; i < requests.size(); i++) {
-    auto [addr, access_num] = requests[i];
+  for (int i = 0; i < requestcopy.size(); i++) {
+    auto [addr, access_num] = requestcopy[i];
     auto [last_addr, last_access_num] = last;
 
     // Using last, check if previous sorted access is the same
@@ -29,15 +31,15 @@ void IncrementAndKill::calculate_prevnext() {
     }
 
     // Preemptively point this one's next access to the end
-    next(access_num) = requests.size() + 1;
-    last = requests[i];
+    next(access_num) = requestcopy.size() + 1;
+    last = requestcopy[i];
   }
 }
 
 std::vector<uint64_t> IncrementAndKill::get_success_function() {
   calculate_prevnext();
   std::vector<uint64_t> distance_vector;
-  distance_vector.reserve(requests.size());
+  distance_vector.resize(requests.size());
 
   // Generate the list of operations
   std::vector<Op> operations;
@@ -48,13 +50,13 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
   }
 
   // begin the 'recursive' process
-  std::stack<ProjSequence> rec_stack;
-  ProjSequence init_seq(0, requests.size() - 1);
+  std::queue<ProjSequence> rec_stack;
+  ProjSequence init_seq(1, requests.size());
   init_seq.op_seq = operations;
   rec_stack.push(init_seq);
 
   while (!rec_stack.empty()) {
-    ProjSequence cur = rec_stack.top();
+    ProjSequence cur = rec_stack.front();
     rec_stack.pop();
 
     // base case
@@ -63,9 +65,9 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
     // if Kill, Inc, then distance = 0 -> sequence = [... p_x, p_x ...]
     if (cur.start == cur.end) {
       if (cur.op_seq.size() > 0 && cur.op_seq[0].get_type() == Increment)
-        distance_vector.push_back(cur.op_seq[0].get_r());
+        distance_vector[cur.start-1] = cur.op_seq[0].get_r();
       else
-        distance_vector.push_back(0);
+        distance_vector[cur.start-1] = 0;
     }
     // recursive case
     else {
