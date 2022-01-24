@@ -97,16 +97,21 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
 // Create a new Operation by projecting another
 Op::Op(Op oth_op, uint64_t proj_start, uint64_t proj_end) {
   // check if Op becomes Null
-  if ((oth_op.type == Increment && oth_op.end < proj_start) ||
-      oth_op.start > proj_end || oth_op.end < oth_op.start) {
+  // Increments are Null if we end before the start OR have a 'bad' interval (end before our start)
+  if (oth_op.type == Increment && (oth_op.end < oth_op.start || oth_op.end < proj_start || oth_op.start > proj_end)) {
     type = Null;
     return;
   }
 
-  // kills do not shrink
+  // kills do not shrink unless out of bounds
   if (oth_op.type == Kill) {
-    type = Kill;
-    start = oth_op.start;
+    if (oth_op.start < proj_start || oth_op.start > proj_end) {
+      type = Null;
+    }
+    else{
+      type = Kill;
+      start = oth_op.start;
+    }
     return;
   }
 

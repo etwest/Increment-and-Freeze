@@ -69,7 +69,7 @@ public:
       return;
     }
 
-    Op last_op = op_seq[op_seq.size() - 1];
+    Op& last_op = op_seq[op_seq.size() - 1];
     if (!proj_op.is_passive(start, end) || !last_op.is_passive(start, end)) {
       op_seq.push_back(proj_op);
       return;
