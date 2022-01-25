@@ -1,54 +1,25 @@
-#include "../include/RAM.h"
+#include "LruSizesSim.h"
+
 #include <iostream>
 
-// construct the LRUSizesSim object
-LruSizesSim::LruSizesSim() {
-    // printf("Created LRU memory with %u pages\n", num_pages);
-}
-
-// free the pages in the memory
-LruSizesSim::~LruSizesSim() {
-}
-
 // perform a memory access and use the LRU_queue to update the success function
-void LruSizesSim::memory_access(uint64_t virtual_addr) {
-    uint64_t ts = access_number++;
-    page_hits.resize(access_number);
+void LruSizesSim::memory_access(uint64_t addr) {
+  uint64_t ts = access_number++;
 
-    if (page_table.count(virtual_addr) > 0 && page_table[virtual_addr]->get_virt() == virtual_addr) {
-    	// Page in memory so move it to the front of the LRU queue
-        page_hits[move_front_queue(page_table[virtual_addr]->last_touched(), ts)]++;
-        page_table[virtual_addr]->access_page(ts); // update timestamp of the page
-        return;
-    } 
-    
-    Page *p;
-    if (free_pages.size() > 0) {
-        // if there are free pages then use one of them
-        p = free_pages.front();
-        free_pages.pop_front();
-    } 
-    else {
-        // no free pages so evict the oldest page
-        p = evict_oldest();
-        page_table.erase(p->get_virt());
-    }
+  // attempt to find the addr in the OSTree
+  if (page_table.count(addr) > 0) {
+    // this is not the first access to this page so lookup in the OSTree
+    page_hits[move_front_queue(page_table[addr], ts)]++;
+    page_table[addr] = ts;  // update the timestamp
+    return;
+  }
 
-    // map the virtual address to the page we found
-    p->place_page(virtual_addr, ts);
-    page_table[p->get_virt()] = p;
-    assert(p->get_virt() ==  virtual_addr);
+  // new unique page increases the max memory (and is not a hit)
+  page_hits.push_back(0);
+  page_table[addr] = ts;  // new PTE
 
-    // put the page in the LRU_queue
-    LRU_queue.insert(ts, p->get_virt());
-}
-
-// identify the oldest page and remove it from the LRU_queue
-Page *LruSizesSim::evict_oldest() {
-    //unmap virtual address
-    //uint64_t virt = LRU_queue.get_last();
-    uint64_t virt = LRU_queue.remove(LRU_queue.get_weight()-1);
-    return page_table[virt];
+  // put the page in the LRU_queue
+  LRU_queue.insert(ts, addr);
 }
 
 // delete a page with a given timestamp from the LRU_queue and
@@ -56,21 +27,24 @@ Page *LruSizesSim::evict_oldest() {
 // return the rank of the page before updating the timestamp
 // assumes that a page with the old_ts exists in the LRU_queue
 size_t LruSizesSim::move_front_queue(uint64_t old_ts, uint64_t new_ts) {
-    std::pair<size_t, uint64_t> found = LRU_queue.find(old_ts);
+  std::pair<size_t, uint64_t> found = LRU_queue.find(old_ts);
 
-    LRU_queue.remove(found.first);
-    LRU_queue.insert(new_ts, found.second);
-    return found.first;
+  LRU_queue.remove(found.first);
+  LRU_queue.insert(new_ts, found.second);
+  return found.first;
 }
 
-// return the success function by starting at the front of the
-// page_hits vector and summing the elements
+// return the success function by starting at the back of the
+// page_hits vector and summing the elements to the front
 std::vector<uint64_t> LruSizesSim::get_success_function() {
-    uint64_t nhits = 0;
-    std::vector<uint64_t> success(access_number); // the vector to return
-    for (uint32_t page = 1; page < page_hits.size(); page++) {
-        nhits += page_hits[page];
-        success[page] = nhits; // faults at given size is sum of self and bigger
-    }
-    return success;
+  uint64_t nhits = 0;
+
+  // build vector to return based upon the number of unique pages accessed
+  // we index this vector by 1 so make it one larger
+  std::vector<uint64_t> success(page_hits.size()+1);
+  for (uint32_t page = 0; page < page_hits.size(); page++) {
+    nhits += page_hits[page];
+    success_func[page+1] = nhits;  // faults at given size is sum of self and bigger
+  }
+  return success_func;
 }

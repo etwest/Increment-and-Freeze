@@ -21,7 +21,7 @@ class CacheSim {
   void print_success_function() {
     // TODO: This is too verbose for real data.
     std::vector<uint64_t> func = get_success_function();
-    for (uint64_t page = 1; page < access_number; page++)
+    for (uint64_t page = 1; page < func.size(); page++)
       std::cout << page << ": " << func[page] << std::endl;
   }
 };

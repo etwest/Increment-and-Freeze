@@ -11,23 +11,22 @@ void IncrementAndKill::calculate_prevnext() {
   // put all requests of the same addr next to each other
   // then order those by access_number
   auto requestcopy = requests;
-  
+
   std::sort(requestcopy.begin(), requestcopy.end());
 
   prevnext.resize(requestcopy.size() + 1);
 
-  tuple last; // i-1th element
-  for (int i = 0; i < requestcopy.size(); i++) {
+  tuple last;  // i-1th element
+  for (uint64_t i = 0; i < requestcopy.size(); i++) {
     auto [addr, access_num] = requestcopy[i];
     auto [last_addr, last_access_num] = last;
 
     // Using last, check if previous sorted access is the same
     if (last_access_num > 0 && addr == last_addr) {
-      prev(access_num) = last_access_num; // Point access to previous
-      next(last_access_num) = access_num; // previous access to this
-    } 
-    else {
-      prev(access_num) = 0; // last is different so prev = 0
+      prev(access_num) = last_access_num;  // Point access to previous
+      next(last_access_num) = access_num;  // previous access to this
+    } else {
+      prev(access_num) = 0;  // last is different so prev = 0
     }
 
     // Preemptively point this one's next access to the end
@@ -38,14 +37,15 @@ void IncrementAndKill::calculate_prevnext() {
 
 std::vector<uint64_t> IncrementAndKill::get_distance_vector() {
   std::vector<uint64_t> distance_vector;
-  distance_vector.resize(requests.size()+1);
+  distance_vector.resize(requests.size() + 1);
 
   // Generate the list of operations
   std::vector<Op> operations;
   operations.reserve(2 * requests.size());
   for (uint64_t i = 1; i <= requests.size(); i++) {
-    operations.push_back(Op(prev(i)+1, i-1)); // Increment(prev(i)+1, i-1, 1)
-    operations.push_back(Op(prev(i)));        // Kill(prev(i))
+    operations.push_back(
+        Op(prev(i) + 1, i - 1));        // Increment(prev(i)+1, i-1, 1)
+    operations.push_back(Op(prev(i)));  // Kill(prev(i))
   }
 
   // begin the 'recursive' process
@@ -71,7 +71,7 @@ std::vector<uint64_t> IncrementAndKill::get_distance_vector() {
     // recursive case
     else {
       uint64_t mid = (cur.end - cur.start) / 2 + cur.start;
-      
+
       // generate projected sequence for first half
       ProjSequence fst_half(cur.start, mid);
       for (uint64_t i = 0; i < cur.op_seq.size(); i++) {
@@ -88,10 +88,6 @@ std::vector<uint64_t> IncrementAndKill::get_distance_vector() {
     }
   }
 
-  for (uint64_t i = 1; i < distance_vector.size(); i++) {
-    std::cout << i << ": " << requests[i-1].first << " -- " << distance_vector[i] << std::endl;
-  }
-
   return distance_vector;
 }
 
@@ -101,15 +97,12 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
 
   // a point representation of successes
   std::vector<uint64_t> success(distances.size());
-  for (uint64_t i = 1; i < distances.size(); i++)
-  {
-    if (prev(i+1) != 0) 
-      success[distances[prev(i+1)]+1]++;
+  for (uint64_t i = 1; i < distances.size(); i++) {
+    if (prev(i + 1) != 0) success[distances[prev(i + 1)] + 1]++;
   }
   // integrate
   uint64_t running_count = 0;
-  for (uint64_t i = 1; i < success.size(); i++)
-  {
+  for (uint64_t i = 1; i < success.size(); i++) {
     running_count += success[i];
     success[i] = running_count;
   }
@@ -119,8 +112,11 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
 // Create a new Operation by projecting another
 Op::Op(Op oth_op, uint64_t proj_start, uint64_t proj_end) {
   // check if Op becomes Null
-  // Increments are Null if we end before the start OR have a 'bad' interval (end before our start)
-  if (oth_op.type == Increment && (oth_op.end < oth_op.start || oth_op.end < proj_start || oth_op.start > proj_end)) {
+  // Increments are Null if we end before the start OR have a 'bad' interval
+  // (end before our start)
+  if (oth_op.type == Increment &&
+      (oth_op.end < oth_op.start || oth_op.end < proj_start ||
+       oth_op.start > proj_end)) {
     type = Null;
     return;
   }
@@ -129,8 +125,7 @@ Op::Op(Op oth_op, uint64_t proj_start, uint64_t proj_end) {
   if (oth_op.type == Kill) {
     if (oth_op.start < proj_start || oth_op.start > proj_end) {
       type = Null;
-    }
-    else{
+    } else {
       type = Kill;
       start = oth_op.start;
     }

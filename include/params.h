@@ -9,14 +9,11 @@
 
 #define SEED        29873433    // seed for the randomness
 
-#define MEM_SIZE    (GB)        // size of main memory
-#define PAGE_SIZE   (KB << 2)   // size of a page
-
 // params for the representative workload
-#define WORKING_SET (MB << 9)   // size of the commonly accessed pages
-#define WORKLOAD    1.5         // size of uncommonly accessed pages relative to working set
+#define WORKING_SET (8 * K)     // number of commonly accessed addresses
+#define WORKLOAD    1.5         // size of uncommonly accessed addresses relative to working set
 #define LOCALITY    .9          // with what probability to we access a common page
-#define ACCESSES    (1 * M)     // the number of memory accesses
+#define ACCESSES    (100 * K)   // the number of memory accesses
 
 #define ZIPH_FILE   "ziph_data" // where to find the zipfian memory accesses
 #define OUT_FILE    "fault_results.txt"
