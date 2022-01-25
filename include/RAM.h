@@ -7,6 +7,7 @@
 #include <fstream>
 #include "params.h"
 #include "OSTree.h"
+#include "CacheSim.h"
 
 // This class represents a single physical page 
 class Page {
@@ -56,45 +57,17 @@ class Page {
         }
 };
 
-class RAM {
-    protected:
-        const uint64_t memory_size;
-        const uint32_t page_size;
-        const uint32_t num_pages;
-        uint64_t access_number = 0; // simulated timestamp
-    public:
-        /*
-         * Creates a RAM object, serves as a base constructor
-         * size:     the size of the memory to simulate
-         * page:     the size of an individual page
-         * returns   a new RAM object
-         */
-        RAM(uint64_t size, uint32_t page) : memory_size(size), page_size(page), num_pages(size/page) {}
-        virtual ~RAM() {};
-
-        /*
-         * Perform a memory access upon a given virtual page
-         * virtual_addr:   the virtual address to access
-         * returns         nothing
-         */
-        virtual void memory_access(uint64_t virtual_addr) = 0;
-
-        // getters
-        inline uint64_t get_memory_size() {return memory_size;}
-        inline uint32_t get_page_size() {return page_size;}
-};
-
 /*
  * An LruSizesSim simulates LRU running on every possible
  * memory size from 1 to MEM_SIZE.
  * Returns a success function which gives the number of page faults
  * for every memory size.
  */
-class LruSizesSim : public RAM {
+class LruSizesSim : public CacheSim {
     private:
         std::list<Page *> free_pages;                    // a list of unmapped pages
         std::vector<Page *> memory;                      // vector of all the pages
-        std::vector<uint64_t> page_faults;               // vector used to construct success function
+        std::vector<uint64_t> page_hits;               // vector used to construct success function
         OSTreeHead LRU_queue;                            // order statistics tree for LRU depth
         std::unordered_map<uint64_t, Page *> page_table; // map from v_addr to page
     public:
@@ -104,7 +77,7 @@ class LruSizesSim : public RAM {
          * page:     the size of a page
          * returns   a new LRUSizesSim object
          */
-        LruSizesSim(uint64_t size, uint32_t page);
+        LruSizesSim();
         ~LruSizesSim();
 
         /*
@@ -137,9 +110,6 @@ class LruSizesSim : public RAM {
          * returns   the success function in a vector
          */
         std::vector<uint64_t> get_success_function();
-
-        // print the success function by calling get_success_function
-        void print_success_function();
 };
 
 #endif

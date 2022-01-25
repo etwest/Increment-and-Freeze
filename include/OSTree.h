@@ -66,6 +66,11 @@ class OSTree {
          * Note:    ts must exist in the tree
         */
         std::pair<size_t, uint64_t> find(uint64_t ts) const; //what rank is X at
+        
+        /* Returns true if a node has timestamp searchts
+         * searchts:      The key to search for
+        */
+        bool has(uint64_t searchts) const;
 
         /* Constructs a new Order Statistic tree node
          * ts:  key
@@ -135,6 +140,15 @@ class OSTreeHead {
             assert(head != nullptr);
             return head->find(ts);
         };
+        
+        /* returns true if searchts is in the tree
+        */
+        bool has(uint64_t searchts) {
+          if (head == nullptr)
+            return false;
+          return head->has(searchts);
+        }
+
 
         /* TODO: This can be done during remove instead
          * returns the value of the element of highest rank

@@ -2,37 +2,26 @@
 #include <iostream>
 
 // construct the LRUSizesSim object
-LruSizesSim::LruSizesSim(uint64_t size, uint32_t page): RAM(size, page) {
-    for (uint32_t i = 0; i < num_pages; i++) {
-        Page *p = new Page(i * page_size);
-
-        free_pages.push_back(p);
-        memory.push_back(p);
-    }
-    page_faults.resize(num_pages+1);
-
+LruSizesSim::LruSizesSim() {
     // printf("Created LRU memory with %u pages\n", num_pages);
 }
 
 // free the pages in the memory
 LruSizesSim::~LruSizesSim() {
-    for (uint32_t i = 0; i < num_pages; i++) {
-        delete memory[i];
-    }
 }
 
 // perform a memory access and use the LRU_queue to update the success function
 void LruSizesSim::memory_access(uint64_t virtual_addr) {
     uint64_t ts = access_number++;
+    page_hits.resize(access_number);
 
     if (page_table.count(virtual_addr) > 0 && page_table[virtual_addr]->get_virt() == virtual_addr) {
     	// Page in memory so move it to the front of the LRU queue
-        page_faults[move_front_queue(page_table[virtual_addr]->last_touched(), ts)]++;
+        page_hits[move_front_queue(page_table[virtual_addr]->last_touched(), ts)]++;
         page_table[virtual_addr]->access_page(ts); // update timestamp of the page
         return;
     } 
     
-    page_faults[num_pages]++; // a full sized memory still had a page fault
     Page *p;
     if (free_pages.size() > 0) {
         // if there are free pages then use one of them
@@ -74,22 +63,14 @@ size_t LruSizesSim::move_front_queue(uint64_t old_ts, uint64_t new_ts) {
     return found.first;
 }
 
-// return the success function by starting at the back of the
-// page_faults vector and summing the elements to the front
+// return the success function by starting at the front of the
+// page_hits vector and summing the elements
 std::vector<uint64_t> LruSizesSim::get_success_function() {
-    uint64_t nfaults = 0;
-    std::vector<uint64_t> faults(num_pages+1); // the vector to return
-    for (uint32_t page = num_pages; page > 0; page--) {
-        nfaults += page_faults[page];
-        faults[page] = nfaults; // faults at given size is sum of self and bigger
+    uint64_t nhits = 0;
+    std::vector<uint64_t> success(access_number); // the vector to return
+    for (uint32_t page = 1; page < page_hits.size(); page++) {
+        nhits += page_hits[page];
+        success[page] = nhits; // faults at given size is sum of self and bigger
     }
-    return faults;
-}
-
-// print out the success function
-void LruSizesSim::print_success_function() {
-    std::vector<uint64_t> faults = get_success_function();
-    for (uint32_t page = 1; page <= num_pages; page++) {
-        std::cout << page << ": " << faults[page] << std::endl;
-    }
+    return success;
 }

@@ -18,14 +18,14 @@
 std::vector<uint64_t> working_set_simulator(uint32_t seed, bool print=false) {
     std::set<uint64_t> unique_pages;
 
-    LruSizesSim *lru = new LruSizesSim(MEM_SIZE, PAGE_SIZE);
+    LruSizesSim *lru = new LruSizesSim();
 
     // printf("Representative Workload\n");
     uint64_t working_size  = WORKING_SET / PAGE_SIZE;
     uint64_t leftover_size = WORKLOAD * working_size;
     std::mt19937 rand(seed); // create random number generator
 
-    for(int i = 0; i < ACCESSES; i++) {
+    for(uint64_t i = 0; i < ACCESSES; i++) {
         double working_chance = rand() / (double) (0xFFFFFFFF);
         uint64_t v_addr = rand();
         if(working_chance <= LOCALITY)
@@ -65,7 +65,7 @@ std::vector<uint64_t> zipfian_simulator(bool print=false) {
     std::set<uint64_t> unique_pages;
 
     // Create the LRU simulator
-    LruSizesSim *lru = new LruSizesSim(MEM_SIZE, PAGE_SIZE);
+    LruSizesSim *lru = new LruSizesSim();
     uint64_t accesses = 0;
 
     // Run the workload
@@ -110,7 +110,7 @@ int main() {
     std::mt19937 rand(SEED); // use params seed to make rand() gen for simulator seeds
 
     // run each trial
-    for (int i = 0; i < trials; i++) {
+    for (uint64_t i = 0; i < trials; i++) {
         // run the simulator
         std::vector<uint64_t> result = working_set_simulator(rand());
         lru_total.resize(result.size());
@@ -119,7 +119,7 @@ int main() {
         for (uint32_t page = 1; page < result.size(); page++)
             lru_total[page] += result[page];
 
-        printf("Trial: %i\r", i); std::fflush(stdout);
+        printf("Trial: %li\r", i); std::fflush(stdout);
     }
 
     // output the page fault information to a file

@@ -91,6 +91,18 @@ void OSTree::remove(Uptr &ost, size_t rank, Uptr &removed_node) {
 }
 
 //Assume: The timestamp we're getting the rank of is in the tree
+bool OSTree::has(uint64_t searchts) const {
+    if (searchts == ts) //return ourselves
+        return true;
+    else if (searchts > ts) { //check left
+        return left==nullptr? false : left->has(searchts);
+    }
+    else { //check right
+        return right==nullptr? false : right->has(searchts);
+    }
+}
+
+//Assume: The timestamp we're getting the rank of is in the tree
 std::pair<size_t, uint64_t> OSTree::find(uint64_t searchts) const {
     size_t lweight = get_weight(left);
 
