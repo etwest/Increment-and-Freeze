@@ -5,9 +5,25 @@
 #include <random>
 #include <set>
 #include <utility>
+#include <chrono>
 
 #include "IncrementAndKill.h"
 #include "LruSizesSim.h"
+
+uint64_t get_next_addr(std::mt19937& gen)
+{
+  // printf("Representative Workload\n");
+  uint64_t working_size = WORKING_SET;
+  uint64_t leftover_size = WORKLOAD * working_size;
+  double working_chance = gen() / (double)(0xFFFFFFFF);
+  uint64_t v_addr = gen();
+  if (working_chance <= LOCALITY)
+    v_addr %= working_size;
+  else
+    v_addr = (v_addr % leftover_size) + working_size;
+  return v_addr;
+}
+
 
 /*
  * Runs a random sequence of page requests that follow a working_set
@@ -18,29 +34,41 @@
  */
 std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool print = false) {
   std::set<uint64_t> unique_pages;
+    
+	using std::chrono::high_resolution_clock;
+	using std::chrono::duration_cast;
+	using std::chrono::duration;
+	using std::chrono::milliseconds;
 
   LruSizesSim *lru = new LruSizesSim();
   IncrementAndKill *iak = new IncrementAndKill();
 
-  // printf("Representative Workload\n");
-  uint64_t working_size = WORKING_SET;
-  uint64_t leftover_size = WORKLOAD * working_size;
+  // Order Statistic LRU (stack distance)
   std::mt19937 rand(seed);  // create random number generator
-
+  auto start = high_resolution_clock::now();
   for (uint64_t i = 0; i < ACCESSES; i++) {
-    double working_chance = rand() / (double)(0xFFFFFFFF);
-    uint64_t v_addr = rand();
-    if (working_chance <= LOCALITY)
-      v_addr %= working_size;
-    else
-      v_addr = (v_addr % leftover_size) + working_size;
-
-    // printf("Memory access %i\n", i);
-    lru->memory_access(v_addr);
-    iak->memory_access(v_addr);
-
-    unique_pages.insert(v_addr);
+    lru->memory_access(get_next_addr(rand));
   }
+  std::vector<uint64_t> lru_success = lru->get_success_function();
+  auto lru_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+  
+  // Increment And Kill
+  rand.seed(seed);  // create random number generator
+  start = high_resolution_clock::now();
+  for (uint64_t i = 0; i < ACCESSES; i++) {
+    iak->memory_access(get_next_addr(rand));
+  }
+  std::vector<uint64_t> iak_success = iak->get_success_function();
+  auto iak_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+
+  // Do this for stats
+  start = high_resolution_clock::now();
+  rand.seed(seed);  // create random number generator
+  for (uint64_t i = 0; i < ACCESSES; i++) {
+    unique_pages.insert(get_next_addr(rand));
+  }
+  auto vec_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+
   if (print) {
     // print the success function if requested
     printf("Out of %" PRIu64 " memory accesses with %lu unique virtual pages\n",
@@ -48,8 +76,9 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
     lru->print_success_function();
     iak->print_success_function();
   }
-  std::vector<uint64_t> lru_success = lru->get_success_function();
-  std::vector<uint64_t> iak_success = iak->get_success_function();
+  std::cerr << "LRU TIME: " << lru_time << std::endl;
+  std::cerr << "IAK TIME: " << iak_time << std::endl;
+  std::cerr << "VEC TIME: " << vec_time << std::endl;
   delete lru;
   delete iak;
   return {lru_success, iak_success};
@@ -123,9 +152,9 @@ bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) 
 }
 
 int main() {
-  auto results = working_set_simulator(SEED, true);
-  bool eq = check_equivalent(results[0], results[1]);
-  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
+  auto results = working_set_simulator(SEED, false);
+  //bool eq = check_equivalent(results[0], results[1]);
+  //std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
   // run many trials of the working_set_simulator
   // std::vector<uint64_t> lru_total;
   // std::vector<uint64_t> iak_total;
