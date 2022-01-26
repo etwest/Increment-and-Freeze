@@ -44,7 +44,7 @@ std::vector<uint64_t> LruSizesSim::get_success_function() {
   std::vector<uint64_t> success(page_hits.size()+1);
   for (uint32_t page = 0; page < page_hits.size(); page++) {
     nhits += page_hits[page];
-    success_func[page+1] = nhits;  // faults at given size is sum of self and bigger
+    success[page+1] = nhits;  // faults at given size is sum of self and bigger
   }
-  return success_func;
+  return success;
 }

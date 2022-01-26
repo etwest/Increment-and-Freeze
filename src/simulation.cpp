@@ -100,8 +100,32 @@ std::vector<uint64_t> zipfian_simulator(bool print = false) {
   return toret;
 }
 
+// check that the results of two different simulators are the same
+// IMPORTANT: vectors may be of different sizes
+bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) {
+  size_t i = 0;
+  uint64_t last_elm = vec_1[0];
+  while (i < vec_1.size() && i < vec_2.size()) {
+    if (vec_1[i] != vec_2[i]) return false;
+
+    last_elm = vec_1[i++];
+  }
+
+  // assert that any remaining elements in either vector
+  // are identical to last_elm
+  for (size_t j = i; j < vec_1.size(); j++)
+    if (vec_1[j] != last_elm) return false;
+
+  for (size_t j = i; j < vec_2.size(); j++)
+    if (vec_2[j] != last_elm) return false;
+
+  return true;
+}
+
 int main() {
-  working_set_simulator(SEED, true);
+  auto results = working_set_simulator(SEED, true);
+  bool eq = check_equivalent(results[0], results[1]);
+  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
   // run many trials of the working_set_simulator
   // std::vector<uint64_t> lru_total;
   // std::vector<uint64_t> iak_total;
