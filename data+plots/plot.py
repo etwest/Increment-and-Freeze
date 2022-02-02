@@ -16,18 +16,21 @@ for file in args.txt_files:
 			line = inFile.readline()
 
 		memory_sizes = []
-		faults = []
+		hits = []
 		while(line != ""):
 			data = line.split(":")
 			memsize = int(data[0].rstrip())
-			nfaults = int(data[1].rstrip())
+			nhits = int(data[1].rstrip())
 
 			memory_sizes.append(memsize)
-			faults.append(nfaults)
+			hits.append(nhits)
 			
 			line = inFile.readline()
 
-		plt.plot(memory_sizes, faults)
+		plt.plot(memory_sizes, hits)
+		plt.xlabel("cache size")
+		plt.ylabel("cache hits")
 		#plt.tight_layout()
+		plt.savefig("IMAGE.png");
 		plt.show()
 		plt.clf()

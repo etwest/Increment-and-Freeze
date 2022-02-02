@@ -152,7 +152,7 @@ bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) 
 }
 
 int main() {
-  auto results = working_set_simulator(SEED, false);
+  auto results = working_set_simulator(SEED, true);
   //bool eq = check_equivalent(results[0], results[1]);
   //std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
   // run many trials of the working_set_simulator
