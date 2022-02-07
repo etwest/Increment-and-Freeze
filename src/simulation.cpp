@@ -46,10 +46,9 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   // Order Statistic LRU (stack distance)
   std::mt19937 rand(seed);  // create random number generator
   auto start = high_resolution_clock::now();
-  /*for (uint64_t i = 0; i < ACCESSES; i++) {
+  for (uint64_t i = 0; i < ACCESSES; i++) {
     lru->memory_access(get_next_addr(rand));
   }
-  */
   std::vector<uint64_t> lru_success = lru->get_success_function();
   auto lru_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
   
@@ -60,74 +59,29 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
     iak->memory_access(get_next_addr(rand));
   }
   std::vector<uint64_t> iak_success = iak->get_success_function();
-  auto iak_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
-
-  // Do this for stats
-  start = high_resolution_clock::now();
-  rand.seed(seed);  // create random number generator
-  for (uint64_t i = 0; i < ACCESSES; i++) {
-    unique_pages.insert(get_next_addr(rand));
-  }
-  auto vec_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+  auto iak_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
 
   if (print) {
+    // Do this for stats
+    start = high_resolution_clock::now();
+    rand.seed(seed);  // create random number generator
+    for (uint64_t i = 0; i < ACCESSES; i++) {
+      unique_pages.insert(get_next_addr(rand));
+    }
+    auto vec_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+
     // print the success function if requested
     printf("Out of %" PRIu64 " memory accesses with %lu unique virtual pages\n",
-           ACCESSES, unique_pages.size());
+        ACCESSES, unique_pages.size());
     lru->print_success_function();
     iak->print_success_function();
+    std::cerr << "VEC TIME: " << vec_time << std::endl;
   }
   std::cerr << "LRU TIME: " << lru_time << std::endl;
   std::cerr << "IAK TIME: " << iak_time << std::endl;
-  std::cerr << "VEC TIME: " << vec_time << std::endl;
   delete lru;
   delete iak;
   return {lru_success, iak_success};
-}
-
-/*
- * Runs a predefined sequence of memory accesses given by a Zipfian distribution
- * this sequence of pages is found in ZIPH_FILE
- * print:    if true print out the results of the simulation
- * returns   the success function
- */
-std::vector<uint64_t> zipfian_simulator(bool print = false) {
-  // open the zipf file
-  std::ifstream zipf_data(ZIPH_FILE);
-  if (!zipf_data.is_open()) {
-    printf("Failed to open zipf file\n");
-    exit(EXIT_FAILURE);
-  }
-
-  std::set<uint64_t> unique_pages;
-
-  // Create the LRU simulator
-  LruSizesSim *lru = new LruSizesSim();
-  uint64_t accesses = 0;
-
-  // Run the workload
-  printf("Zipfian Workload\n");
-  std::string line;
-  while (getline(zipf_data, line)) {
-    uint64_t v_addr = std::stol(line);
-    lru->memory_access(v_addr);
-    accesses++;
-
-    unique_pages.insert(v_addr);
-  }
-
-  if (print) {
-    // print the success function if requested
-    printf("Out of %" PRIu64 " memory accesses with %lu unique virtual pages\n",
-           ACCESSES, unique_pages.size());
-    lru->print_success_function();
-  }
-
-  // close the file and return
-  zipf_data.close();
-  std::vector<uint64_t> toret = lru->get_success_function();
-  delete lru;
-  return toret;
 }
 
 // check that the results of two different simulators are the same
@@ -154,39 +108,9 @@ bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) 
 
 int main() {
   auto results = working_set_simulator(SEED, false);
-  //bool eq = check_equivalent(results[0], results[1]);
-  //std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  // run many trials of the working_set_simulator
-  // std::vector<uint64_t> lru_total;
-  // std::vector<uint64_t> iak_total;
-  // uint32_t trials = 10;
-
-  // std::mt19937 rand(
-  //     SEED);  // use params seed to make rand() gen for simulator seeds
-
-  // // run each trial
-  // for (size_t i = 0; i < trials; i++) {
-  //   // run the simulator
-  //   std::vector<std::vector<uint64_t>> result = working_set_simulator(rand());
-  //   if (result[0].size() > lru_total.size()) lru_total.resize(result[0].size());
-  //   if (result[1].size() > iak_total.size()) iak_total.resize(result[1].size());
-
-  //   // loop through success function and add to lru_total
-  //   for (uint32_t page = 1; page < result[0].size(); page++)
-  //     lru_total[page] += result[page];
-
-  //   printf("Trial: %lu\r", i);
-  //   std::fflush(stdout);
-  // }
-
-  // // output the page fault information to a file
-  // std::ofstream out(OUT_FILE);
-  // out << "# Final Statistics" << std::endl;
-  // out << "# Total Accesses = " << ACCESSES << std::endl;
-  // for (uint32_t page = 1; page < lru_total.size(); page++) {
-  //   lru_total[page] /= trials;
-  //   out << page << ":" << lru_total[page] << std::endl;
-  // }
-
-  // zipfian_simulator(true);
+  auto lru_results = results[0];
+  auto iak_results = results[1];
+  bool eq = check_equivalent(iak_results, lru_results);
+  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
+  std::cerr << "Sizes (lru, iak): " << lru_results.size() << ", " << iak_results.size() << std::endl;
 }

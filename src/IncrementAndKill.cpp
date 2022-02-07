@@ -36,8 +36,7 @@ void IncrementAndKill::calculate_prevnext() {
 }
 
 std::vector<uint64_t> IncrementAndKill::get_distance_vector() {
-  std::vector<uint64_t> distance_vector;
-  distance_vector.resize(requests.size() + 1);
+  std::vector<uint64_t> distance_vector(requests.size() + 1);
 
   // Generate the list of operations
   std::vector<Op> operations(2*requests.size());
@@ -49,9 +48,9 @@ std::vector<uint64_t> IncrementAndKill::get_distance_vector() {
   }
 
   // begin the recursive process
-  std::queue<ProjSequence> rec_stack;
   ProjSequence init_seq(1, requests.size());
   init_seq.op_seq = operations;
+
   // We want to spin up a bunch of threads, but only start with 1.
   // More will be added in by do_projections.
 #pragma omp parallel
@@ -70,10 +69,10 @@ void IncrementAndKill::do_projections(std::vector<uint64_t>& distance_vector, Pr
   // if Kill, Inc, then distance = 0 -> sequence = [... p_x, p_x ...]
   // No need to lock here-- this can only occur in exactly one thread
   if (cur.start == cur.end) {
-    if (cur.op_seq.size() > 0 && cur.op_seq[0].get_type() == Increment)
-      distance_vector[cur.start] = cur.op_seq[0].get_r();
-    else
-      distance_vector[cur.start] = 0;
+      if (cur.op_seq.size() > 0 && cur.op_seq[0].get_type() == Increment)
+        distance_vector[cur.start] = cur.op_seq[0].get_r();
+      else
+        distance_vector[cur.start] = 0;
   }
   else {
     uint64_t mid = (cur.end - cur.start) / 2 + cur.start;
@@ -101,7 +100,6 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
 
   // a point representation of successes
   std::vector<uint64_t> success(distances.size());
-#pragma omp parallel for
   for (uint64_t i = 1; i < distances.size(); i++) {
     if (prev(i + 1) != 0) success[distances[prev(i + 1)] + 1]++;
   }
