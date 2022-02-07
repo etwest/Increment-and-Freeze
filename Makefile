@@ -1,6 +1,6 @@
 CXX = g++
 OPTFLAGS = -O3
-DEFAULTFLAGS = -std=c++2a -Wall -I./include
+DEFAULTFLAGS = -std=c++2a -Wall -I./include -D_GLIBCXX_PARALLEL -fopenmp
 CXXFLAGS = $(DEFAULTFLAGS) $(OPTFLAGS)
 
 vpath %.h include

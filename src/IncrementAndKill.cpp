@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <queue>
+#include <omp.h>
 
 void IncrementAndKill::memory_access(uint64_t addr) {
   requests.push_back({addr, access_number++});
@@ -12,14 +13,14 @@ void IncrementAndKill::calculate_prevnext() {
   // then order those by access_number
   auto requestcopy = requests;
 
-  std::sort(requestcopy.begin(), requestcopy.end());
+  __gnu_parallel::sort(requestcopy.begin(), requestcopy.end());
 
   prevnext.resize(requestcopy.size() + 1);
 
-  tuple last;  // i-1th element
+#pragma omp parallel for
   for (uint64_t i = 0; i < requestcopy.size(); i++) {
     auto [addr, access_num] = requestcopy[i];
-    auto [last_addr, last_access_num] = last;
+    auto [last_addr, last_access_num] = i == 0 ? tuple(0, 0): requestcopy[i-1];
 
     // Using last, check if previous sorted access is the same
     if (last_access_num > 0 && addr == last_addr) {
@@ -31,7 +32,6 @@ void IncrementAndKill::calculate_prevnext() {
 
     // Preemptively point this one's next access to the end
     next(access_num) = requestcopy.size() + 1;
-    last = requestcopy[i];
   }
 }
 
@@ -40,55 +40,58 @@ std::vector<uint64_t> IncrementAndKill::get_distance_vector() {
   distance_vector.resize(requests.size() + 1);
 
   // Generate the list of operations
-  std::vector<Op> operations;
-  operations.reserve(2 * requests.size());
+  std::vector<Op> operations(2*requests.size());
+  //TODO: This was probably better using push_back and reserve
+#pragma omp parallel for
   for (uint64_t i = 1; i <= requests.size(); i++) {
-    operations.push_back(
-        Op(prev(i) + 1, i - 1));        // Increment(prev(i)+1, i-1, 1)
-    operations.push_back(Op(prev(i)));  // Kill(prev(i))
+    operations[2*i-2] = Op(prev(i) + 1, i - 1);        // Increment(prev(i)+1, i-1, 1)
+    operations[2*i-1] = Op(prev(i));  // Kill(prev(i))
   }
 
   // begin the 'recursive' process
   std::queue<ProjSequence> rec_stack;
   ProjSequence init_seq(1, requests.size());
   init_seq.op_seq = operations;
-  rec_stack.push(init_seq);
 
-  while (!rec_stack.empty()) {
-    ProjSequence cur = rec_stack.front();
-    rec_stack.pop();
-
-    // base case
-    // start == end -> d_i [operations]
-    // operations = [Inc, Kill], [Kill, Inc]
-    // if Kill, Inc, then distance = 0 -> sequence = [... p_x, p_x ...]
-    if (cur.start == cur.end) {
-      if (cur.op_seq.size() > 0 && cur.op_seq[0].get_type() == Increment)
-        distance_vector[cur.start] = cur.op_seq[0].get_r();
-      else
-        distance_vector[cur.start] = 0;
-    }
-    // recursive case
-    else {
-      uint64_t mid = (cur.end - cur.start) / 2 + cur.start;
-
-      // generate projected sequence for first half
-      ProjSequence fst_half(cur.start, mid);
-      for (uint64_t i = 0; i < cur.op_seq.size(); i++) {
-        fst_half.add_op(cur.op_seq[i]);
-      }
-      rec_stack.push(fst_half);
-
-      // generate projected sequence for second half
-      ProjSequence snd_half(mid + 1, cur.end);
-      for (uint64_t i = 0; i < cur.op_seq.size(); i++) {
-        snd_half.add_op(cur.op_seq[i]);
-      }
-      rec_stack.push(snd_half);
-    }
-  }
+#pragma omp parallel
+#pragma omp single
+  do_projections(distance_vector, init_seq);
 
   return distance_vector;
+}
+
+//recursively (and in parallel) perform all the projections
+void IncrementAndKill::do_projections(std::vector<uint64_t>& distance_vector, ProjSequence cur)
+{
+  // base case
+  // start == end -> d_i [operations]
+  // operations = [Inc, Kill], [Kill, Inc]
+  // if Kill, Inc, then distance = 0 -> sequence = [... p_x, p_x ...]
+  // No need to lock here-- this can only occur in exactly one thread
+  if (cur.start == cur.end) {
+    if (cur.op_seq.size() > 0 && cur.op_seq[0].get_type() == Increment)
+      distance_vector[cur.start] = cur.op_seq[0].get_r();
+    else
+      distance_vector[cur.start] = 0;
+  }
+  else {
+    uint64_t mid = (cur.end - cur.start) / 2 + cur.start;
+
+    // generate projected sequence for first half
+    ProjSequence fst_half(cur.start, mid);
+    for (uint64_t i = 0; i < cur.op_seq.size(); i++) {
+      fst_half.add_op(cur.op_seq[i]);
+    }
+#pragma omp task shared(distance_vector)
+    do_projections(distance_vector, fst_half);
+
+    // generate projected sequence for second half
+    ProjSequence snd_half(mid + 1, cur.end);
+    for (uint64_t i = 0; i < cur.op_seq.size(); i++) {
+      snd_half.add_op(cur.op_seq[i]);
+    }
+    do_projections(distance_vector, snd_half);
+  }
 }
 
 std::vector<uint64_t> IncrementAndKill::get_success_function() {
@@ -97,6 +100,7 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
 
   // a point representation of successes
   std::vector<uint64_t> success(distances.size());
+#pragma omp parallel for
   for (uint64_t i = 1; i < distances.size(); i++) {
     if (prev(i + 1) != 0) success[distances[prev(i + 1)] + 1]++;
   }

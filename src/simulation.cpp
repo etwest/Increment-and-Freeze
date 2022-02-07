@@ -46,9 +46,10 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   // Order Statistic LRU (stack distance)
   std::mt19937 rand(seed);  // create random number generator
   auto start = high_resolution_clock::now();
-  for (uint64_t i = 0; i < ACCESSES; i++) {
+  /*for (uint64_t i = 0; i < ACCESSES; i++) {
     lru->memory_access(get_next_addr(rand));
   }
+  */
   std::vector<uint64_t> lru_success = lru->get_success_function();
   auto lru_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
   
@@ -152,7 +153,7 @@ bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) 
 }
 
 int main() {
-  auto results = working_set_simulator(SEED, true);
+  auto results = working_set_simulator(SEED, false);
   //bool eq = check_equivalent(results[0], results[1]);
   //std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
   // run many trials of the working_set_simulator

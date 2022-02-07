@@ -4,7 +4,7 @@
 
 #include <cassert>
 
-enum OpType {Null, Increment, Kill};
+enum OpType {Null, Increment, Kill, Uninit};
 
 class Op {
  private:
@@ -20,6 +20,8 @@ class Op {
 
   // create a kill
   Op(uint64_t kill) : type(Kill), start(kill){};
+  
+  Op() : type(Uninit){};
 
   // create a new Op by projecting another one
   Op(Op oth_op, uint64_t proj_start, uint64_t proj_end);
@@ -49,8 +51,8 @@ class Op {
     r += oth_op.r;
   }
 
-  OpType get_type() {return type;}
-  uint64_t get_r()  {return r;}
+  OpType get_type() {assert(type != Uninit); return type;}
+  uint64_t get_r()  {assert(type != Uninit); return r;}
 };
 
 class ProjSequence {
@@ -88,6 +90,7 @@ class IncrementAndKill: public CacheSim {
     std::vector<uint64_t> get_distance_vector();
     uint64_t& prev(uint64_t i) {return prevnext[i].first;}
     uint64_t& next(uint64_t i) {return prevnext[i].second;}
+    void do_projections(std::vector<uint64_t>& distance_vector, ProjSequence seq);
   public:
     void memory_access(uint64_t addr);
     std::vector<uint64_t> get_success_function();
