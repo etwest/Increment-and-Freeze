@@ -41,21 +41,22 @@ std::vector<uint64_t> IncrementAndKill::get_distance_vector() {
 
   // Generate the list of operations
   std::vector<Op> operations(2*requests.size());
-  //TODO: This was probably better using push_back and reserve
+  //TODO: This was probably better using push_back and reserve (single threaded)
 #pragma omp parallel for
   for (uint64_t i = 1; i <= requests.size(); i++) {
     operations[2*i-2] = Op(prev(i) + 1, i - 1);        // Increment(prev(i)+1, i-1, 1)
     operations[2*i-1] = Op(prev(i));  // Kill(prev(i))
   }
 
-  // begin the 'recursive' process
+  // begin the recursive process
   std::queue<ProjSequence> rec_stack;
   ProjSequence init_seq(1, requests.size());
   init_seq.op_seq = operations;
-
+  // We want to spin up a bunch of threads, but only start with 1.
+  // More will be added in by do_projections.
 #pragma omp parallel
 #pragma omp single
-  do_projections(distance_vector, init_seq);
+  do_projections(distance_vector, std::move(init_seq));
 
   return distance_vector;
 }
@@ -83,14 +84,14 @@ void IncrementAndKill::do_projections(std::vector<uint64_t>& distance_vector, Pr
       fst_half.add_op(cur.op_seq[i]);
     }
 #pragma omp task shared(distance_vector)
-    do_projections(distance_vector, fst_half);
+    do_projections(distance_vector, std::move(fst_half));
 
     // generate projected sequence for second half
     ProjSequence snd_half(mid + 1, cur.end);
     for (uint64_t i = 0; i < cur.op_seq.size(); i++) {
       snd_half.add_op(cur.op_seq[i]);
     }
-    do_projections(distance_vector, snd_half);
+    do_projections(distance_vector, std::move(snd_half));
   }
 }
 
