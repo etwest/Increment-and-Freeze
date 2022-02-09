@@ -75,14 +75,15 @@ void IncrementAndKill::do_projections(std::vector<uint64_t>& distance_vector, Pr
         distance_vector[cur.start] = 0;
   }
   else {
-    uint64_t mid = (cur.end - cur.start) / 2 + cur.start;
+    uint64_t dist = cur.end - cur.start;
+    uint64_t mid = (dist) / 2 + cur.start;
 
     // generate projected sequence for first half
     ProjSequence fst_half(cur.start, mid);
     for (uint64_t i = 0; i < cur.op_seq.size(); i++) {
       fst_half.add_op(cur.op_seq[i]);
     }
-#pragma omp task shared(distance_vector)
+#pragma omp task shared(distance_vector) mergeable final(dist <= 128) 
     do_projections(distance_vector, std::move(fst_half));
 
     // generate projected sequence for second half
