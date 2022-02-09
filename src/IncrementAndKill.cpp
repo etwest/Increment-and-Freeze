@@ -83,7 +83,7 @@ void IncrementAndKill::do_projections(std::vector<uint64_t>& distance_vector, Pr
     for (uint64_t i = 0; i < cur.op_seq.size(); i++) {
       fst_half.add_op(cur.op_seq[i]);
     }
-#pragma omp task shared(distance_vector) mergeable final(dist <= 128) 
+#pragma omp task shared(distance_vector) mergeable final(dist <= 1024) 
     do_projections(distance_vector, std::move(fst_half));
 
     // generate projected sequence for second half
@@ -114,7 +114,7 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
 }
 
 // Create a new Operation by projecting another
-Op::Op(Op oth_op, uint64_t proj_start, uint64_t proj_end) {
+Op::Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end) {
   // check if Op becomes Null
   // Increments are Null if we end before the start OR have a 'bad' interval
   // (end before our start)

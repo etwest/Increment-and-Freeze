@@ -26,7 +26,7 @@ class Op {
   Op() : type(Uninit){};
 
   // create a new Op by projecting another one
-  Op(Op oth_op, uint64_t proj_start, uint64_t proj_end);
+  Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end);
 
   // This enforces correct merging of operators
   Op& operator+=(Op& oth) {
@@ -61,7 +61,7 @@ public:
   ProjSequence(uint64_t start, uint64_t end) : start(start), end(end) {};
 
   // We project and merge here. 
-  void add_op(Op new_op) {
+  void add_op(Op& new_op) {
     Op proj_op = Op(new_op, start, end);
     if (proj_op.get_type() == Null) return;
     if (op_seq.size() == 0) {

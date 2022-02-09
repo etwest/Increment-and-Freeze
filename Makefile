@@ -1,6 +1,6 @@
 CXX = g++
 OPTFLAGS = -O3
-DEFAULTFLAGS = -std=c++2a -Wall -I./include -D_GLIBCXX_PARALLEL -fopenmp
+DEFAULTFLAGS = -g -std=c++2a -Wall -I./include -D_GLIBCXX_PARALLEL -fopenmp
 CXXFLAGS = $(DEFAULTFLAGS) $(OPTFLAGS)
 
 vpath %.h include
@@ -20,5 +20,5 @@ clean:
 	rm -f *.o simulatePaging
 
 .PHONY: debug
-debug: CXXFLAGS = $(DEFAULTFLAGS) -g
+debug: CXXFLAGS = $(DEFAULTFLAGS)
 debug: simulatePaging
