@@ -109,7 +109,7 @@ bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) 
 }
 
 int main() {
-  auto results = working_set_simulator(SEED, false);
+  auto results = working_set_simulator(SEED, true);
   auto lru_results = results[0];
   auto iak_results = results[1];
   bool eq = check_equivalent(iak_results, lru_results);

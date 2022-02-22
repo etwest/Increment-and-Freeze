@@ -117,16 +117,31 @@ std::vector<uint64_t> IncrementAndKillInPlace::get_success_function() {
 
 // Create a new ipOperation by projecting another
 ipOp::ipOp(const ipOp& oth_op, uint64_t proj_start, uint64_t proj_end) {
+  
+  // Assign ourselves
+  if (oth_op.type != Kill)
+  {
+    start = oth_op.start;
+    end = oth_op.end;
+  }
+  full_amnt = oth_op.full_amnt;
+  
+  // Adjust based on prefix/postfix
+  if (oth_op.type == Prefix)
+    start = proj_start;
+  else if (oth_op.type == Postfix)
+    end = proj_end;
+
+
   // check if ipOp becomes Null
   // Increments are Null if we end before the start OR have a 'bad' interval
   // (end before our start)
-  if (oth_op.type == Subrange &&
+
+  if ((oth_op.type == Subrange || oth_op.type == Prefix || oth_op.type == Postfix ) &&
       (oth_op.end < oth_op.start || oth_op.end < proj_start ||
        oth_op.start > proj_end)) {
     type = Null;
-    return;
   }
-
   // kills do not shrink unless out of bounds
   if (oth_op.type == Kill) {
     if (oth_op.target < proj_start || oth_op.target > proj_end) {
@@ -135,31 +150,40 @@ ipOp::ipOp(const ipOp& oth_op, uint64_t proj_start, uint64_t proj_end) {
       type = Kill;
       target = oth_op.target;
     }
+  }
+  
+
+  if (oth_op.type == Null || oth_op.type == Kill)
+  {
+    //At this point, full increment is set. Might as well exit here.
     return;
   }
 
+  // Now we know where the operation truly stops and starts.
   // shrink the operation by the projection
-  start = oth_op.start;
-  end = oth_op.end;
 
-  full_amnt = oth_op.full_amnt;
   if (start <= proj_start && end >= proj_end)
   {
+    // Change to a full
     type = Null;
     full_amnt += oth_op.inc_amnt;
+    inc_amnt = 0;
   }
   else if (start <= proj_start)
   {
+    // Change to a prefix
     type = Prefix;
     inc_amnt = oth_op.inc_amnt;
   }
   else if (proj_end <= end)
   {
+    // Change to a postfix
     type = Postfix;
     inc_amnt = oth_op.inc_amnt;
   }
   else
   {
+    // Change to a subrange
     type = Subrange;
     inc_amnt = oth_op.inc_amnt;
   }
