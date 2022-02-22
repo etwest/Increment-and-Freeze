@@ -13,7 +13,7 @@ void IncrementAndKillInPlace::calculate_prevnext() {
   // then order those by access_number
   auto requestcopy = requests;
 
-  __gnu_parallel::sort(requestcopy.begin(), requestcopy.end());
+  std::sort(requestcopy.begin(), requestcopy.end());
 
   prevnext.resize(requestcopy.size() + 1);
 
@@ -42,17 +42,20 @@ std::vector<uint64_t> IncrementAndKillInPlace::get_distance_vector() {
 	// Here, we init enough space for all operations.
 	// Every kill is either a kill or not
 	// Every subrange increment can expand into at most 2 non-passive ops
-  std::vector<Op> operations(3*requests.size());
+  std::vector<ipOp> operations(3*requests.size());
+  std::vector<ipOp> scratch(3*requests.size());
 
   for (uint64_t i = 0; i < requests.size(); i++) {
 	
-    operations[3*i] = Op(prev(i+1) + 1, i);        // Increment(prev(i)+1, i-1, 1)
-    operations[3*i+1] = Op(prev(i+1));  // Kill(prev(i))
+    operations[3*i] = ipOp(prev(i+1) + 1, i);        // Increment(prev(i)+1, i-1, 1)
+    operations[3*i+1] = ipOp(prev(i+1));  // Kill(prev(i))
   }
 
   // begin the recursive process
   ProjSequence init_seq(1, requests.size());
-  init_seq.op_seq = operations;
+  init_seq.op_seq = operations.begin();
+  init_seq.scratch = scratch.begin();
+  init_seq.len = operations.size();
 
   // We want to spin up a bunch of threads, but only start with 1.
   // More will be added in by do_projections.
@@ -72,8 +75,8 @@ void IncrementAndKillInPlace::do_projections(std::vector<uint64_t>& distance_vec
   // if Kill, Inc, then distance = 0 -> sequence = [... p_x, p_x ...]
   // No need to lock here-- this can only occur in exactly one thread
   if (cur.start == cur.end) {
-      if (cur.op_seq.size() > 0)
-        distance_vector[cur.start] = cur.op_seq[0].get_full_inc();
+      if (cur.len > 0)
+        distance_vector[cur.start] = cur.op_seq[0].get_full_amnt();
       else
         distance_vector[cur.start] = 0;
   }
@@ -85,7 +88,7 @@ void IncrementAndKillInPlace::do_projections(std::vector<uint64_t>& distance_vec
     ProjSequence fst_half(cur.start, mid);
     ProjSequence snd_half(mid + 1, cur.end);
 
-		cur->partition(fst_half, snd_half);
+		cur.partition(fst_half, snd_half);
 
 #pragma omp task shared(distance_vector) mergeable final(dist <= 1024) 
     do_projections(distance_vector, std::move(fst_half));
@@ -112,12 +115,12 @@ std::vector<uint64_t> IncrementAndKillInPlace::get_success_function() {
   return success;
 }
 
-// Create a new Operation by projecting another
-Op::Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end) {
-  // check if Op becomes Null
+// Create a new ipOperation by projecting another
+ipOp::ipOp(const ipOp& oth_op, uint64_t proj_start, uint64_t proj_end) {
+  // check if ipOp becomes Null
   // Increments are Null if we end before the start OR have a 'bad' interval
   // (end before our start)
-  if (oth_op.type == Increment &&
+  if (oth_op.type == Subrange &&
       (oth_op.end < oth_op.start || oth_op.end < proj_start ||
        oth_op.start > proj_end)) {
     type = Null;
@@ -126,23 +129,42 @@ Op::Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end) {
 
   // kills do not shrink unless out of bounds
   if (oth_op.type == Kill) {
-    if (oth_op.start < proj_start || oth_op.start > proj_end) {
+    if (oth_op.target < proj_start || oth_op.target > proj_end) {
       type = Null;
     } else {
       type = Kill;
-      start = oth_op.start;
+      target = oth_op.target;
     }
     return;
   }
 
   // shrink the operation by the projection
-  uint64_t n_start = oth_op.start;
-  uint64_t n_end = oth_op.end;
-  if (proj_start > n_start) n_start = proj_start;
-  if (proj_end < n_end) n_end = proj_end;
+  start = oth_op.start;
+  end = oth_op.end;
 
-  type = Increment;
-  start = n_start;
-  end = n_end;
-  r = oth_op.r;
+  full_amnt = oth_op.full_amnt;
+  if (start <= proj_start && end >= proj_end)
+  {
+    type = Null;
+    full_amnt += oth_op.inc_amnt;
+  }
+  else if (start <= proj_start)
+  {
+    type = Prefix;
+    inc_amnt = oth_op.inc_amnt;
+  }
+  else if (proj_end <= end)
+  {
+    type = Postfix;
+    inc_amnt = oth_op.inc_amnt;
+  }
+  else
+  {
+    type = Subrange;
+    inc_amnt = oth_op.inc_amnt;
+  }
+
+  if (proj_start > start) start = proj_start;
+  if (proj_end < end) end = proj_end;
 }
+

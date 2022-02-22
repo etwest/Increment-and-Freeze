@@ -13,7 +13,7 @@ void IncrementAndKill::calculate_prevnext() {
   // then order those by access_number
   auto requestcopy = requests;
 
-  __gnu_parallel::sort(requestcopy.begin(), requestcopy.end());
+  std::sort(requestcopy.begin(), requestcopy.end());
 
   prevnext.resize(requestcopy.size() + 1);
 

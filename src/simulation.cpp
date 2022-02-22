@@ -7,7 +7,8 @@
 #include <utility>
 #include <chrono>
 
-#include "IncrementAndKill.h"
+//#include "IncrementAndKill.h"
+#include "IncrementAndKillInPlace.h"
 #include "LruSizesSim.h"
 
 uint64_t get_next_addr(std::mt19937& gen)
@@ -41,7 +42,8 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
 	using std::chrono::milliseconds;
 
   LruSizesSim *lru = new LruSizesSim();
-  IncrementAndKill *iak = new IncrementAndKill();
+  IncrementAndKillInPlace *iak = new IncrementAndKillInPlace();
+  //IncrementAndKill *iak = new IncrementAndKill();
 
   // Order Statistic LRU (stack distance)
   std::mt19937 rand(seed);  // create random number generator
