@@ -77,16 +77,16 @@ class ipOp {
         }
         else if (pstart == proj_start) // prefix case
         {
-          return 1;
+          return 0;
         }
         else if (pend == proj_end) //postfix case
         {
-          return 1;
+          return 0;
         }
         else //subrange case
         {
           assert(type == Subrange);
-          return 2;
+          return 1;
         }
       case Null:
         return 0;
@@ -127,6 +127,13 @@ class ProjSequence {
 
     void partition(ProjSequence& left, ProjSequence& right)
     {
+      size_t total = 0;
+      for (size_t i = 0; i < len; i++)
+      {
+        total += op_seq[i].score(start, end);
+      }
+      assert(total <= len);
+
       assert(left.start <= left.end);
       assert(left.end+1 == right.start);
       assert(right.start <= right.end);
@@ -148,12 +155,14 @@ class ProjSequence {
         radd = op.score(right.start, right.end);
         size_t totaladd = op.score(start, end);
         assert(totaladd >= ladd + radd);
-        if (ladd >= 1)
-        {
-          pos = project_op(op, left.start, left.end, pos);
-        }
+        pos = project_op(op, left.start, left.end, pos);
         left_bound += ladd;
       }
+
+      size_t minleft = left.end-left.start + 1;
+      left_bound += minleft;
+      assert(left_bound <= len);
+
 
       // Now we 'clean up' any additional waste in scratch
       for (size_t i = pos; i < left_bound; i++)
@@ -165,15 +174,14 @@ class ProjSequence {
       for (size_t i = 0; i < len; i++)
       {
         ipOp& op = op_seq[i];
-        ladd = op.score(left.start, left.end);
         radd = op.score(right.start, right.end);
-        size_t totaladd = op.score(start, end);
-        if (radd >= 1)
-        {	
-          pos = project_op(op, right.start, right.end, pos);
-        }
+        pos = project_op(op, right.start, right.end, pos);
         right_bound += radd;
       }	
+      
+      size_t minright = right.end-right.start + 1;
+      right_bound += minright;
+      assert(left_bound + right_bound <= len);
 
       // Now we 'clean up' any additional waste in scratch
       for (size_t i = pos; i < right_bound; i++)
@@ -184,7 +192,6 @@ class ProjSequence {
       // This fails if there isn't enough memory allocated
       // It either means we did something wrong, or our memory
       // bound is incorrect.
-      assert(left_bound + right_bound <= len);
 
       // At this point, scratch contains the end results + no garbage.
       // op_seq contains old work/ garbage
@@ -196,8 +203,9 @@ class ProjSequence {
       left.len = left_bound;
 
       right.op_seq = op_seq + left_bound;
-      left.scratch = scratch + left_bound;
-      left.len = right_bound;
+      right.scratch = scratch + left_bound;
+      right.len = right_bound;
+      //std::cout << total << "(" << len << ") " << " -> " << left.len << ", " << right.len << std::endl;
     }
 
 
@@ -208,25 +216,42 @@ class ProjSequence {
       if (proj_op.isNull()) return pos;
       assert(new_op.get_type() == Null || new_op.get_type() == Kill || new_op.get_full_amnt() + new_op.get_inc_amnt() == proj_op.get_full_amnt() + proj_op.get_inc_amnt());
 
-      // We *may* have a full_increment, but are still Null
-      // We should replace this anyway
-      if (scratch[0].get_type() == Null)
+      // The first element is always replaced
+      if (pos == 0)
       {
-        proj_op.add_full(scratch[0]);
-        scratch[pos] = std::move(proj_op);
+        scratch[0] = std::move(proj_op);
         return pos+1;
       }
 
+      // The previous element may be replacable if it is Null
+      // Unless we are a kill, then we have an explicit barrier here.
+      if (pos > 0 && scratch[pos-1].get_type() == Null && proj_op.get_type() != Kill)
+      {
+        proj_op.add_full(scratch[pos-1]);
+        scratch[pos] = std::move(proj_op);
+        return pos+1;
+      }
+      
+      // If we are null (a full increment), we do not need to take up space
+      if (pos > 0 && proj_op.get_type() == Null)
+      {
+        scratch[pos-1].add_full(proj_op);
+        return pos;
+      }
 
-      ipOp& last_op = scratch[pos - 1];
+      /*ipOp& last_op = scratch[pos - 1];
       // If either is not passive, then we cannot merge. We must add it.
       if (!proj_op.is_passive(start, end) || !last_op.is_passive(start, end)) {
         scratch[pos] = std::move(proj_op);
         return pos+1;
-      }
+      }*/
+
       // merge with the last op in sequence
-      last_op += proj_op;
-      return pos;
+      //scratch[pos-1] += proj_op;
+      
+      //Neither is mergable.
+      scratch[pos] = std::move(proj_op);
+      return pos+1;
     }
 };
 

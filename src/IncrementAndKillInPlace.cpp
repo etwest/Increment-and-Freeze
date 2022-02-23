@@ -52,7 +52,7 @@ std::vector<uint64_t> IncrementAndKillInPlace::get_distance_vector() {
   }
 
   // begin the recursive process
-  ProjSequence init_seq(1, requests.size());
+  ProjSequence init_seq(1, requests.size()-1);
   init_seq.op_seq = operations.begin();
   init_seq.scratch = scratch.begin();
   init_seq.len = operations.size();
@@ -125,8 +125,8 @@ ipOp::ipOp(const ipOp& oth_op, uint64_t proj_start, uint64_t proj_end){
     case Subrange:
     case Prefix:
     case Postfix:
-      start = oth_op.start < proj_start ? proj_start : oth_op.start;
-      end = oth_op.end > proj_end ? proj_end : oth_op.end;
+      start = (oth_op.start < proj_start || type == Prefix) ? proj_start : oth_op.start;
+      end = (oth_op.end > proj_end || type == Postfix) ? proj_end : oth_op.end;
       if (end < start)
       {
         type = Null;
