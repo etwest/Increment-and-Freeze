@@ -49,7 +49,7 @@ namespace InPlace {
       }
       bool affects(size_t target)
       {
-        return (start <= target && end >= target) || (type == Kill && this->target == target) || full_amnt > 0;
+        return (start <= target && target <= end) || (type == Kill && this->target == target) || full_amnt > 0;
       }
 
       friend std::ostream& operator<<(std::ostream& os, const Op& op)
@@ -183,6 +183,7 @@ namespace InPlace {
         size_t minleft = left.end-left.start + 1;
         left_bound += minleft;
         assert(left_bound <= len);
+        assert(pos <= left_bound);
 
 
         // Now we 'clean up' any additional waste in scratch
@@ -205,6 +206,7 @@ namespace InPlace {
         size_t minright = right.end-right.start + 1;
         right_bound += minright;
         assert(left_bound + right_bound <= len);
+        assert(pos <= right_bound);
 
         // Now we 'clean up' any additional waste in scratch
         for (size_t i = pos; i < right_bound; i++)
