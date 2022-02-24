@@ -42,7 +42,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
 	using std::chrono::milliseconds;
 
   LruSizesSim *lru = new LruSizesSim();
-  IncrementAndKillInPlace *iak = new IncrementAndKillInPlace();
+  InPlace::IncrementAndKill *iak = new InPlace::IncrementAndKill();
   //IncrementAndKill *iak = new IncrementAndKill();
 
   // Order Statistic LRU (stack distance)
