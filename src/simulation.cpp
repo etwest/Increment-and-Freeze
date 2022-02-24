@@ -91,7 +91,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
         ACCESSES, unique_pages.size());
     lru->print_success_function();
     iak->print_success_function();
-    ia2->print_success_function();
+    iak2->print_success_function();
     std::cerr << "VEC TIME: " << vec_time << std::endl;
   }
   std::cerr << "LRU TIME: " << lru_time << std::endl;
