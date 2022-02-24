@@ -9,6 +9,7 @@
 
 //#include "IncrementAndKill.h"
 #include "IncrementAndKillInPlace.h"
+#include "IncrementAndKill.h"
 #include "LruSizesSim.h"
 
 uint64_t get_next_addr(std::mt19937& gen)
@@ -42,7 +43,8 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
 	using std::chrono::milliseconds;
 
   LruSizesSim *lru = new LruSizesSim();
-  InPlace::IncrementAndKill *iak = new InPlace::IncrementAndKill();
+  IncrementAndKill *iak = new IncrementAndKill();
+  InPlace::IncrementAndKill *iak2 = new InPlace::IncrementAndKill();
   //IncrementAndKill *iak = new IncrementAndKill();
 
   // Order Statistic LRU (stack distance)
@@ -54,6 +56,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   std::vector<uint64_t> lru_success = lru->get_success_function();
   auto lru_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
   
+
   // Increment And Kill
   rand.seed(seed);  // create random number generator
   start = high_resolution_clock::now();
@@ -62,6 +65,17 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   }
   std::vector<uint64_t> iak_success = iak->get_success_function();
   auto iak_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+
+
+  // Increment And Kill In Place
+  rand.seed(seed);  // create random number generator
+  start = high_resolution_clock::now();
+  for (uint64_t i = 0; i < ACCESSES; i++) {
+    iak2->memory_access(get_next_addr(rand));
+  }
+  std::vector<uint64_t> iak2_success = iak2->get_success_function();
+  auto iak2_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+
 
   if (print) {
     // Do this for stats
@@ -77,13 +91,16 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
         ACCESSES, unique_pages.size());
     lru->print_success_function();
     iak->print_success_function();
+    ia2->print_success_function();
     std::cerr << "VEC TIME: " << vec_time << std::endl;
   }
   std::cerr << "LRU TIME: " << lru_time << std::endl;
   std::cerr << "IAK TIME: " << iak_time << std::endl;
+  std::cerr << "IAK IP TIME: " << iak2_time << std::endl;
   delete lru;
   delete iak;
-  return {lru_success, iak_success};
+  delete iak2;
+  return {lru_success, iak_success, iak2_success};
 }
 
 // check that the results of two different simulators are the same
@@ -109,10 +126,11 @@ bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) 
 }
 
 int main() {
-  auto results = working_set_simulator(SEED, true);
+  auto results = working_set_simulator(SEED, false);
   auto lru_results = results[0];
   auto iak_results = results[1];
-  bool eq = check_equivalent(iak_results, lru_results);
+  auto iak2_results = results[2];
+  bool eq = check_equivalent(iak_results, iak2_results);
   std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (lru, iak): " << lru_results.size() << ", " << iak_results.size() << std::endl;
+  std::cerr << "Sizes (iak, iak2): " << iak2_results.size() << ", " << iak2_results.size() << std::endl;
 }

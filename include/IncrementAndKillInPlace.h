@@ -211,7 +211,7 @@ namespace InPlace {
         right.op_seq = op_seq + left_bound;
         right.scratch = scratch + left_bound;
         right.len = right_bound;
-        std::cout << total << "(" << len << ") " << " -> " << left.len << ", " << right.len << std::endl;
+        //std::cout << total << "(" << len << ") " << " -> " << left.len << ", " << right.len << std::endl;
       }
 
 
