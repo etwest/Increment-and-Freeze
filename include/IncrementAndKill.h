@@ -102,7 +102,8 @@ class IncrementAndKill: public CacheSim {
     /* Returns the distance vector calculated from prevnext.
      * Precondition: prevnext must be properly populated.
      */
-    std::vector<uint64_t> get_distance_vector();
+    //std::vector<uint64_t> get_distance_vector();
+
     // Shortcut to access prev in prevnext.
     uint64_t& prev(uint64_t i) {return prevnext[i].first;}
     // Shortcut to access next in prevnext.
@@ -122,4 +123,6 @@ class IncrementAndKill: public CacheSim {
     std::vector<uint64_t> get_success_function();
     IncrementAndKill() = default;
     ~IncrementAndKill() = default;
+    
+    std::vector<uint64_t> get_distance_vector();
 };

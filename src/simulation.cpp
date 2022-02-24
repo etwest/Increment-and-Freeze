@@ -12,6 +12,23 @@
 #include "IncrementAndKill.h"
 #include "LruSizesSim.h"
 
+void validate_distance_vectors(IncrementAndKill* iak, InPlace::IncrementAndKill* iak2)
+{
+  auto good_vector = iak->get_distance_vector();
+  auto test_vector = iak2->get_distance_vector();
+
+  assert(good_vector.size() == test_vector.size());
+
+  for (size_t i = 0; i < good_vector.size(); i++)
+  {
+    if (good_vector[i] != test_vector[i])
+    {
+      std::cout << "@ " << i << ", Good: " << good_vector[i] << ", " << test_vector[i] <<"." << std::endl;
+    }
+  }
+}
+
+
 uint64_t get_next_addr(std::mt19937& gen)
 {
   // printf("Representative Workload\n");
@@ -36,11 +53,11 @@ uint64_t get_next_addr(std::mt19937& gen)
  */
 std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool print = false) {
   std::set<uint64_t> unique_pages;
-    
-	using std::chrono::high_resolution_clock;
-	using std::chrono::duration_cast;
-	using std::chrono::duration;
-	using std::chrono::milliseconds;
+
+  using std::chrono::high_resolution_clock;
+  using std::chrono::duration_cast;
+  using std::chrono::duration;
+  using std::chrono::milliseconds;
 
   LruSizesSim *lru = new LruSizesSim();
   IncrementAndKill *iak = new IncrementAndKill();
@@ -51,11 +68,11 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   std::mt19937 rand(seed);  // create random number generator
   auto start = high_resolution_clock::now();
   for (uint64_t i = 0; i < ACCESSES; i++) {
-    lru->memory_access(get_next_addr(rand));
+    //lru->memory_access(get_next_addr(rand));
   }
   std::vector<uint64_t> lru_success = lru->get_success_function();
   auto lru_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
-  
+
 
   // Increment And Kill
   rand.seed(seed);  // create random number generator
@@ -92,6 +109,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
     lru->print_success_function();
     iak->print_success_function();
     iak2->print_success_function();
+    validate_distance_vectors(iak, iak2);
     std::cerr << "VEC TIME: " << vec_time << std::endl;
   }
   std::cerr << "LRU TIME: " << lru_time << std::endl;
@@ -126,7 +144,7 @@ bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) 
 }
 
 int main() {
-  auto results = working_set_simulator(SEED, false);
+  auto results = working_set_simulator(SEED, true);
   auto lru_results = results[0];
   auto iak_results = results[1];
   auto iak2_results = results[2];

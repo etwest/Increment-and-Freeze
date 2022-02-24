@@ -1,8 +1,9 @@
 #pragma once
 
-#include "CacheSim.h"
-
+#include <iostream>
 #include <cassert>
+
+#include "CacheSim.h"
 
 namespace InPlace {
 
@@ -45,6 +46,16 @@ namespace InPlace {
         inc_amnt += oth.inc_amnt;
         full_amnt += oth.full_amnt;
         return *this;
+      }
+      bool affects(size_t target)
+      {
+        return (start <= target && end >= target) || (type == Kill && this->target == target);
+      }
+
+      friend std::ostream& operator<<(std::ostream& os, const Op& op)
+      {
+        os << op.type << ", " << op.start << " to " << op.end << " +" << op.inc_amnt << " OR " << op.target << ". +" << op.full_amnt;
+        return os;
       }
 
       void add_full(Op& oth) {
@@ -130,9 +141,12 @@ namespace InPlace {
       void partition(ProjSequence& left, ProjSequence& right)
       {
         size_t total = 0;
+        size_t target = 2;
         for (size_t i = 0; i < len; i++)
         {
           total += op_seq[i].score(start, end);
+          if (op_seq[i].affects(target))
+            std::cout << op_seq[i] << std::endl;
         }
         total += end-start+1;
         assert(total <= len);
@@ -283,7 +297,7 @@ namespace InPlace {
     /* Returns the distance vector calculated from prevnext.
      * Precondition: prevnext must be properly populated.
      */
-    std::vector<uint64_t> get_distance_vector();
+    //std::vector<uint64_t> get_distance_vector();
     // Shortcut to access prev in prevnext.
     uint64_t& prev(uint64_t i) {return prevnext[i].first;}
     // Shortcut to access next in prevnext.
@@ -303,5 +317,6 @@ namespace InPlace {
     std::vector<uint64_t> get_success_function();
     IncrementAndKill() = default;
     ~IncrementAndKill() = default;
+    std::vector<uint64_t> get_distance_vector();
   };
 }

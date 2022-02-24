@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <queue>
 #include <omp.h>
+class IncrementAndKill;
+
 namespace InPlace {
 
   void IncrementAndKill::memory_access(uint64_t addr) {
