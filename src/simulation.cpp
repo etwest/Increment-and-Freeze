@@ -71,7 +71,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   std::mt19937 rand(seed);  // create random number generator
   auto start = high_resolution_clock::now();
   for (uint64_t i = 0; i < ACCESSES; i++) {
-    lru->memory_access(get_next_addr(rand));
+    //lru->memory_access(get_next_addr(rand));
   }
   std::vector<uint64_t> lru_success = lru->get_success_function();
   auto lru_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
@@ -147,7 +147,7 @@ bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) 
 }
 
 int main() {
-  auto results = working_set_simulator(SEED, true);
+  auto results = working_set_simulator(SEED, false);
   auto lru_results = results[0];
   auto iak_results = results[1];
   auto iak2_results = results[2];

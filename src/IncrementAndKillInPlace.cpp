@@ -45,13 +45,13 @@ namespace InPlace {
     // Here, we init enough space for all operations.
     // Every kill is either a kill or not
     // Every subrange increment can expand into at most 2 non-passive ops
-    std::vector<Op> operations(3*requests.size());
-    std::vector<Op> scratch(3*requests.size());
+    std::vector<Op> operations(4*requests.size());
+    std::vector<Op> scratch(4*requests.size());
 
     for (uint64_t i = 0; i < requests.size(); i++) {
 
-      operations[3*i] = Op(prev(i+1) + 1, i);        // Increment(prev(i)+1, i-1, 1)
-      operations[3*i+1] = Op(prev(i+1));  // Kill(prev(i))
+      operations[2*i] = Op(prev(i+1) + 1, i);        // Increment(prev(i)+1, i-1, 1)
+      operations[2*i+1] = Op(prev(i+1));  // Kill(prev(i))
     }
 
     // begin the recursive process

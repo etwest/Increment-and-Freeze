@@ -105,7 +105,7 @@ namespace InPlace {
             return 0;
           case Kill:
             if (proj_start <= target && target <= proj_end)
-              return 1;
+              return 0;
             else
               return 0;
           default: assert(false); return 0;
@@ -140,7 +140,7 @@ namespace InPlace {
 
       void partition(ProjSequence& left, ProjSequence& right)
       {
-        size_t total = 0;
+        /*size_t total = 0;
         size_t target = 9;
 				std::cout << start << ", " << end << std::endl;
         for (size_t i = 0; i < len; i++)
@@ -151,10 +151,10 @@ namespace InPlace {
             std::cout << op_seq[i] << std::endl;
 					}
         }
-        std::cout << std::endl;
+        std::cout << total << std::endl;
         total += end-start+1;
         assert(total <= len);
-
+				*/
         assert(left.start <= left.end);
         assert(left.end+1 == right.start);
         assert(right.start <= right.end);
@@ -180,8 +180,8 @@ namespace InPlace {
           left_bound += ladd;
         }
 
-        size_t minleft = left.end-left.start + 1;
-        left_bound += minleft;
+				size_t minleft = left.end-left.start+1;
+        left_bound += std::max(pos, 3*minleft);
         assert(left_bound <= len);
         assert(pos <= left_bound);
 
@@ -203,8 +203,9 @@ namespace InPlace {
           right_bound += radd;
         }	
 
-        size_t minright = right.end-right.start + 1;
-        right_bound += minright;
+				size_t minright = right.end-right.start+1;
+        right_bound += std::max(pos, 3*minright);
+				right_bound = right_bound < minright? minright : right_bound;
         assert(left_bound + right_bound <= len);
         assert(pos <= right_bound);
 
