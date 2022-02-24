@@ -101,7 +101,7 @@ std::vector<uint64_t> IncrementAndKill::get_success_function() {
 
   // a point representation of successes
   std::vector<uint64_t> success(distances.size());
-  for (uint64_t i = 1; i < distances.size(); i++) {
+  for (uint64_t i = 1; i < distances.size()-1; i++) {
     if (prev(i + 1) != 0) success[distances[prev(i + 1)] + 1]++;
   }
   // integrate

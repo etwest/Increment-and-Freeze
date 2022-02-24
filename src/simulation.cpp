@@ -18,14 +18,17 @@ void validate_distance_vectors(IncrementAndKill* iak, InPlace::IncrementAndKill*
   auto test_vector = iak2->get_distance_vector();
 
   assert(good_vector.size() == test_vector.size());
-
+	bool good = true;
   for (size_t i = 0; i < good_vector.size(); i++)
   {
     if (good_vector[i] != test_vector[i])
     {
+			good = false;
       std::cout << "@ " << i << ", Good: " << good_vector[i] << ", " << test_vector[i] <<"." << std::endl;
     }
   }
+	if (good)
+		std::cout << "DISTANCE VECTORS ARE THE SAME" << std::endl;
 }
 
 
@@ -68,7 +71,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   std::mt19937 rand(seed);  // create random number generator
   auto start = high_resolution_clock::now();
   for (uint64_t i = 0; i < ACCESSES; i++) {
-    //lru->memory_access(get_next_addr(rand));
+    lru->memory_access(get_next_addr(rand));
   }
   std::vector<uint64_t> lru_success = lru->get_success_function();
   auto lru_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
@@ -127,7 +130,7 @@ bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) 
   size_t i = 0;
   uint64_t last_elm = vec_1[0];
   while (i < vec_1.size() && i < vec_2.size()) {
-    if (vec_1[i] != vec_2[i]) return false;
+    if (vec_1[i] != vec_2[i]) {std::cout << "DIFF AT " << i << std::endl; return false;}
 
     last_elm = vec_1[i++];
   }
@@ -150,5 +153,8 @@ int main() {
   auto iak2_results = results[2];
   bool eq = check_equivalent(iak_results, iak2_results);
   std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak, iak2): " << iak2_results.size() << ", " << iak2_results.size() << std::endl;
+  std::cerr << "Sizes (iak, iak2): " << iak_results.size() << ", " << iak2_results.size() << std::endl;
+  eq = check_equivalent(iak_results, lru_results);
+  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
+  std::cerr << "Sizes (iak, lru): " << iak_results.size() << ", " << lru_results.size() << std::endl;
 }

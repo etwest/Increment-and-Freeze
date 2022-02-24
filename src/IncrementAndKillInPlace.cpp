@@ -108,7 +108,7 @@ namespace InPlace {
 
     // a point representation of successes
     std::vector<uint64_t> success(distances.size());
-    for (uint64_t i = 1; i < distances.size(); i++) {
+    for (uint64_t i = 1; i < distances.size()-1; i++) {
       if (prev(i + 1) != 0) success[distances[prev(i + 1)] + 1]++;
     }
     // integrate
@@ -132,8 +132,8 @@ namespace InPlace {
         end = (oth_op.end > proj_end || type == Postfix) ? proj_end : oth_op.end;
         if (end < start)
         {
+					// This *might* be a full increment
           type = Null;
-          full_amnt = 0; // invalid case
           inc_amnt = 0;
         }
         else if (start == proj_start && end == proj_end) //full inc case

@@ -49,7 +49,7 @@ namespace InPlace {
       }
       bool affects(size_t target)
       {
-        return (start <= target && end >= target) || (type == Kill && this->target == target);
+        return (start <= target && end >= target) || (type == Kill && this->target == target) || full_amnt > 0;
       }
 
       friend std::ostream& operator<<(std::ostream& os, const Op& op)
@@ -141,13 +141,17 @@ namespace InPlace {
       void partition(ProjSequence& left, ProjSequence& right)
       {
         size_t total = 0;
-        size_t target = 2;
+        size_t target = 9;
+				std::cout << start << ", " << end << std::endl;
         for (size_t i = 0; i < len; i++)
         {
           total += op_seq[i].score(start, end);
           if (op_seq[i].affects(target))
+					{
             std::cout << op_seq[i] << std::endl;
+					}
         }
+        std::cout << std::endl;
         total += end-start+1;
         assert(total <= len);
 
@@ -234,7 +238,7 @@ namespace InPlace {
         Op proj_op = Op(new_op, start, end);
 
         if (proj_op.isNull()) return pos;
-        assert(new_op.get_type() == Null || new_op.get_type() == Kill || new_op.get_full_amnt() + new_op.get_inc_amnt() == proj_op.get_full_amnt() + proj_op.get_inc_amnt());
+        assert(proj_op.get_type() == Null || new_op.get_type() == Null || new_op.get_type() == Kill ||new_op.get_full_amnt() + new_op.get_inc_amnt() == proj_op.get_full_amnt() + proj_op.get_inc_amnt());
 
         // The first element is always replaced
         if (pos == 0)
