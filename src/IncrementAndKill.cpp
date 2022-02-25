@@ -73,7 +73,7 @@ void IncrementAndKill::do_projections(std::vector<uint64_t>& distance_vector, Pr
         distance_vector[cur.start] = cur.op_seq[0].get_r();
       else
         distance_vector[cur.start] = 0;
-  }
+ }
   else {
     uint64_t dist = cur.end - cur.start;
     uint64_t mid = (dist) / 2 + cur.start;

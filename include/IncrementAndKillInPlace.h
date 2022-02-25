@@ -10,16 +10,17 @@ namespace InPlace {
   enum OpType {Null, Subrange, Prefix, Postfix, Kill};
 
   // A single operation, such as increment or kill
-  class Op {
+  class __attribute__ ((__packed__)) Op {
     private:
       //TODO: Compress this down
       OpType type = Null;     // Do we increment or kill?
-      uint64_t start = 0;  // subrange start index 
-      uint64_t end = 0;    // subrange end index
-      uint64_t target = 0; // kill target
-
-      uint64_t inc_amnt = 0;      // subrange Increment amount
-      uint64_t full_amnt = 0;      // fullrange Increment amount
+      uint32_t start = 0;  // subrange start index 
+      union{
+      uint32_t end = 0;    // subrange end index
+      uint32_t target; // kill target
+      };
+      uint16_t inc_amnt = 0;      // subrange Increment amount
+      uint16_t full_amnt = 0;      // fullrange Increment amount
 
     public:
       // create an increment
