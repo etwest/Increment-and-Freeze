@@ -19,8 +19,8 @@ namespace InPlace {
       uint32_t end = 0;    // subrange end index
       uint32_t target; // kill target
       };
-      uint16_t inc_amnt = 0;      // subrange Increment amount
-      uint16_t full_amnt = 0;      // fullrange Increment amount
+      uint8_t inc_amnt = 0;      // subrange Increment amount
+      uint32_t full_amnt = 0;      // fullrange Increment amount
 
     public:
       // create an increment
