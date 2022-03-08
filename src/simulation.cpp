@@ -7,12 +7,12 @@
 #include <utility>
 #include <chrono>
 
-//#include "IncrementAndKill.h"
+#include "IncrementAndKillSmallInPlace.h"
 #include "IncrementAndKillInPlace.h"
 #include "IncrementAndKill.h"
 #include "LruSizesSim.h"
 
-void validate_distance_vectors(IncrementAndKill* iak, InPlace::IncrementAndKill* iak2)
+void validate_distance_vectors(InPlace::IncrementAndKill* iak, SmallInPlace::IncrementAndKill* iak2)
 {
   auto good_vector = iak->get_distance_vector();
   auto test_vector = iak2->get_distance_vector();
@@ -65,7 +65,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   LruSizesSim *lru = new LruSizesSim();
   IncrementAndKill *iak = new IncrementAndKill();
   InPlace::IncrementAndKill *iak2 = new InPlace::IncrementAndKill();
-  //IncrementAndKill *iak = new IncrementAndKill();
+  SmallInPlace::IncrementAndKill *iak3 = new SmallInPlace::IncrementAndKill();
 
   // Order Statistic LRU (stack distance)
   std::mt19937 rand(seed);  // create random number generator
@@ -96,6 +96,14 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   std::vector<uint64_t> iak2_success = iak2->get_success_function();
   auto iak2_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
 
+  // Increment And Kill In Place (half size op array)
+  rand.seed(seed);  // create random number generator
+  start = high_resolution_clock::now();
+  for (uint64_t i = 0; i < ACCESSES; i++) {
+    iak3->memory_access(get_next_addr(rand));
+  }
+  std::vector<uint64_t> iak3_success = iak3->get_success_function();
+  auto iak3_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
 
   if (print) {
     // Do this for stats
@@ -109,19 +117,22 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
     // print the success function if requested
     printf("Out of %" PRIu64 " memory accesses with %lu unique virtual pages\n",
         ACCESSES, unique_pages.size());
-    lru->print_success_function();
-    iak->print_success_function();
-    iak2->print_success_function();
-    validate_distance_vectors(iak, iak2);
+    //lru->print_success_function();
+    //iak->print_success_function();
+    //iak2->print_success_function();
+    //iak3->print_success_function();
+    validate_distance_vectors(iak2, iak3);
     std::cerr << "VEC TIME: " << vec_time << std::endl;
   }
   std::cerr << "LRU TIME: " << lru_time << std::endl;
   std::cerr << "IAK TIME: " << iak_time << std::endl;
   std::cerr << "IAK IP TIME: " << iak2_time << std::endl;
+  std::cerr << "IAK SIP TIME: " << iak3_time << std::endl;
   delete lru;
   delete iak;
   delete iak2;
-  return {lru_success, iak_success, iak2_success};
+  delete iak3;
+  return {lru_success, iak_success, iak2_success, iak3_success};
 }
 
 // check that the results of two different simulators are the same
@@ -151,7 +162,12 @@ int main() {
   auto lru_results = results[0];
   auto iak_results = results[1];
   auto iak2_results = results[2];
-  bool eq = check_equivalent(iak_results, iak2_results);
+  auto iak3_results = results[2];
+
+  bool eq = check_equivalent(iak_results, iak3_results);
+  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
+  std::cerr << "Sizes (iak, iak3): " << iak_results.size() << ", " << iak3_results.size() << std::endl;
+  eq = check_equivalent(iak_results, iak2_results);
   std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
   std::cerr << "Sizes (iak, iak2): " << iak_results.size() << ", " << iak2_results.size() << std::endl;
   eq = check_equivalent(iak_results, lru_results);
