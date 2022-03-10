@@ -83,7 +83,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   for (uint64_t i = 0; i < ACCESSES; i++) {
     iak->memory_access(get_next_addr(rand));
   }
-  std::vector<uint64_t> iak_success;// = iak->get_success_function();
+  std::vector<uint64_t> iak_success = iak->get_success_function();
   auto iak_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
 
 
@@ -93,7 +93,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   for (uint64_t i = 0; i < ACCESSES; i++) {
     iak2->memory_access(get_next_addr(rand));
   }
-  std::vector<uint64_t> iak2_success;// = iak2->get_success_function();
+  std::vector<uint64_t> iak2_success = iak2->get_success_function();
   auto iak2_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
 
   // Increment And Kill In Place (half size op array)
