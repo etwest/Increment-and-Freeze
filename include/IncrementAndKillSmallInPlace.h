@@ -51,7 +51,19 @@ namespace SmallInPlace {
 
       friend std::ostream& operator<<(std::ostream& os, const Op& op)
       {
-        os << op.type << " @ " << op.target << ". + " << op.full_amnt;
+        switch(op.type)
+        {
+          case Null:
+          os << "Null" << ". + " << op.full_amnt;
+          break;
+          case Prefix:
+          os << "0-" << op.target << ". + " << op.full_amnt;
+          break;
+          case Postfix:
+          os << op.target << "-Inf" << ". + " << op.full_amnt;
+          break;
+
+        }
         return os;
       }
 
@@ -117,6 +129,7 @@ namespace SmallInPlace {
 
 
       OpType get_type() {return type;}
+      uint64_t get_target() {return target;}
       uint64_t get_inc_amnt()  {return inc_amnt;}
       uint64_t get_full_amnt()  {return full_amnt;}
   };
@@ -137,21 +150,38 @@ namespace SmallInPlace {
 
       void partition(ProjSequence& left, ProjSequence& right)
       {
-        /*size_t total = 0;
-        size_t target = 9;
-				std::cout << start << ", " << end << std::endl;
-        for (size_t i = 0; i < len; i++)
+
+        // Debugging code to print out everything that affects a spot in the distance function
+        /*
+        int32_t sum = 0;
+        size_t target = 2;
+        if (start <= target && target <= end)
         {
-          total += op_seq[i].score(start, end);
-          if (op_seq[i].affects(target))
-					{
-            std::cout << op_seq[i] << std::endl;
-					}
-        }
-        std::cout << total << std::endl;
-        total += end-start+1;
-        assert(total <= len);
-				*/
+          std::cout << start << ", " << end << std::endl;
+          for (size_t i = 0; i < len; i++)
+          {
+            //total += op_seq[i].score(start, end);
+            if (op_seq[i].affects(target))
+            {
+              std::cout << op_seq[i] << std::endl;
+              sum += op_seq[i].get_inc_amnt();
+              sum += op_seq[i].get_full_amnt();
+              std::cout << "sum: " << sum << std::endl;
+            }
+            else if (op_seq[i].get_full_amnt() != 0)
+            {
+              std::cout << op_seq[i] << std::endl;
+              sum += op_seq[i].get_full_amnt();
+              std::cout << "sum: " << sum << std::endl;
+
+            }
+            if (op_seq[i].get_type() == Postfix && op_seq[i].get_target() == target)
+              std::cout << "KILL SUM: " << sum-1 << std::endl;
+          }
+          //total += end-start+1;
+          std::cout << "SUM: " << sum << std::endl;
+        } 
+*/
         assert(left.start <= left.end);
         assert(left.end+1 == right.start);
         assert(right.start <= right.end);
@@ -164,10 +194,10 @@ namespace SmallInPlace {
         size_t ladd;
         size_t radd;
 
-				//There's two things to keep track of here:
-				// The upper bound on needed memory (left_bound, right_bound)
-				// and how much memory we *actually* need right now.
-				// 
+        //There's two things to keep track of here:
+        // The upper bound on needed memory (left_bound, right_bound)
+        // and how much memory we *actually* need right now.
+        // 
 
 
         // We have to do first left than right. Otherwise we can't know the splitting point in memory
@@ -178,7 +208,7 @@ namespace SmallInPlace {
           pos = project_op(op, left.start, left.end, pos);
         }
 
-				size_t minleft = left.end-left.start+1;
+        size_t minleft = left.end-left.start+1;
         left_bound = 2*minleft;
         assert(left_bound <= len);
         assert(pos <= left_bound);
@@ -197,9 +227,9 @@ namespace SmallInPlace {
         {
           Op& op = op_seq[i];
           pos = project_op(op, right.start, right.end, pos);
-        }	
+        } 
 
-				size_t minright = right.end-right.start+1;
+        size_t minright = right.end-right.start+1;
         right_bound = 2*minright;
         assert(left_bound + right_bound <= len);
         assert(pos <= left_bound + right_bound);
@@ -227,7 +257,7 @@ namespace SmallInPlace {
         right.op_seq = op_seq + left_bound;
         right.scratch = scratch + left_bound;
         right.len = right_bound;
-        std::cout /*<< total*/ << "(" << len << ") " << " -> " << left.len << ", " << right.len << std::endl;
+        //std::cout /*<< total*/ << "(" << len << ") " << " -> " << left.len << ", " << right.len << std::endl;
       }
 
 

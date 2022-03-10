@@ -46,7 +46,7 @@ namespace InPlace {
     // Here, we init enough space for all operations.
     // Every kill is either a kill or not
     // Every subrange increment can expand into at most 2 non-passive ops
-    std::cout << "Requesting memory: " << sizeof(Op) * 4 * 2 * requests.size() * 1.0 / GB << std::endl;
+    std::cout << "IP Requesting memory: " << sizeof(Op) * 4 * 2 * requests.size() * 1.0 / GB << std::endl;
     std::vector<Op> operations(4*requests.size());
     std::vector<Op> scratch(4*requests.size());
 

@@ -46,7 +46,7 @@ namespace SmallInPlace {
     // Here, we init enough space for all operations.
     // Every kill is either a kill or not
     // Every subrange increment can expand into at most 2 non-passive ops
-    std::cout << "Requesting memory: " << sizeof(Op) * 4 * 2 * requests.size() * 1.0 / GB << std::endl;
+    std::cout << "SIP Requesting memory: " << sizeof(Op) * 2 * 2 * requests.size() * 1.0 / GB << std::endl;
     std::vector<Op> operations(2*requests.size());
     std::vector<Op> scratch(2*requests.size());
 
@@ -93,7 +93,7 @@ namespace SmallInPlace {
     if (cur.len == 0)
       return;
     if (cur.start == cur.end) {
-      if (cur.len > 0)
+      if (cur.len > 0 && cur.op_seq[0].get_type() != Postfix)
         distance_vector[cur.start] = cur.op_seq[0].get_full_amnt();
       else
         distance_vector[cur.start] = 0;
@@ -159,12 +159,12 @@ namespace SmallInPlace {
         {
           type = Null;
         }
-        else if (proj_start >= target) //full inc case
-        {
+        else if (proj_start > target) //full inc case
+        { // We can't collapse if the target is in the range-- we still need the kill information
           type = Null;
           full_amnt += oth_op.inc_amnt;
         }
-        else // postfix case
+        else // Postfix case
         {
           type = Postfix;
         }
