@@ -135,7 +135,7 @@ namespace SmallInPlace {
 
   // Create a new Operation by projecting another
   Op::Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end){
-		target = oth_op.target;
+    target = oth_op.target;
     full_amnt = oth_op.full_amnt;
     switch(oth_op.type)
     {
@@ -144,7 +144,7 @@ namespace SmallInPlace {
         {
           type = Null;
         }
-        else if (proj_end >= target) //full inc case
+        else if (proj_end <= target) //full inc case
         {
           type = Null;
           full_amnt += oth_op.inc_amnt;
@@ -159,7 +159,7 @@ namespace SmallInPlace {
         {
           type = Null;
         }
-        else if (proj_start <= target) //full inc case
+        else if (proj_start >= target) //full inc case
         {
           type = Null;
           full_amnt += oth_op.inc_amnt;

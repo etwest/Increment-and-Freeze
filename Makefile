@@ -1,5 +1,5 @@
 CXX = g++
-OPTFLAGS = -O1
+OPTFLAGS = -O0
 DEFAULTFLAGS = -g -std=c++2a -Wall -I./include #-D_GLIBCXX_PARALLEL -fopenmp
 CXXFLAGS = $(DEFAULTFLAGS) $(OPTFLAGS)
 

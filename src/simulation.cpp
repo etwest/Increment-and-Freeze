@@ -81,9 +81,9 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   rand.seed(seed);  // create random number generator
   start = high_resolution_clock::now();
   for (uint64_t i = 0; i < ACCESSES; i++) {
-  //  iak->memory_access(get_next_addr(rand));
+    iak->memory_access(get_next_addr(rand));
   }
-  std::vector<uint64_t> iak_success;// = iak->get_success_function();
+  std::vector<uint64_t> iak_success = iak->get_success_function();
   auto iak_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
 
 
@@ -138,6 +138,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
 // check that the results of two different simulators are the same
 // IMPORTANT: vectors may be of different sizes
 bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) {
+  if (vec_1.size() == 0 || vec_2.size() == 0) return true;
   size_t i = 0;
   uint64_t last_elm = vec_1[0];
   while (i < vec_1.size() && i < vec_2.size()) {
@@ -158,11 +159,11 @@ bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) 
 }
 
 int main() {
-  auto results = working_set_simulator(SEED, false);
+  auto results = working_set_simulator(SEED, true);
   auto lru_results = results[0];
   auto iak_results = results[1];
   auto iak2_results = results[2];
-  auto iak3_results = results[2];
+  auto iak3_results = results[3];
 
   bool eq = check_equivalent(iak_results, iak3_results);
   std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
