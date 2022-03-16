@@ -7,6 +7,7 @@
 #include <utility>
 #include <chrono>
 
+#include "IncrementAndKillMinInPlace.h"
 #include "IncrementAndKillSmallInPlace.h"
 #include "IncrementAndKillInPlace.h"
 #include "IncrementAndKill.h"
@@ -66,6 +67,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   IncrementAndKill *iak = new IncrementAndKill();
   InPlace::IncrementAndKill *iak2 = new InPlace::IncrementAndKill();
   SmallInPlace::IncrementAndKill *iak3 = new SmallInPlace::IncrementAndKill();
+  MinInPlace::IncrementAndKill *iak4 = new MinInPlace::IncrementAndKill();
 
   // Order Statistic LRU (stack distance)
   std::mt19937 rand(seed);  // create random number generator
@@ -104,6 +106,15 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   }
   std::vector<uint64_t> iak3_success = iak3->get_success_function();
   auto iak3_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+  
+  // Increment And Kill In Place (half size op array + 2 bit type)
+  rand.seed(seed);  // create random number generator
+  start = high_resolution_clock::now();
+  for (uint64_t i = 0; i < ACCESSES; i++) {
+    iak4->memory_access(get_next_addr(rand));
+  }
+  std::vector<uint64_t> iak4_success = iak4->get_success_function();
+  auto iak4_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
 
   if (print) {
     // Do this for stats
@@ -128,11 +139,13 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   std::cerr << "IAK TIME: " << iak_time << std::endl;
   std::cerr << "IAK IP TIME: " << iak2_time << std::endl;
   std::cerr << "IAK SIP TIME: " << iak3_time << std::endl;
+  std::cerr << "IAK MIP TIME: " << iak4_time << std::endl;
   delete lru;
   delete iak;
   delete iak2;
   delete iak3;
-  return {lru_success, iak_success, iak2_success, iak3_success};
+  delete iak4;
+  return {lru_success, iak_success, iak2_success, iak3_success, iak4_success};
 }
 
 // check that the results of two different simulators are the same
@@ -164,8 +177,12 @@ int main() {
   auto iak_results = results[1];
   auto iak2_results = results[2];
   auto iak3_results = results[3];
+  auto iak4_results = results[4];
 
-  bool eq = check_equivalent(iak_results, iak3_results);
+  bool eq = check_equivalent(iak_results, iak4_results);
+  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
+  std::cerr << "Sizes (iak, iak4): " << iak_results.size() << ", " << iak4_results.size() << std::endl;
+  eq = check_equivalent(iak_results, iak3_results);
   std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
   std::cerr << "Sizes (iak, iak3): " << iak_results.size() << ", " << iak3_results.size() << std::endl;
   eq = check_equivalent(iak_results, iak2_results);
