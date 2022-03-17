@@ -86,52 +86,7 @@ namespace MinInPlace {
       {
         return (get_type() == Null && get_full_amnt() == 0);
       }
-      /*
-      // Used to determine how many spots in a projection this needs
-      size_t score(size_t proj_start, size_t proj_end)
-      {
-      // projected start and end
-      size_t pstart = 0;
-      size_t pend = 0;
-      switch(type)
-      {
-      case Subrange:
-      case Prefix:
-      case Postfix:
-      pstart = (start < proj_start || type == Prefix) ? proj_start : start;
-      pend = (end > proj_end || type == Postfix) ? proj_end : end;
-      if (pend < pstart)
-      {
-      return 0;
-      }
-      else if (pstart == proj_start && pend == proj_end) //full inc case
-      {
-      return 0;
-      }
-      else if (pstart == proj_start) // prefix case
-      {
-      return 0;
-      }
-      else if (pend == proj_end) //postfix case
-      {
-      return 0;
-      }
-      else //subrange case
-      {
-      assert(type == Subrange);
-      return 1;
-      }
-      case Null:
-      return 0;
-      case Kill:
-      if (proj_start <= target && target <= proj_end)
-      return 0;
-      else
-      return 0;
-      default: assert(false); return 0;
-      }
-      }
-      */
+
       // is this operation passive in the projection defined by
       // proj_start and proj_end
       bool is_passive(uint64_t proj_start, uint64_t proj_end) {

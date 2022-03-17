@@ -77,7 +77,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   }
   std::vector<uint64_t> lru_success = lru->get_success_function();
   auto lru_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
-
+  delete lru;
 
   // Increment And Kill
   rand.seed(seed);  // create random number generator
@@ -85,9 +85,9 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   for (uint64_t i = 0; i < ACCESSES; i++) {
     iak->memory_access(get_next_addr(rand));
   }
-  std::vector<uint64_t> iak_success = iak->get_success_function();
+  std::vector<uint64_t> iak_success;// = iak->get_success_function();
   auto iak_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
-
+  delete iak;
 
   // Increment And Kill In Place
   rand.seed(seed);  // create random number generator
@@ -95,8 +95,9 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   for (uint64_t i = 0; i < ACCESSES; i++) {
     iak2->memory_access(get_next_addr(rand));
   }
-  std::vector<uint64_t> iak2_success = iak2->get_success_function();
+  std::vector<uint64_t> iak2_success;// = iak2->get_success_function();
   auto iak2_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+  delete iak2;
 
   // Increment And Kill In Place (half size op array)
   rand.seed(seed);  // create random number generator
@@ -106,6 +107,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   }
   std::vector<uint64_t> iak3_success = iak3->get_success_function();
   auto iak3_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+  delete iak3;
   
   // Increment And Kill In Place (half size op array + 2 bit type)
   rand.seed(seed);  // create random number generator
@@ -115,6 +117,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   }
   std::vector<uint64_t> iak4_success = iak4->get_success_function();
   auto iak4_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+  delete iak4;
 
   if (print) {
     // Do this for stats
@@ -140,11 +143,6 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   std::cerr << "IAK IP TIME: " << iak2_time << std::endl;
   std::cerr << "IAK SIP TIME: " << iak3_time << std::endl;
   std::cerr << "IAK MIP TIME: " << iak4_time << std::endl;
-  delete lru;
-  delete iak;
-  delete iak2;
-  delete iak3;
-  delete iak4;
   return {lru_success, iak_success, iak2_success, iak3_success, iak4_success};
 }
 

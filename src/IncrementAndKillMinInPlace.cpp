@@ -4,6 +4,8 @@
 #include <queue>
 #include <omp.h>
 #include "params.h"
+#include <utility>
+#include <chrono>
 class IncrementAndKill;
 
 namespace MinInPlace {
@@ -13,12 +15,20 @@ namespace MinInPlace {
   }
 
   void IncrementAndKill::calculate_prevnext() {
+    using std::chrono::high_resolution_clock;
+    using std::chrono::duration_cast;
+    using std::chrono::duration;
+    using std::chrono::milliseconds;
+
     // put all requests of the same addr next to each other
     // then order those by access_number
     auto requestcopy = requests;
 
+    auto start = high_resolution_clock::now();
     std::sort(requestcopy.begin(), requestcopy.end());
-
+    auto sort_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+    
+    std::cout << "SORT TIME: " << sort_time << std::endl;
     prevnext.resize(requestcopy.size() + 1);
 
 #pragma omp parallel for
@@ -46,7 +56,7 @@ namespace MinInPlace {
     // Here, we init enough space for all operations.
     // Every kill is either a kill or not
     // Every subrange increment can expand into at most 2 non-passive ops
-    std::cout << "SIP Requesting memory: " << sizeof(Op) * 2 * 2 * requests.size() * 1.0 / GB << std::endl;
+    std::cout << "MIP Requesting memory: " << sizeof(Op) * 2 * 2 * requests.size() * 1.0 / GB << " GB" << std::endl;
     std::vector<Op> operations(2*requests.size());
     std::vector<Op> scratch(2*requests.size());
 
