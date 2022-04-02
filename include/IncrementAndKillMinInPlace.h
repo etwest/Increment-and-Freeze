@@ -84,7 +84,7 @@ namespace MinInPlace {
 
       bool isNull()
       {
-        return (get_type() == Null && get_full_amnt() == 0);
+        return (get_full_amnt() == 0 && get_type() == Null);
       }
 
       // is this operation passive in the projection defined by
@@ -103,10 +103,11 @@ namespace MinInPlace {
   // A sequence of operators defined by a projection
   class ProjSequence {
     public:
+      size_t len;
       std::vector<Op>::iterator op_seq;
       std::vector<Op>::iterator scratch;
       // Pointers to valid end position in the vector
-      size_t len;
+      size_t num_ops;
       // The numerical range this sequence projects
       uint64_t start;
       uint64_t end;
@@ -116,14 +117,15 @@ namespace MinInPlace {
 
       void partition(ProjSequence& left, ProjSequence& right)
       {
-/*
+
         // Debugging code to print out everything that affects a spot in the distance function
-        int32_t sum = 0;
-        size_t target = 1;
-        if (start <= target && target <= end)
+        //size_t target = 1;
+        //for (size_t target = start; target <= end; target++)
+        /*if (start <= target && target <= end)
         {
-          std::cout << start << ", " << end << std::endl;
-          for (size_t i = 0; i < len; i++)
+          int32_t sum = 0;
+          std::cout << start << ", " << end << " @ " << target << std::endl;
+          for (size_t i = 0; i < num_ops; i++)
           {
             //total += op_seq[i].score(start, end);
             if (op_seq[i].affects(target))
@@ -145,8 +147,8 @@ namespace MinInPlace {
           }
           //total += end-start+1;
           std::cout << "SUM: " << sum << std::endl;
-        } 
-*/
+        } */
+
         assert(left.start <= left.end);
         assert(left.end+1 == right.start);
         assert(right.start <= right.end);
@@ -160,17 +162,16 @@ namespace MinInPlace {
         //There's two things to keep track of here:
         // The upper bound on needed memory (left_bound, right_bound)
         // and how much memory we *actually* need right now.
-        // 
 
 
         // We have to do first left than right. Otherwise we can't know the splitting point in memory
         // (Without 3+ passes)
-        for (size_t i = 0; i < len; i++)
+        for (size_t i = 0; i < num_ops; i++)
         {
           Op& op = op_seq[i];
           pos = project_op(op, left.start, left.end, pos);
         }
-
+        left.num_ops = pos;
         size_t minleft = left.end-left.start+1;
         left_bound = 2*minleft;
         assert(left_bound <= len);
@@ -186,11 +187,12 @@ namespace MinInPlace {
         // for the sake of simplicity
         scratch += left_bound;
         pos = 0;
-        for (size_t i = 0; i < len; i++)
+        for (size_t i = 0; i < num_ops; i++)
         {
           Op& op = op_seq[i];
           pos = project_op(op, right.start, right.end, pos);
         } 
+        right.num_ops = pos;
 
         size_t minright = right.end-right.start+1;
         right_bound = 2*minright;

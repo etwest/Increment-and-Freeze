@@ -78,9 +78,11 @@ namespace MinInPlace {
     }
 
     // begin the recursive process
+    //TODO: add a constructor for this????
     ProjSequence init_seq(1, requests.size());
     init_seq.op_seq = operations.begin();
     init_seq.scratch = scratch.begin();
+    init_seq.num_ops = operations.size();
     init_seq.len = operations.size();
 
     // We want to spin up a bunch of threads, but only start with 1.
@@ -100,16 +102,17 @@ namespace MinInPlace {
     // operations = [Inc, Kill], [Kill, Inc]
     // if Kill, Inc, then distance = 0 -> sequence = [... p_x, p_x ...]
     // No need to lock here-- this can only occur in exactly one thread
-    if (cur.len == 0)
+    if (cur.num_ops == 0)
       return;
     if (cur.start == cur.end) {
-      if (cur.len > 0 && cur.op_seq[0].get_type() != Postfix)
+      // There is always an op
+      distance_vector[cur.start] = cur.op_seq[0].get_full_amnt();
+      // There is sometimes a postfix (kill)
+      // We have to add the kill's increment amount
+      if (cur.num_ops > 1)
       {
-        assert(cur.op_seq[0].get_full_amnt() >= 0);
-        distance_vector[cur.start] = cur.op_seq[0].get_full_amnt();
+        distance_vector[cur.start] += cur.op_seq[1].get_inc_amnt();
       }
-      else
-        distance_vector[cur.start] = 0;
     }
     else {
       uint64_t dist = cur.end - cur.start;
@@ -135,7 +138,7 @@ namespace MinInPlace {
     // a point representation of successes
     std::vector<uint64_t> success(distances.size());
     for (uint64_t i = 1; i < distances.size()-1; i++) {
-      if (prev(i + 1) != 0) success[distances[prev(i + 1)] + 1]++;
+      if (prev(i + 1) != 0) success[distances[prev(i + 1)]]++;
     }
     // integrate
     uint64_t running_count = 0;

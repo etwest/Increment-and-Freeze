@@ -13,6 +13,17 @@
 #include "IncrementAndKill.h"
 #include "LruSizesSim.h"
 
+void print_distance_vector(MinInPlace::IncrementAndKill* iak)
+{
+  auto good_vector = iak->get_distance_vector();
+
+  for (size_t i = 0; i < good_vector.size(); i++)
+  {
+      std::cout << "@ " << i << ", " << good_vector[i] << std::endl;
+  }
+}
+
+
 void validate_distance_vectors(InPlace::IncrementAndKill* iak, SmallInPlace::IncrementAndKill* iak2)
 {
   auto good_vector = iak->get_distance_vector();
@@ -85,7 +96,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   for (uint64_t i = 0; i < ACCESSES; i++) {
     iak->memory_access(get_next_addr(rand));
   }
-  std::vector<uint64_t> iak_success;// = iak->get_success_function();
+  std::vector<uint64_t> iak_success = iak->get_success_function();
   auto iak_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
   delete iak;
 
@@ -95,7 +106,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   for (uint64_t i = 0; i < ACCESSES; i++) {
     iak2->memory_access(get_next_addr(rand));
   }
-  std::vector<uint64_t> iak2_success;// = iak2->get_success_function();
+  std::vector<uint64_t> iak2_success = iak2->get_success_function();
   auto iak2_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
   delete iak2;
 
@@ -149,7 +160,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
 // check that the results of two different simulators are the same
 // IMPORTANT: vectors may be of different sizes
 bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) {
-  if (vec_1.size() == 0 || vec_2.size() == 0) return true;
+  if (vec_1.size() == 0 || vec_2.size() == 0) return false;
   size_t i = 0;
   uint64_t last_elm = vec_1[0];
   while (i < vec_1.size() && i < vec_2.size()) {
@@ -177,16 +188,11 @@ int main() {
   auto iak3_results = results[3];
   auto iak4_results = results[4];
 
-  bool eq = check_equivalent(iak_results, iak4_results);
+  bool eq = check_equivalent(iak_results, iak2_results);
   std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak, iak4): " << iak_results.size() << ", " << iak4_results.size() << std::endl;
-  eq = check_equivalent(iak_results, iak3_results);
+  std::cerr << "Sizes (iak1, iak2): " << iak_results.size() << ", " << iak2_results.size() << std::endl;
+
+  eq = check_equivalent(iak2_results, iak3_results);
   std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak, iak3): " << iak_results.size() << ", " << iak3_results.size() << std::endl;
-  eq = check_equivalent(iak_results, iak2_results);
-  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak, iak2): " << iak_results.size() << ", " << iak2_results.size() << std::endl;
-  eq = check_equivalent(iak_results, lru_results);
-  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak, lru): " << iak_results.size() << ", " << lru_results.size() << std::endl;
+  std::cerr << "Sizes (iak2, iak3): " << iak2_results.size() << ", " << iak3_results.size() << std::endl;
 }
