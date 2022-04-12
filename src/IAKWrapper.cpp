@@ -12,10 +12,15 @@ void IAKWrapper::memory_access(uint64_t addr) {
 void IAKWrapper::process_requests() {
   MinInPlace::IAKOutput result = iak_alg.get_depth_vector(living, requests);
 
-  distance_histogram.resize(result.living_requests.size());
+  distance_histogram.resize(result.living_requests.size()+result.depth_vector.size());
+	for (size_t i = 0; i < result.living_requests.size(); i++)
+	{
+		result.depth_vector[i] += result.living_requests.size()-i -1;
+	}
   for (auto depth : result.depth_vector)
   {
-    //std::cout << "depth: " << depth << "/" << distance_histogram.size() << std::endl;
+		if (depth >= distance_histogram.size())
+			std::cout << "depth: " << depth << "/" << distance_histogram.size() << std::endl;
     assert(depth < distance_histogram.size());
     distance_histogram[depth]++;
   }
@@ -32,7 +37,7 @@ std::vector<size_t> IAKWrapper::get_success_function() {
 
   // TODO: parallel prefix sum for integrating
   uint64_t running_count = 0;
-  std::vector<size_t> success_func;
+  std::vector<size_t> success_func(distance_histogram.size());
   for (uint64_t i = 1; i < distance_histogram.size(); i++) {
     running_count += distance_histogram[i];
     success_func[i] = running_count;

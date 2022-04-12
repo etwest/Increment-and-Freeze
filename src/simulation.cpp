@@ -108,9 +108,9 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   rand.seed(seed);  // create random number generator
   start = high_resolution_clock::now();
   for (uint64_t i = 0; i < ACCESSES; i++) {
-    //iak2->memory_access(get_next_addr(rand));
+    iak2->memory_access(get_next_addr(rand));
   }
-  std::vector<uint64_t> iak2_success;// = iak2->get_success_function();
+  std::vector<uint64_t> iak2_success = iak2->get_success_function();
   auto iak2_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
   delete iak2;
 
