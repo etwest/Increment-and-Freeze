@@ -7,6 +7,11 @@
 
 namespace MinInPlace {
 
+  struct IAKOutput {
+    std::vector<std::pair<size_t, size_t>> living_requests;
+    std::vector<size_t> depth_vector;
+  };
+
   enum OpType {Null=0, Prefix=1, Postfix=2};
 
   // A single operation, such as increment or kill
@@ -283,22 +288,20 @@ namespace MinInPlace {
      * Previous defines the last instance of a page
      * next defines the next instance of a page
      */
-    std::vector<tuple> prevnext;
+    std::vector<size_t> prev_arr;
 
     /* This converts the requests into the previous and next vectors
      * Requests is copied, not modified.
      * Precondition: requests must be properly populated.
      */
-    void calculate_prevnext();
+    std::vector<tuple> calculate_prevnext(bool calc_living=false);
 
     /* Returns the distance vector calculated from prevnext.
      * Precondition: prevnext must be properly populated.
      */
     //std::vector<uint64_t> get_distance_vector();
     // Shortcut to access prev in prevnext.
-    uint64_t& prev(uint64_t i) {return prevnext[i].first;}
-    // Shortcut to access next in prevnext.
-    uint64_t& next(uint64_t i) {return prevnext[i].second;}
+    uint64_t& prev(uint64_t i) {return prev_arr[i];}
     /* Helper dunction to get_distance_vector.
      * Recursively (and in parallel) populates the distance vector if the 
      * projection is small enough, or calls itself with smaller projections otherwise.
@@ -312,6 +315,13 @@ namespace MinInPlace {
      * When calling print_success_function, the answer is re-computed.
      */
     std::vector<uint64_t> get_success_function();
+    
+    /*
+     * Process a chunk of requests using the living requests from the previous chunk
+     * Return the new living requests and the depth_vector
+     */
+    IAKOutput get_depth_vector(std::vector<tuple> &living_requests, std::vector<tuple> &chunk);
+
     IncrementAndKill() = default;
     ~IncrementAndKill() = default;
     std::vector<uint64_t> get_distance_vector();

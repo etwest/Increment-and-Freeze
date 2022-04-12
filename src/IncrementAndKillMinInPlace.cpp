@@ -14,7 +14,7 @@ namespace MinInPlace {
     requests.push_back({addr, access_number++});
   }
 
-  void IncrementAndKill::calculate_prevnext() {
+  std::vector<std::pair<uint64_t, uint64_t>> IncrementAndKill::calculate_prevnext(bool calc_living) {
     using std::chrono::high_resolution_clock;
     using std::chrono::duration_cast;
     using std::chrono::duration;
@@ -29,8 +29,9 @@ namespace MinInPlace {
     auto sort_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
     
     std::cout << "SORT TIME: " << sort_time << std::endl;
-    prevnext.resize(requestcopy.size() + 1);
+    prev_arr.resize(requestcopy.size() + 1);
 
+    std::vector<std::pair<uint64_t, uint64_t>> living_req;
 #pragma omp parallel for
     for (uint64_t i = 0; i < requestcopy.size(); i++) {
       auto [addr, access_num] = requestcopy[i];
@@ -39,14 +40,30 @@ namespace MinInPlace {
       // Using last, check if previous sorted access is the same
       if (last_access_num > 0 && addr == last_addr) {
         prev(access_num) = last_access_num;  // Point access to previous
-        next(last_access_num) = access_num;  // previous access to this
       } else {
         prev(access_num) = 0;  // last is different so prev = 0
+        if (calc_living && i > 0) { // add to living requests
+          #pragma omp critical
+          {
+            living_req.push_back({last_access_num, last_addr});
+          }
+        }
       }
-
-      // Preemptively point this one's next access to the end
-      next(access_num) = requestcopy.size() + 1;
     }
+
+    if (!calc_living)
+      return living_req;
+
+    // sort by access number and then fix the living requests
+    std::sort(living_req.begin(), living_req.end());
+    std::vector<std::pair<uint64_t, uint64_t>> new_living(living_req.size());
+
+#pragma omp parallel for
+    for (uint64_t i = 0; i < living_req.size(); i++) {
+      new_living[i].first = living_req[i].second;
+      new_living[i].second = i + 1;
+    }
+    return new_living;
   }
 
   std::vector<uint64_t> IncrementAndKill::get_distance_vector() {
@@ -94,6 +111,25 @@ namespace MinInPlace {
     return distance_vector;
   }
 
+  IAKOutput IncrementAndKill::get_depth_vector(std::vector<std::pair<uint64_t, uint64_t>> &living_requests, std::vector<std::pair<uint64_t, uint64_t>> &chunk) {
+    // TODO: be less dumb than this
+    requests.reserve(living_requests.size() + chunk.size());
+    requests.clear();
+    requests.insert(requests.end(), living_requests.begin(), living_requests.end());
+    requests.insert(requests.end(), chunk.begin(), chunk.end());
+    std::vector<std::pair<uint64_t, uint64_t>> new_living = calculate_prevnext(true);
+    requests.clear();
+    requests.insert(requests.end(), chunk.begin(), chunk.end());
+
+    std::vector<size_t> depth_vec = get_distance_vector();
+
+    IAKOutput ret;
+    ret.living_requests = new_living;
+    ret.depth_vector = depth_vec;
+
+    return ret;
+  }
+
   //recursively (and in parallel) perform all the projections
   void IncrementAndKill::do_projections(std::vector<uint64_t>& distance_vector, ProjSequence cur)
   {
@@ -109,8 +145,7 @@ namespace MinInPlace {
       distance_vector[cur.start] = cur.op_seq[0].get_full_amnt();
       // There is sometimes a postfix (kill)
       // We have to add the kill's increment amount
-      if (cur.num_ops > 1)
-      {
+      if (cur.num_ops > 1) {
         distance_vector[cur.start] += cur.op_seq[1].get_inc_amnt();
       }
     }

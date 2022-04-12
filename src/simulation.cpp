@@ -7,6 +7,7 @@
 #include <utility>
 #include <chrono>
 
+#include "IAKWrapper.h"
 #include "IncrementAndKillMinInPlace.h"
 #include "IncrementAndKillSmallInPlace.h"
 #include "IncrementAndKillInPlace.h"
@@ -79,6 +80,9 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   InPlace::IncrementAndKill *iak2 = new InPlace::IncrementAndKill();
   SmallInPlace::IncrementAndKill *iak3 = new SmallInPlace::IncrementAndKill();
   MinInPlace::IncrementAndKill *iak4 = new MinInPlace::IncrementAndKill();
+  IAKWrapper *iak5 = new IAKWrapper();
+
+  //TODO: Make these all CacheSim
 
   // Order Statistic LRU (stack distance)
   std::mt19937 rand(seed);  // create random number generator
@@ -94,9 +98,9 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   rand.seed(seed);  // create random number generator
   start = high_resolution_clock::now();
   for (uint64_t i = 0; i < ACCESSES; i++) {
-    iak->memory_access(get_next_addr(rand));
+    //iak->memory_access(get_next_addr(rand));
   }
-  std::vector<uint64_t> iak_success = iak->get_success_function();
+  std::vector<uint64_t> iak_success;// = iak->get_success_function();
   auto iak_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
   delete iak;
 
@@ -104,9 +108,9 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   rand.seed(seed);  // create random number generator
   start = high_resolution_clock::now();
   for (uint64_t i = 0; i < ACCESSES; i++) {
-    iak2->memory_access(get_next_addr(rand));
+    //iak2->memory_access(get_next_addr(rand));
   }
-  std::vector<uint64_t> iak2_success = iak2->get_success_function();
+  std::vector<uint64_t> iak2_success;// = iak2->get_success_function();
   auto iak2_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
   delete iak2;
 
@@ -114,9 +118,9 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   rand.seed(seed);  // create random number generator
   start = high_resolution_clock::now();
   for (uint64_t i = 0; i < ACCESSES; i++) {
-    iak3->memory_access(get_next_addr(rand));
+    //iak3->memory_access(get_next_addr(rand));
   }
-  std::vector<uint64_t> iak3_success = iak3->get_success_function();
+  std::vector<uint64_t> iak3_success;// = iak3->get_success_function();
   auto iak3_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
   delete iak3;
   
@@ -124,11 +128,21 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   rand.seed(seed);  // create random number generator
   start = high_resolution_clock::now();
   for (uint64_t i = 0; i < ACCESSES; i++) {
-    iak4->memory_access(get_next_addr(rand));
+    //iak4->memory_access(get_next_addr(rand));
   }
-  std::vector<uint64_t> iak4_success = iak4->get_success_function();
+  std::vector<uint64_t> iak4_success;// = iak4->get_success_function();
   auto iak4_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
   delete iak4;
+
+// Increment And Kill In Place (half size op array + 2 bit type)
+  rand.seed(seed);  // create random number generator
+  start = high_resolution_clock::now();
+  for (uint64_t i = 0; i < ACCESSES; i++) {
+    iak5->memory_access(get_next_addr(rand));
+  }
+  std::vector<uint64_t> iak5_success = iak5->get_success_function();
+  auto iak5_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+  delete iak5;
 
   if (print) {
     // Do this for stats
@@ -154,7 +168,8 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   std::cerr << "IAK IP TIME: " << iak2_time << std::endl;
   std::cerr << "IAK SIP TIME: " << iak3_time << std::endl;
   std::cerr << "IAK MIP TIME: " << iak4_time << std::endl;
-  return {lru_success, iak_success, iak2_success, iak3_success, iak4_success};
+  std::cerr << "IAKWrapper TIME: " << iak5_time << std::endl;
+  return {lru_success, iak_success, iak2_success, iak3_success, iak4_success, iak5_success};
 }
 
 // check that the results of two different simulators are the same
@@ -185,14 +200,12 @@ int main() {
   auto lru_results = results[0];
   auto iak_results = results[1];
   auto iak2_results = results[2];
-  auto iak3_results = results[3];
-  auto iak4_results = results[4];
 
   bool eq = check_equivalent(iak_results, iak2_results);
   std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
   std::cerr << "Sizes (iak1, iak2): " << iak_results.size() << ", " << iak2_results.size() << std::endl;
 
-  eq = check_equivalent(iak2_results, iak3_results);
+  eq = check_equivalent(iak2_results, results[5]);
   std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak2, iak3): " << iak2_results.size() << ", " << iak3_results.size() << std::endl;
+  std::cerr << "Sizes (iak2, iak3): " << iak2_results.size() << ", " << results[5].size() << std::endl;
 }
