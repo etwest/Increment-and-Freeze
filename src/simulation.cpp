@@ -128,9 +128,9 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   rand.seed(seed);  // create random number generator
   start = high_resolution_clock::now();
   for (uint64_t i = 0; i < ACCESSES; i++) {
-    //iak4->memory_access(get_next_addr(rand));
+    iak4->memory_access(get_next_addr(rand));
   }
-  std::vector<uint64_t> iak4_success;// = iak4->get_success_function();
+  std::vector<uint64_t> iak4_success = iak4->get_success_function();
   auto iak4_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
   delete iak4;
 
@@ -143,6 +143,12 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   std::vector<uint64_t> iak5_success = iak5->get_success_function();
   auto iak5_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
   delete iak5;
+
+  std::cout << "data to process:" << std::endl;
+  rand.seed(seed);  // create random number generator
+  for (uint64_t i = 0; i < ACCESSES; i++) {
+   std::cout << get_next_addr(rand) << std::endl;
+  }
 
   if (print) {
     // Do this for stats
@@ -201,11 +207,18 @@ int main() {
   auto iak_results = results[1];
   auto iak2_results = results[2];
 
-  bool eq = check_equivalent(iak_results, iak2_results);
+  bool eq = check_equivalent(iak2_results, results[4]);
   std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak1, iak2): " << iak_results.size() << ", " << iak2_results.size() << std::endl;
+  std::cerr << "Sizes (iak2, iak4): " << iak2_results.size() << ", " << results[4].size() << std::endl;
+
+  for (size_t i = 0; i < iak2_results.size(); i++) {
+    if (i < results[5].size())
+      std::cout << iak2_results[i] << " " << results[5][i] << std::endl;
+    else
+      std::cout << iak2_results[i] << " EMPTY" << std::endl;
+  }
 
   eq = check_equivalent(iak2_results, results[5]);
   std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak2, iak3): " << iak2_results.size() << ", " << results[5].size() << std::endl;
+  std::cerr << "Sizes (iak2, iak5): " << iak2_results.size() << ", " << results[5].size() << std::endl;
 }

@@ -18,7 +18,7 @@ namespace MinInPlace {
   class Op {
     private:
       //OpType type = Null;     // Do we increment or kill?
-      uint32_t _target; // kill target
+      uint32_t _target = 0; // kill target
       static constexpr uint32_t inc_amnt = 1;      // subrange Increment amount 
       int32_t full_amnt = 0;      // fullrange Increment amount
      
@@ -60,15 +60,12 @@ namespace MinInPlace {
         full_amnt += oth.full_amnt;
         return *this;
         }*/
-      bool affects(size_t victum)
-      {
+      bool affects(size_t victum) {
         return (type() == Prefix && victum <= target()) || (type() == Postfix && victum >= target());
       }
 
-      friend std::ostream& operator<<(std::ostream& os, const Op& op)
-      {
-        switch(op.type())
-        {
+      friend std::ostream& operator<<(std::ostream& os, const Op& op) {
+        switch(op.type()) {
           case Null:
             os << "Null" << ". + " << op.full_amnt;
             break;
@@ -87,8 +84,7 @@ namespace MinInPlace {
         full_amnt += oth.full_amnt;
       }
 
-      bool isNull()
-      {
+      bool isNull() {
         return (get_full_amnt() == 0 && get_type() == Null);
       }
 
@@ -120,8 +116,12 @@ namespace MinInPlace {
       // Initialize an empty projection with bounds
       ProjSequence(uint64_t start, uint64_t end) : start(start), end(end) {};
 
-      void partition(ProjSequence& left, ProjSequence& right)
-      {
+      void partition(ProjSequence& left, ProjSequence& right) {
+        // std::cout << "Performing partition upon projected sequence" << std::endl;
+        // std::cout << "num_ops = " << num_ops << std::endl;
+        // std::cout << "len = " << len << std::endl;
+        // std::cout << "start = " << start << std::endl;
+        // std::cout << "end = " << end << std::endl;
 
         // Debugging code to print out everything that affects a spot in the distance function
         //size_t target = 1;
@@ -171,8 +171,7 @@ namespace MinInPlace {
 
         // We have to do first left than right. Otherwise we can't know the splitting point in memory
         // (Without 3+ passes)
-        for (size_t i = 0; i < num_ops; i++)
-        {
+        for (size_t i = 0; i < num_ops; i++) {
           Op& op = op_seq[i];
           pos = project_op(op, left.start, left.end, pos);
         }
@@ -182,31 +181,33 @@ namespace MinInPlace {
         assert(left_bound <= len);
         assert(pos <= left_bound);
 
+        // std::cout << "number operations in left = " << pos << std::endl;
+        // std::cout << "left bound = " << left_bound << std::endl;
 
         // Now we 'clean up' any additional waste in scratch
-        for (size_t i = pos; i < left_bound; i++)
-        {
+        for (size_t i = pos; i < left_bound; i++) {
           scratch[i] = Op();
         }
 
         // for the sake of simplicity
         scratch += left_bound;
         pos = 0;
-        for (size_t i = 0; i < num_ops; i++)
-        {
+        for (size_t i = 0; i < num_ops; i++) {
           Op& op = op_seq[i];
           pos = project_op(op, right.start, right.end, pos);
         } 
         right.num_ops = pos;
 
+        // std::cout << "number operations in right = " << pos << std::endl;
+
         size_t minright = right.end-right.start+1;
         right_bound = 2*minright;
+        // std::cout << "Right bound = " << right_bound << std::endl;
         assert(left_bound + right_bound <= len);
         assert(pos <= left_bound + right_bound);
 
         // Now we 'clean up' any additional waste in scratch
-        for (size_t i = pos; i < right_bound; i++)
-        {
+        for (size_t i = pos; i < right_bound; i++) {
           scratch[i] = Op();
         }
         scratch -=left_bound;
@@ -279,10 +280,11 @@ namespace MinInPlace {
 
   // Implements the IncrementAndKillInPlace algorithm
   class IncrementAndKill: public CacheSim {
-    using tuple = std::pair<uint64_t, uint64_t>;
+    public:
+    using req_index_pair = std::pair<uint64_t, uint64_t>;
     private:
     // A vector of all requests
-    std::vector<tuple> requests;
+    std::vector<req_index_pair> requests;
 
     /* A vector of tuples for previous and next
      * Previous defines the last instance of a page
@@ -294,7 +296,7 @@ namespace MinInPlace {
      * Requests is copied, not modified.
      * Precondition: requests must be properly populated.
      */
-    std::vector<tuple> calculate_prevnext(bool calc_living=false);
+    std::vector<req_index_pair> calculate_prevnext(bool calc_living=false);
 
     /* Returns the distance vector calculated from prevnext.
      * Precondition: prevnext must be properly populated.
@@ -320,7 +322,7 @@ namespace MinInPlace {
      * Process a chunk of requests using the living requests from the previous chunk
      * Return the new living requests and the depth_vector
      */
-    IAKOutput get_depth_vector(std::vector<tuple> &living_requests, std::vector<tuple> &chunk);
+    IAKOutput get_depth_vector(std::vector<req_index_pair> &living_requests, std::vector<req_index_pair> &chunk);
 
     IncrementAndKill() = default;
     ~IncrementAndKill() = default;

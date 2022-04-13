@@ -110,9 +110,13 @@ namespace InPlace {
 
     // a point representation of successes
     std::vector<uint64_t> success(distances.size());
+    std::cout << "distance vector: " << distances.size() << std::endl;
     for (uint64_t i = 1; i < distances.size()-1; i++) {
+      std::cout << distances[i] << " ";
       if (prev(i + 1) != 0) success[distances[prev(i + 1)] + 1]++;
     }
+    std::cout << std::endl;
+    
     // integrate
     uint64_t running_count = 0;
     for (uint64_t i = 1; i < success.size(); i++) {

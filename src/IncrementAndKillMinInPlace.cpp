@@ -14,7 +14,7 @@ namespace MinInPlace {
     requests.push_back({addr, access_number++});
   }
 
-  std::vector<std::pair<uint64_t, uint64_t>> IncrementAndKill::calculate_prevnext(bool calc_living) {
+  std::vector<IncrementAndKill::req_index_pair> IncrementAndKill::calculate_prevnext(bool calc_living) {
     using std::chrono::high_resolution_clock;
     using std::chrono::duration_cast;
     using std::chrono::duration;
@@ -31,18 +31,18 @@ namespace MinInPlace {
     std::cout << "SORT TIME: " << sort_time << std::endl;
     prev_arr.resize(requestcopy.size() + 1);
 
-    std::vector<std::pair<uint64_t, uint64_t>> living_req;
+    std::vector<req_index_pair> living_req;
 #pragma omp parallel for
     for (uint64_t i = 0; i < requestcopy.size(); i++) {
       auto [addr, access_num] = requestcopy[i];
-      auto [last_addr, last_access_num] = i == 0 ? tuple(0, 0): requestcopy[i-1];
+      auto [last_addr, last_access_num] = i == 0 ? req_index_pair(0, 0): requestcopy[i-1];
 
       // Using last, check if previous sorted access is the same
       if (last_access_num > 0 && addr == last_addr) {
         prev(access_num) = last_access_num;  // Point access to previous
       } else {
         prev(access_num) = 0;  // last is different so prev = 0
-        if (calc_living && i > 0) { // add to living requests
+        if (calc_living && i > 0) { // add last to living requests
           #pragma omp critical
           {
             living_req.push_back({last_access_num, last_addr});
@@ -51,17 +51,21 @@ namespace MinInPlace {
       }
     }
 
+    auto [last_addr, last_access_num] = requestcopy[requestcopy.size()-1];
+    living_req.push_back({last_access_num, last_addr});
+
     if (!calc_living)
       return living_req;
 
-    // sort by access number and then fix the living requests
+    // sort by access number and then reverse to get living
+    // requests sorted by access number
     std::sort(living_req.begin(), living_req.end());
-    std::vector<std::pair<uint64_t, uint64_t>> new_living(living_req.size());
+    std::vector<req_index_pair> new_living(living_req.size());
 
 #pragma omp parallel for
     for (uint64_t i = 0; i < living_req.size(); i++) {
       new_living[i].first = living_req[i].second;
-      new_living[i].second = i + 1;
+      new_living[i].second = living_req[i].first;
     }
     return new_living;
   }
@@ -111,21 +115,60 @@ namespace MinInPlace {
     return distance_vector;
   }
 
-  IAKOutput IncrementAndKill::get_depth_vector(std::vector<std::pair<uint64_t, uint64_t>> &living_requests, std::vector<std::pair<uint64_t, uint64_t>> &chunk) {
+  IAKOutput IncrementAndKill::get_depth_vector(std::vector<req_index_pair> &living_requests, std::vector<req_index_pair> &chunk) {
     // TODO: be less dumb than this
-    requests.reserve(living_requests.size() + chunk.size());
+    IAKOutput ret;
     requests.clear();
+    requests.reserve(living_requests.size() + chunk.size());
     requests.insert(requests.end(), living_requests.begin(), living_requests.end());
     requests.insert(requests.end(), chunk.begin(), chunk.end());
-    std::vector<std::pair<uint64_t, uint64_t>> new_living = calculate_prevnext(true);
-    requests.clear();
-    requests.insert(requests.end(), chunk.begin(), chunk.end());
 
-    std::vector<size_t> depth_vec = get_distance_vector();
+    ret.living_requests = calculate_prevnext(true);
+    ret.depth_vector.resize(living_requests.size() + chunk.size() + 1);
 
-    IAKOutput ret;
-    ret.living_requests = new_living;
-    ret.depth_vector = depth_vec;
+    // Generate the list of operations
+    // Here, we init enough space for all operations.
+    // Every kill is either a kill or not
+    // Every subrange increment can expand into at most 2 non-passive ops
+    size_t arr_size = 2 * (living_requests.size() + chunk.size());
+    std::cout << "MIP Requesting memory: " << sizeof(Op) * 2 * arr_size * 1.0 / GB << " GB" << std::endl;
+    std::vector<Op> operations(arr_size);
+    std::vector<Op> scratch(arr_size);
+
+    // Increment(prev(i)+1, i-1, 1)
+    // Kill(prev(i))
+
+    // We encode the above with:
+
+    // Prefix Inc i-1, 1
+    // Full increment -1
+    // Kill prev(i)
+    // Suffix Increment prev(i)
+
+    // Null requests to give space for indices where living requests reside
+
+    // Note: 0 index vs 1 index
+    for (uint64_t i = living_requests.size(); i < chunk.size() + living_requests.size(); i++) {
+      auto[request_id, request_index] = chunk[i - living_requests.size()];
+      operations[2*i] = Op(request_index, -1); // Prefix i, +1, Full -1
+      operations[2*i+1] = Op(prev(request_index));
+    }
+
+    size_t max_index = chunk[chunk.size() - 1].second;
+
+    // begin the recursive process
+    //TODO: add a constructor for this????
+    ProjSequence init_seq(1, max_index);
+    init_seq.op_seq  = operations.begin();
+    init_seq.scratch = scratch.begin();
+    init_seq.num_ops = operations.size();
+    init_seq.len     = operations.size();
+
+    // We want to spin up a bunch of threads, but only start with 1.
+    // More will be added in by do_projections.
+#pragma omp parallel
+#pragma omp single
+    do_projections(ret.depth_vector, std::move(init_seq));
 
     return ret;
   }
@@ -172,9 +215,13 @@ namespace MinInPlace {
 
     // a point representation of successes
     std::vector<uint64_t> success(distances.size());
+    std::cout << "distance vector: " << distances.size() << std::endl;
     for (uint64_t i = 1; i < distances.size()-1; i++) {
+      std::cout << distances[i] << " ";
       if (prev(i + 1) != 0) success[distances[prev(i + 1)]]++;
     }
+    std::cout << std::endl;
+
     // integrate
     uint64_t running_count = 0;
     for (uint64_t i = 1; i < success.size(); i++) {
