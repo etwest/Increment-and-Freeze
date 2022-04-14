@@ -31,17 +31,17 @@ void validate_distance_vectors(InPlace::IncrementAndKill* iak, SmallInPlace::Inc
   auto test_vector = iak2->get_distance_vector();
 
   assert(good_vector.size() == test_vector.size());
-	bool good = true;
+  bool good = true;
   for (size_t i = 0; i < good_vector.size(); i++)
   {
     if (good_vector[i] != test_vector[i])
     {
-			good = false;
+      good = false;
       std::cout << "@ " << i << ", Good: " << good_vector[i] << ", " << test_vector[i] <<"." << std::endl;
     }
   }
-	if (good)
-		std::cout << "DISTANCE VECTORS ARE THE SAME" << std::endl;
+  if (good)
+    std::cout << "DISTANCE VECTORS ARE THE SAME" << std::endl;
 }
 
 
@@ -88,7 +88,7 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   std::mt19937 rand(seed);  // create random number generator
   auto start = high_resolution_clock::now();
   for (uint64_t i = 0; i < ACCESSES; i++) {
-    //lru->memory_access(get_next_addr(rand));
+    lru->memory_access(get_next_addr(rand));
   }
   std::vector<uint64_t> lru_success = lru->get_success_function();
   auto lru_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
@@ -206,19 +206,30 @@ int main() {
   auto lru_results = results[0];
   auto iak_results = results[1];
   auto iak2_results = results[2];
-
-  bool eq = check_equivalent(iak2_results, results[4]);
-  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak2, iak4): " << iak2_results.size() << ", " << results[4].size() << std::endl;
+  auto iak3_results = results[3];
+  auto iak4_results = results[4];
+  auto iak_wrapper = results[5];
 
   for (size_t i = 0; i < iak2_results.size(); i++) {
-    if (i < results[5].size())
-      std::cout << iak2_results[i] << " " << results[5][i] << std::endl;
+    if (i < iak_wrapper.size())
+      std::cout << iak2_results[i] << " " << iak_wrapper[i] << std::endl;
     else
       std::cout << iak2_results[i] << " EMPTY" << std::endl;
   }
 
-  eq = check_equivalent(iak2_results, results[5]);
+  bool eq = check_equivalent(lru_results, iak_results);
   std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak2, iak5): " << iak2_results.size() << ", " << results[5].size() << std::endl;
+  std::cerr << "Sizes (lru, iak): " << lru_results.size() << ", " << iak_results.size() << std::endl;
+  eq = check_equivalent(iak_results, iak2_results);
+  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
+  std::cerr << "Sizes (iak, iak2): " << iak_results.size() << ", " << iak2_results.size() << std::endl;
+  eq = check_equivalent(iak2_results, iak3_results);
+  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
+  std::cerr << "Sizes (iak2, iak3): " << iak2_results.size() << ", " << iak3_results.size() << std::endl;
+  eq = check_equivalent(iak3_results, iak4_results);
+  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
+  std::cerr << "Sizes (iak3, iak4): " << iak3_results.size() << ", " << iak4_results.size() << std::endl;
+  eq = check_equivalent(iak4_results, iak_wrapper);
+  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
+  std::cerr << "Sizes (iak4, logu): " << iak4_results.size() << ", " << iak_wrapper.size() << std::endl;
 }

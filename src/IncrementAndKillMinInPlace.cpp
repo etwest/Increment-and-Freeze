@@ -93,9 +93,8 @@ namespace MinInPlace {
 
 // Note: 0 index vs 1 index
     for (uint64_t i = 0; i < requests.size(); i++) {
-
       operations[2*i] = Op(i, -1); // Prefix i, +1, Full -1        
-      operations[2*i+1] = Op(prev(i+1));  
+      operations[2*i+1] = Op(prev(i+1));
     }
 
     // begin the recursive process
@@ -174,8 +173,7 @@ namespace MinInPlace {
   }
 
   //recursively (and in parallel) perform all the projections
-  void IncrementAndKill::do_projections(std::vector<uint64_t>& distance_vector, ProjSequence cur)
-  {
+  void IncrementAndKill::do_projections(std::vector<uint64_t>& distance_vector, ProjSequence cur) {
     // base case
     // start == end -> d_i [operations]
     // operations = [Inc, Kill], [Kill, Inc]
@@ -184,13 +182,16 @@ namespace MinInPlace {
     if (cur.num_ops == 0)
       return;
     if (cur.start == cur.end) {
-      // There is always an op
-      distance_vector[cur.start] = cur.op_seq[0].get_full_amnt();
-      // There is sometimes a postfix (kill)
-      // We have to add the kill's increment amount
-      if (cur.num_ops > 1) {
-        distance_vector[cur.start] += cur.op_seq[1].get_inc_amnt();
+      if (cur.len > 0 && cur.op_seq[0].get_type() != Postfix) {
+        distance_vector[cur.start] = cur.op_seq[0].get_full_amnt();
+        if (cur.len > 1 && cur.op_seq[1].get_type() == Postfix) {
+          distance_vector[cur.start] += cur.op_seq[1].get_inc_amnt();
+        }
       }
+      else if (cur.len > 0)
+        distance_vector[cur.start] = cur.op_seq[1].get_inc_amnt();
+      else
+        distance_vector[cur.start] = 0;
     }
     else {
       uint64_t dist = cur.end - cur.start;
@@ -215,8 +216,7 @@ namespace MinInPlace {
 
     // a point representation of successes
     std::vector<uint64_t> success(distances.size());
-    std::cout << "distance vector: " << distances.size() << std::endl;
-    for (uint64_t i = 1; i < distances.size()-1; i++) {
+    for (uint64_t i = 0; i < distances.size() - 1; i++) {
       std::cout << distances[i] << " ";
       if (prev(i + 1) != 0) success[distances[prev(i + 1)]]++;
     }
@@ -232,11 +232,10 @@ namespace MinInPlace {
   }
 
   // Create a new Operation by projecting another
-  Op::Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end){
+  Op::Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end) {
     _target = oth_op._target;
     full_amnt = oth_op.full_amnt;
-    switch(oth_op.type())
-    {
+    switch(oth_op.type()) {
       case Prefix: //we affect before target
         if (proj_start > target())
         {
