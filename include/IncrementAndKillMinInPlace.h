@@ -82,8 +82,7 @@ namespace MinInPlace {
         full_amnt += oth.full_amnt;
       }
 
-      bool isNull()
-      {
+      bool isNull() {
         return (get_full_amnt() == 0 && get_type() == Null);
       }
 
