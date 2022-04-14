@@ -144,11 +144,11 @@ std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool pri
   auto iak5_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
   delete iak5;
 
-  std::cout << "data to process:" << std::endl;
-  rand.seed(seed);  // create random number generator
-  for (uint64_t i = 0; i < ACCESSES; i++) {
-   std::cout << get_next_addr(rand) << std::endl;
-  }
+  // std::cout << "data to process:" << std::endl;
+  // rand.seed(seed);  // create random number generator
+  // for (uint64_t i = 0; i < ACCESSES; i++) {
+  //  std::cout << get_next_addr(rand) << std::endl;
+  // }
 
   if (print) {
     // Do this for stats
@@ -210,12 +210,12 @@ int main() {
   auto iak4_results = results[4];
   auto iak_wrapper = results[5];
 
-  for (size_t i = 0; i < iak2_results.size(); i++) {
-    if (i < iak_wrapper.size())
-      std::cout << iak2_results[i] << " " << iak_wrapper[i] << std::endl;
-    else
-      std::cout << iak2_results[i] << " EMPTY" << std::endl;
-  }
+  // for (size_t i = 0; i < iak2_results.size(); i++) {
+  //   if (i < iak_wrapper.size())
+  //     std::cout << iak2_results[i] << " " << iak_wrapper[i] << std::endl;
+  //   else
+  //     std::cout << iak2_results[i] << " EMPTY" << std::endl;
+  // }
 
   bool eq = check_equivalent(lru_results, iak_results);
   std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;

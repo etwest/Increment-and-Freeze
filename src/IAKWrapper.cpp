@@ -21,25 +21,25 @@ void print_result(MinInPlace::IAKOutput result) {
   std::cout << std::endl;
 
   std::cout << "depth vector: " << result.depth_vector.size() << std::endl;
-  for (auto depth : result.depth_vector) {
-    std::cout << depth << " ";
+  for (size_t i = 0; i < result.depth_vector.size() - 1; i++) {
+    std::cout << result.depth_vector[i+1] << " ";
   }
   std::cout << std::endl;
 }
 
 void IAKWrapper::process_requests() {
-  std::cout << std::endl;
-  std::cout << "Processing chunk" << std::endl;
-  std::cout << "Living requests " << living.size() << std::endl;
-  std::cout << "New requests " << requests.size() << std::endl;
+  // std::cout << std::endl;
+  // std::cout << "Processing chunk" << std::endl;
+  // std::cout << "Living requests " << living.size() << std::endl;
+  // std::cout << "New requests " << requests.size() << std::endl;
 
-  std::cout << "CHUNK:" << std::endl;
-  for (auto item : requests)
-    std::cout << item.first << "," << item.second << std::endl;
+  // std::cout << "CHUNK:" << std::endl;
+  // for (auto item : requests)
+  //   std::cout << item.first << "," << item.second << std::endl;
 
   MinInPlace::IAKOutput result = iak_alg.get_depth_vector(living, requests);
   
-  print_result(result);
+  // print_result(result);
 
   distance_histogram.resize(result.living_requests.size() + 1);
 
@@ -52,29 +52,29 @@ void IAKWrapper::process_requests() {
   // 2-pointer walk through the depth vector and living requests
   // add to distance_histogram if access number not in living requests
   size_t living_idx = 0;
-  for (size_t i = 0; i < result.depth_vector.size(); i++) {
-		size_t depth = result.depth_vector[i];
+  for (size_t i = 0; i < result.depth_vector.size() - 1; i++) {
+		size_t depth = result.depth_vector[i+1];
     if (depth >= distance_histogram.size())
       std::cout << "depth: " << depth << "/" << distance_histogram.size() - 1 << std::endl;
-    // assert(depth < distance_histogram.size());
+    assert(depth < distance_histogram.size());
 
     // If this index is killed than update distance histogram
-    if (living_idx < result.living_requests.size() && i + 1 != result.living_requests[living_idx].second)
+    if (living_idx >= result.living_requests.size() || i + 1 != result.living_requests[living_idx].second)
       distance_histogram[depth]++;
     else if (living_idx < result.living_requests.size())
       ++living_idx;
   }
 
   // Fix the index of the living requests so they count up from 1
-  size_t num_living = result.living_requests.size();
+  size_t num_living = 0;
   for (auto &living_req : result.living_requests)
-    living_req.second = --num_living;
+    living_req.second = ++num_living;
 
   living = result.living_requests;
   requests.clear();
-  std::cout << "Size of depth vector = " << result.depth_vector.size() << std::endl;
-  std::cout << "Number of surviving requests = " << living.size() << std::endl;
-  std::cout << "First index of distance histogram = " << distance_histogram[1] << std::endl;
+  // std::cout << "Size of depth vector = " << result.depth_vector.size() << std::endl;
+  // std::cout << "Number of surviving requests = " << living.size() << std::endl;
+  // std::cout << "First index of distance histogram = " << distance_histogram[1] << std::endl;
 }
 
 std::vector<size_t> IAKWrapper::get_success_function() {

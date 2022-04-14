@@ -130,7 +130,7 @@ namespace MinInPlace {
     // Every kill is either a kill or not
     // Every subrange increment can expand into at most 2 non-passive ops
     size_t arr_size = 2 * (living_requests.size() + chunk.size());
-    std::cout << "MIP Requesting memory: " << sizeof(Op) * 2 * arr_size * 1.0 / GB << " GB" << std::endl;
+    std::cout << "D_MIP Requesting memory: " << sizeof(Op) * 2 * arr_size * 1.0 / GB << " GB" << std::endl;
     std::vector<Op> operations(arr_size);
     std::vector<Op> scratch(arr_size);
 
@@ -149,7 +149,7 @@ namespace MinInPlace {
     // Note: 0 index vs 1 index
     for (uint64_t i = living_requests.size(); i < chunk.size() + living_requests.size(); i++) {
       auto[request_id, request_index] = chunk[i - living_requests.size()];
-      operations[2*i] = Op(request_index, -1); // Prefix i, +1, Full -1
+      operations[2*i] = Op(request_index - 1, -1); // Prefix i, +1, Full -1
       operations[2*i+1] = Op(prev(request_index));
     }
 
@@ -217,10 +217,10 @@ namespace MinInPlace {
     // a point representation of successes
     std::vector<uint64_t> success(distances.size());
     for (uint64_t i = 0; i < distances.size() - 1; i++) {
-      std::cout << distances[i] << " ";
+      //std::cout << distances[i + 1] << " ";
       if (prev(i + 1) != 0) success[distances[prev(i + 1)]]++;
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
 
     // integrate
     uint64_t running_count = 0;
