@@ -1,5 +1,7 @@
 #include "IAKWrapper.h"
 
+#include <chrono>
+
 void IAKWrapper::memory_access(uint64_t addr) {
   chunk_input.chunk_requests.push_back({addr, chunk_input.chunk_requests.size() + 1});
 
@@ -38,8 +40,12 @@ void IAKWrapper::process_requests() {
   //   std::cout << item.first << "," << item.second << std::endl;
   size_t prev_living_size = chunk_input.output.living_requests.size();
 
+  auto start = std::chrono::high_resolution_clock::now();
   iak_alg.get_depth_vector(chunk_input);
-  
+  auto depth_time =  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
+
+  std::cout << "GET DEPTH TIME: " << depth_time << std::endl;
+
   MinInPlace::IAKOutput &result = chunk_input.output;
   // print_result(result);
 
@@ -56,8 +62,8 @@ void IAKWrapper::process_requests() {
   size_t living_idx = 0;
   for (size_t i = 0; i < result.depth_vector.size() - 1; i++) {
 		size_t depth = result.depth_vector[i+1];
-    if (depth >= distance_histogram.size())
-      std::cout << "depth: " << depth << "/" << distance_histogram.size() - 1 << std::endl;
+    // if (depth >= distance_histogram.size())
+    //   std::cout << "depth: " << depth << "/" << distance_histogram.size() - 1 << std::endl;
     assert(depth < distance_histogram.size());
 
     // If this index is killed than update distance histogram

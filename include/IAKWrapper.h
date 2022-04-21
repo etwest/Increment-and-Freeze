@@ -15,18 +15,17 @@ class IAKWrapper {
 
     MinInPlace::IncrementAndKill iak_alg;
 
-    constexpr static size_t u_mult = 8;  // how much bigger than living requests the requests array is
-    constexpr static size_t u_mult_mult = 2;  // How much extra space we take to avoid realloc in vector
-
-    constexpr static size_t min_u = 2048; // minimum size of requests array before running IAK
-
     size_t cur_u = min_u;
 
+    constexpr static size_t max_u_mult = 8; // chunk <= max_u_mult * u
+    constexpr static size_t min_u_mult = 7;  // chunk > min_u_mult * u
+
+    constexpr static size_t min_u = 65536; // minimum size of requests array before running IAK
+
     inline size_t get_u() { return cur_u;};
-    inline void update_u() { 
-      cur_u = std::max(
-         (size_t) ceil((double)(chunk_input.output.living_requests.size() * u_mult) / u_mult_mult) * u_mult_mult,
-         min_u); 
+    inline void update_u() {
+      size_t upper_u = max_u_mult * chunk_input.output.living_requests.size();
+      cur_u = chunk_input.output.living_requests.size() * min_u_mult < cur_u ? cur_u : upper_u;
     };
 
     void process_requests();
