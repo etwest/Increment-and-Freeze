@@ -1,9 +1,9 @@
 #include "IAKWrapper.h"
 
 void IAKWrapper::memory_access(uint64_t addr) {
-  requests.push_back({addr, requests.size() + living.size() + 1});
+  chunk_input.chunk_requests.push_back({addr, chunk_input.chunk_requests.size() + 1});
 
-  if (requests.size() >= get_u()) {
+  if (chunk_input.chunk_requests.size() >= get_u()) {
     // std::cout << "requests chunk array:" << std::endl;
     // for (auto req : requests) {
     //   std::cout << req.first << "," << req.second << std::endl;
@@ -36,16 +36,18 @@ void IAKWrapper::process_requests() {
   // std::cout << "CHUNK:" << std::endl;
   // for (auto item : requests)
   //   std::cout << item.first << "," << item.second << std::endl;
+  size_t prev_living_size = chunk_input.output.living_requests.size();
 
-  MinInPlace::IAKOutput result = iak_alg.get_depth_vector(living, requests);
+  iak_alg.get_depth_vector(chunk_input);
   
+  MinInPlace::IAKOutput &result = chunk_input.output;
   // print_result(result);
 
   distance_histogram.resize(result.living_requests.size() + 1);
 
   // update depth_vector based upon living requests input to current chunk
-	for (size_t i = 0; i < living.size(); i++) {
-		result.depth_vector[i+1] += living.size()-i -1;
+	for (size_t i = 0; i < prev_living_size; i++) {
+		result.depth_vector[i+1] += prev_living_size - i -1;
 	}
   
   // Do not add living requests to distance histogram
@@ -70,16 +72,20 @@ void IAKWrapper::process_requests() {
   for (auto &living_req : result.living_requests)
     living_req.second = ++num_living;
 
-  living = result.living_requests;
-  requests.clear();
+  chunk_input.chunk_requests.clear();
   // std::cout << "Size of depth vector = " << result.depth_vector.size() << std::endl;
-  // std::cout << "Number of surviving requests = " << living.size() << std::endl;
+  // std::cout << "Number of living requests = " << living.size() << std::endl;
   // std::cout << "First index of distance histogram = " << distance_histogram[1] << std::endl;
+
+  // prepare for next iteration
+  update_u();
+  chunk_input.chunk_requests.reserve(get_u());
+  chunk_input.chunk_requests.insert(chunk_input.chunk_requests.end(), result.living_requests.begin(), result.living_requests.end());
 }
 
 std::vector<size_t> IAKWrapper::get_success_function() {
   // Ensure all requests processed
-  if (requests.size() > 0) {
+  if (chunk_input.chunk_requests.size() > 0) {
     process_requests();
   }
 

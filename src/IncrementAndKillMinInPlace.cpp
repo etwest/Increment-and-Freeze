@@ -14,7 +14,8 @@ namespace MinInPlace {
     requests.push_back({addr, access_number++});
   }
 
-  std::vector<IncrementAndKill::req_index_pair> IncrementAndKill::calculate_prevnext(bool calc_living) {
+  void IncrementAndKill::calculate_prevnext(
+   std::vector<req_index_pair> &req, std::vector<req_index_pair> *living_req) {
     using std::chrono::high_resolution_clock;
     using std::chrono::duration_cast;
     using std::chrono::duration;
@@ -22,16 +23,15 @@ namespace MinInPlace {
 
     // put all requests of the same addr next to each other
     // then order those by access_number
-    auto requestcopy = requests;
+    std::vector<req_index_pair> requestcopy = req; // MEMORY_ALLOC (operator= for vector)
 
     auto start = high_resolution_clock::now();
     std::sort(requestcopy.begin(), requestcopy.end());
     auto sort_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
     
     std::cout << "SORT TIME: " << sort_time << std::endl;
-    prev_arr.resize(requestcopy.size() + 1);
+    prev_arr.resize(requestcopy.size() + 1); // good memory allocation, persists between calls and based on size of requests arr
 
-    std::vector<req_index_pair> living_req;
 #pragma omp parallel for
     for (uint64_t i = 0; i < requestcopy.size(); i++) {
       auto [addr, access_num] = requestcopy[i];
@@ -42,32 +42,24 @@ namespace MinInPlace {
         prev(access_num) = last_access_num;  // Point access to previous
       } else {
         prev(access_num) = 0;  // last is different so prev = 0
-        if (calc_living && i > 0) { // add last to living requests
+        if (living_req != nullptr && i > 0) { // add last to living requests
           #pragma omp critical
           {
-            living_req.push_back({last_access_num, last_addr});
+            living_req->push_back(requestcopy[i-1]);
           }
         }
       }
     }
 
-    auto [last_addr, last_access_num] = requestcopy[requestcopy.size()-1];
-    living_req.push_back({last_access_num, last_addr});
+    if (living_req == nullptr)
+      return;
 
-    if (!calc_living)
-      return living_req;
+    // very last item in requestcopy is an edge case
+    // manually add here
+    living_req->push_back(requestcopy[requestcopy.size()-1]);
 
-    // sort by access number and then reverse to get living
-    // requests sorted by access number
-    std::sort(living_req.begin(), living_req.end());
-    std::vector<req_index_pair> new_living(living_req.size());
-
-#pragma omp parallel for
-    for (uint64_t i = 0; i < living_req.size(); i++) {
-      new_living[i].first = living_req[i].second;
-      new_living[i].second = living_req[i].first;
-    }
-    return new_living;
+    // sort by access number
+    std::sort(living_req->begin(), living_req->end(), [](auto &left, auto &right){return left.second < right.second; });
   }
 
   std::vector<uint64_t> IncrementAndKill::get_distance_vector() {
@@ -114,25 +106,24 @@ namespace MinInPlace {
     return distance_vector;
   }
 
-  IAKOutput IncrementAndKill::get_depth_vector(std::vector<req_index_pair> &living_requests, std::vector<req_index_pair> &chunk) {
-    // TODO: be less dumb than this
-    IAKOutput ret;
-    requests.clear();
-    requests.reserve(living_requests.size() + chunk.size());
-    requests.insert(requests.end(), living_requests.begin(), living_requests.end());
-    requests.insert(requests.end(), chunk.begin(), chunk.end());
+  void IncrementAndKill::get_depth_vector(IAKInput &chunk_input) {
+    size_t living_size = chunk_input.output.living_requests.size();
 
-    ret.living_requests = calculate_prevnext(true);
-    ret.depth_vector.resize(living_requests.size() + chunk.size() + 1);
+    IAKOutput &ret = chunk_input.output;
+    ret.living_requests.clear();
+    calculate_prevnext(chunk_input.chunk_requests, &(ret.living_requests));
+
+    ret.depth_vector.clear();
+    ret.depth_vector.resize(chunk_input.chunk_requests.size() + 1); // MEMORY_ALLOC (resize)
 
     // Generate the list of operations
     // Here, we init enough space for all operations.
     // Every kill is either a kill or not
     // Every subrange increment can expand into at most 2 non-passive ops
-    size_t arr_size = 2 * (living_requests.size() + chunk.size());
+    size_t arr_size = 2 * (chunk_input.chunk_requests.size());
     std::cout << "D_MIP Requesting memory: " << sizeof(Op) * 2 * arr_size * 1.0 / GB << " GB" << std::endl;
-    std::vector<Op> operations(arr_size);
-    std::vector<Op> scratch(arr_size);
+    std::vector<Op> operations(arr_size); // MEMORY_ALLOC
+    std::vector<Op> scratch(arr_size); // MEMORY_ALLOC
 
     // Increment(prev(i)+1, i-1, 1)
     // Kill(prev(i))
@@ -147,13 +138,13 @@ namespace MinInPlace {
     // Null requests to give space for indices where living requests reside
 
     // Note: 0 index vs 1 index
-    for (uint64_t i = living_requests.size(); i < chunk.size() + living_requests.size(); i++) {
-      auto[request_id, request_index] = chunk[i - living_requests.size()];
+    for (uint64_t i = living_size; i < chunk_input.chunk_requests.size(); i++) {
+      auto[request_id, request_index] = chunk_input.chunk_requests[i];
       operations[2*i] = Op(request_index - 1, -1); // Prefix i, +1, Full -1
       operations[2*i+1] = Op(prev(request_index));
     }
 
-    size_t max_index = chunk[chunk.size() - 1].second;
+    size_t max_index = chunk_input.chunk_requests[chunk_input.chunk_requests.size() - 1].second;
 
     // begin the recursive process
     //TODO: add a constructor for this????
@@ -168,8 +159,6 @@ namespace MinInPlace {
 #pragma omp parallel
 #pragma omp single
     do_projections(ret.depth_vector, std::move(init_seq));
-
-    return ret;
   }
 
   //recursively (and in parallel) perform all the projections
@@ -211,16 +200,16 @@ namespace MinInPlace {
   }
 
   std::vector<uint64_t> IncrementAndKill::get_success_function() {
-    calculate_prevnext();
+    calculate_prevnext(requests);
     auto distances = get_distance_vector();
 
     // a point representation of successes
     std::vector<uint64_t> success(distances.size());
     for (uint64_t i = 0; i < distances.size() - 1; i++) {
-      //std::cout << distances[i + 1] << " ";
+      // std::cout << distances[i + 1] << " ";
       if (prev(i + 1) != 0) success[distances[prev(i + 1)]]++;
     }
-    //std::cout << std::endl;
+    // std::cout << std::endl;
 
     // integrate
     uint64_t running_count = 0;

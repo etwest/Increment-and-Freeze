@@ -6,10 +6,14 @@
 #include "CacheSim.h"
 
 namespace MinInPlace {
-
   struct IAKOutput {
     std::vector<std::pair<size_t, size_t>> living_requests;
     std::vector<size_t> depth_vector;
+  };
+
+  struct IAKInput {
+    IAKOutput output;
+    std::vector<std::pair<size_t, size_t>> chunk_requests; // living requests and fresh requests
   };
 
   enum OpType {Null=0, Prefix=1, Postfix=2};
@@ -296,7 +300,8 @@ namespace MinInPlace {
      * Requests is copied, not modified.
      * Precondition: requests must be properly populated.
      */
-    std::vector<req_index_pair> calculate_prevnext(bool calc_living=false);
+    void calculate_prevnext(std::vector<req_index_pair> &req, 
+      std::vector<req_index_pair> *living_req=nullptr);
 
     /* Returns the distance vector calculated from prevnext.
      * Precondition: prevnext must be properly populated.
@@ -322,7 +327,7 @@ namespace MinInPlace {
      * Process a chunk of requests using the living requests from the previous chunk
      * Return the new living requests and the depth_vector
      */
-    IAKOutput get_depth_vector(std::vector<req_index_pair> &living_requests, std::vector<req_index_pair> &chunk);
+    void get_depth_vector(IAKInput &chunk_input);
 
     IncrementAndKill() = default;
     ~IncrementAndKill() = default;
