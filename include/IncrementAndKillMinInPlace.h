@@ -303,6 +303,12 @@ namespace MinInPlace {
     void calculate_prevnext(std::vector<req_index_pair> &req, 
       std::vector<req_index_pair> *living_req=nullptr);
 
+		/* Vector of operations used in ProjSequence to store memory
+		 * operations and scratch are constantly swapped to allow to a pseudo-in place partition
+		*/
+		std::vector<Op> operations;
+    std::vector<Op> scratch;
+
     /* Returns the distance vector calculated from prevnext.
      * Precondition: prevnext must be properly populated.
      */

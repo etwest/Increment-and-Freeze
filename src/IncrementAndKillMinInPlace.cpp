@@ -70,8 +70,10 @@ namespace MinInPlace {
     // Every kill is either a kill or not
     // Every subrange increment can expand into at most 2 non-passive ops
     std::cout << "MIP Requesting memory: " << sizeof(Op) * 2 * 2 * requests.size() * 1.0 / GB << " GB" << std::endl;
-    std::vector<Op> operations(2*requests.size());
-    std::vector<Op> scratch(2*requests.size());
+		operations.clear();
+    operations.resize(2*requests.size());
+		scratch.clear();
+    scratch.resize(2*requests.size());
 
 // Increment(prev(i)+1, i-1, 1)
 // Kill(prev(i))
@@ -122,9 +124,11 @@ namespace MinInPlace {
     // Every subrange increment can expand into at most 2 non-passive ops
     size_t arr_size = 2 * (chunk_input.chunk_requests.size());
     std::cout << "D_MIP Requesting memory: " << sizeof(Op) * 2 * arr_size * 1.0 / GB << " GB" << std::endl;
-    std::vector<Op> operations(arr_size); // MEMORY_ALLOC
-    std::vector<Op> scratch(arr_size); // MEMORY_ALLOC
-
+		operations.clear();
+    operations.resize(arr_size); // MEMORY_ALLOC
+		scratch.clear();
+    scratch.resize(arr_size); // MEMORY_ALLOC
+    
     // Increment(prev(i)+1, i-1, 1)
     // Kill(prev(i))
 
