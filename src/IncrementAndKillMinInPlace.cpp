@@ -25,11 +25,11 @@ namespace MinInPlace {
     // then order those by access_number
     std::vector<req_index_pair> requestcopy = req; // MEMORY_ALLOC (operator= for vector)
 
-    auto start = high_resolution_clock::now();
+    // auto start = high_resolution_clock::now();
     std::sort(requestcopy.begin(), requestcopy.end());
-    auto sort_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+    // auto sort_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
     
-    std::cout << "SORT TIME: " << sort_time << std::endl;
+    // std::cout << "SORT TIME: " << sort_time << std::endl;
     prev_arr.resize(requestcopy.size() + 1); // good memory allocation, persists between calls and based on size of requests arr
 
 #pragma omp parallel for
@@ -123,7 +123,7 @@ namespace MinInPlace {
     // Every kill is either a kill or not
     // Every subrange increment can expand into at most 2 non-passive ops
     size_t arr_size = 2 * (chunk_input.chunk_requests.size());
-    std::cout << "D_MIP Requesting memory: " << sizeof(Op) * 2 * arr_size * 1.0 / GB << " GB" << std::endl;
+    // std::cout << "D_MIP Requesting memory: " << sizeof(Op) * 2 * arr_size * 1.0 / GB << " GB" << std::endl;
 		operations.clear();
     operations.resize(arr_size); // MEMORY_ALLOC
 		scratch.clear();

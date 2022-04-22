@@ -7,6 +7,9 @@
 class IAKWrapper {
   using tuple = std::pair<uint64_t, uint64_t>;
   private:
+    // Maximum number of requests in a chunk. Just for accounting purposes
+    size_t max_recorded_chunk_size = 0;
+
     // Vector of stack distances
     std::vector<size_t> distance_histogram;
 
@@ -17,8 +20,8 @@ class IAKWrapper {
 
     size_t cur_u = min_u;
 
-    constexpr static size_t max_u_mult = 8; // chunk <= max_u_mult * u
-    constexpr static size_t min_u_mult = 7;  // chunk > min_u_mult * u
+    constexpr static size_t max_u_mult = 16; // chunk <= max_u_mult * u
+    constexpr static size_t min_u_mult = 8;  // chunk > min_u_mult * u
 
     constexpr static size_t min_u = 65536; // minimum size of requests array before running IAK
 

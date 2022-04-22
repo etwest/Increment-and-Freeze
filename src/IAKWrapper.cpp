@@ -1,4 +1,6 @@
 #include "IAKWrapper.h"
+#include "IncrementAndKillMinInPlace.h"
+#include "params.h"
 
 #include <chrono>
 
@@ -30,6 +32,10 @@ void print_result(MinInPlace::IAKOutput result) {
 }
 
 void IAKWrapper::process_requests() {
+  // update recorded chunk size
+  if (chunk_input.chunk_requests.size() > max_recorded_chunk_size)
+    max_recorded_chunk_size = chunk_input.chunk_requests.size();
+
   // std::cout << std::endl;
   // std::cout << "Processing chunk" << std::endl;
   // std::cout << "Living requests " << living.size() << std::endl;
@@ -40,11 +46,11 @@ void IAKWrapper::process_requests() {
   //   std::cout << item.first << "," << item.second << std::endl;
   size_t prev_living_size = chunk_input.output.living_requests.size();
 
-  auto start = std::chrono::high_resolution_clock::now();
+  // auto start = std::chrono::high_resolution_clock::now();
   iak_alg.get_depth_vector(chunk_input);
-  auto depth_time =  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
+  // auto depth_time =  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
 
-  std::cout << "GET DEPTH TIME: " << depth_time << std::endl;
+  // std::cout << "GET DEPTH TIME: " << depth_time << std::endl;
 
   MinInPlace::IAKOutput &result = chunk_input.output;
   // print_result(result);
@@ -105,7 +111,8 @@ std::vector<size_t> IAKWrapper::get_success_function() {
 
   //for (auto& success : success_func)
   //  success /= running_count;
-
+  // std::cout << max_recorded_chunk_size << std::endl;
+  std::cout << "logu Requesting memory: " << sizeof(MinInPlace::Op) * 2 * 2 * max_recorded_chunk_size * 1.0 / GB << " GB" << std::endl;
   return success_func;
 }
 
