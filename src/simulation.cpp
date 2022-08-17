@@ -1,181 +1,127 @@
 #include <stdlib.h>
 
+#include <chrono>
 #include <cinttypes>
 #include <fstream>
 #include <random>
 #include <set>
 #include <utility>
-#include <chrono>
 
 #include "IAKWrapper.h"
+#include "IncrementAndKill.h"
+#include "IncrementAndKillInPlace.h"
 #include "IncrementAndKillMinInPlace.h"
 #include "IncrementAndKillSmallInPlace.h"
-#include "IncrementAndKillInPlace.h"
-#include "IncrementAndKill.h"
 #include "LruSizesSim.h"
+#include "params.h"
 
-void print_distance_vector(MinInPlace::IncrementAndKill* iak)
-{
-  auto good_vector = iak->get_distance_vector();
+using std::chrono::duration;
+using std::chrono::high_resolution_clock;
 
-  for (size_t i = 0; i < good_vector.size(); i++)
-  {
-      std::cout << "@ " << i << ", " << good_vector[i] << std::endl;
-  }
-}
-
-
-void validate_distance_vectors(InPlace::IncrementAndKill* iak, SmallInPlace::IncrementAndKill* iak2)
-{
-  auto good_vector = iak->get_distance_vector();
-  auto test_vector = iak2->get_distance_vector();
-
-  assert(good_vector.size() == test_vector.size());
-  bool good = true;
-  for (size_t i = 0; i < good_vector.size(); i++)
-  {
-    if (good_vector[i] != test_vector[i])
-    {
-      good = false;
-      std::cout << "@ " << i << ", Good: " << good_vector[i] << ", " << test_vector[i] <<"." << std::endl;
-    }
-  }
-  if (good)
-    std::cout << "DISTANCE VECTORS ARE THE SAME" << std::endl;
-}
-
-
-uint64_t get_next_addr(std::mt19937& gen)
-{
-  // printf("Representative Workload\n");
-  uint64_t working_size = WORKING_SET;
-  uint64_t leftover_size = WORKLOAD * working_size;
-  double working_chance = gen() / (double)(0xFFFFFFFF);
-  uint64_t v_addr = gen();
-  if (working_chance <= LOCALITY)
-    v_addr %= working_size;
-  else
-    v_addr = (v_addr % leftover_size) + working_size;
-  return v_addr;
-}
-
+struct SimResult {
+  SuccessVector success;
+  double latency;
+};
 
 /*
- * Runs a random sequence of page requests that follow a working_set
- * distribution A majority of accesses are made to a somewhat small working_set
- * while the rest are made randomly to a much larger amount of memory seed: the
- * seed to the random number generator print:    if true print out the results
- * of the simulation returns   the success function
+ * Runs a random sequence of page requests that follow a working set distribution.
+ * A majority of accesses are made to a somewhat small working set while the rest
+ * are made randomly to a much larger amount of memory
+ * seed:    The seed to the random number generator.
+ * print:   If true print out the results of the simulation.
+ * returns: The success function and time it took to compute.
  */
-std::vector<std::vector<uint64_t>> working_set_simulator(uint32_t seed, bool print = false) {
-  std::set<uint64_t> unique_pages;
-
-  using std::chrono::high_resolution_clock;
-  using std::chrono::duration_cast;
-  using std::chrono::duration;
-  using std::chrono::milliseconds;
-
-  LruSizesSim *lru = new LruSizesSim();
-  IncrementAndKill *iak = new IncrementAndKill();
-  InPlace::IncrementAndKill *iak2 = new InPlace::IncrementAndKill();
-  SmallInPlace::IncrementAndKill *iak3 = new SmallInPlace::IncrementAndKill();
-  MinInPlace::IncrementAndKill *iak4 = new MinInPlace::IncrementAndKill();
-  IAKWrapper *iak5 = new IAKWrapper();
-
-  //TODO: Make these all CacheSim
-
-  // Order Statistic LRU (stack distance)
+SimResult working_set_simulator(CacheSim *sim, uint32_t seed, bool print = false) {
   std::mt19937 rand(seed);  // create random number generator
   auto start = high_resolution_clock::now();
   for (uint64_t i = 0; i < ACCESSES; i++) {
-    //lru->memory_access(get_next_addr(rand));
-  }
-  std::vector<uint64_t> lru_success;// = lru->get_success_function();
-  auto lru_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
-  delete lru;
+    // compute the next address
+    uint64_t working_size = WORKING_SET;
+    uint64_t leftover_size = UNIQUE_IDS - WORKING_SET;
+    double working_chance = rand() / (double)(0xFFFFFFFF);
+    uint64_t addr = rand();
+    if (working_chance <= LOCALITY)
+      addr %= working_size;
+    else
+      addr = (addr % leftover_size) + working_size;
 
-  // Increment And Kill
-  rand.seed(seed);  // create random number generator
-  start = high_resolution_clock::now();
-  for (uint64_t i = 0; i < ACCESSES; i++) {
-    //iak->memory_access(get_next_addr(rand));
+    // access the address
+    sim->memory_access(addr);
   }
-  std::vector<uint64_t> iak_success; //= iak->get_success_function();
-  auto iak_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
-  delete iak;
-
-  // Increment And Kill In Place
-  rand.seed(seed);  // create random number generator
-  start = high_resolution_clock::now();
-  for (uint64_t i = 0; i < ACCESSES; i++) {
-    iak2->memory_access(get_next_addr(rand));
-  }
-  std::vector<uint64_t> iak2_success = iak2->get_success_function();
-  auto iak2_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
-  delete iak2;
-
-  // Increment And Kill In Place (half size op array)
-  rand.seed(seed);  // create random number generator
-  start = high_resolution_clock::now();
-  for (uint64_t i = 0; i < ACCESSES; i++) {
-    iak3->memory_access(get_next_addr(rand));
-  }
-  std::vector<uint64_t> iak3_success = iak3->get_success_function();
-  auto iak3_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
-  delete iak3;
-  
-  // Increment And Kill In Place (half size op array + 2 bit type)
-  rand.seed(seed);  // create random number generator
-  start = high_resolution_clock::now();
-  for (uint64_t i = 0; i < ACCESSES; i++) {
-    iak4->memory_access(get_next_addr(rand));
-  }
-  std::vector<uint64_t> iak4_success = iak4->get_success_function();
-  auto iak4_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
-  delete iak4;
-
-// Increment And Kill In Place (half size op array + 2 bit type)
-  rand.seed(seed);  // create random number generator
-  start = high_resolution_clock::now();
-  for (uint64_t i = 0; i < ACCESSES; i++) {
-    iak5->memory_access(get_next_addr(rand));
-  }
-  std::vector<uint64_t> iak5_success = iak5->get_success_function();
-  auto iak5_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
-  delete iak5;
-
-  // std::cout << "data to process:" << std::endl;
-  // rand.seed(seed);  // create random number generator
-  // for (uint64_t i = 0; i < ACCESSES; i++) {
-  //  std::cout << get_next_addr(rand) << std::endl;
-  // }
-
+  SuccessVector succ = sim->get_success_function();
+  double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
   if (print) {
-    // Do this for stats
-    start = high_resolution_clock::now();
-    rand.seed(seed);  // create random number generator
-    for (uint64_t i = 0; i < ACCESSES; i++) {
-      unique_pages.insert(get_next_addr(rand));
-    }
-    auto vec_time = duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
-
-    // print the success function if requested
-    printf("Out of %" PRIu64 " memory accesses with %lu unique virtual pages\n",
-        ACCESSES, unique_pages.size());
-    //lru->print_success_function();
-    //iak->print_success_function();
-    //iak2->print_success_function();
-    //iak3->print_success_function();
-    validate_distance_vectors(iak2, iak3);
-    std::cerr << "VEC TIME: " << vec_time << std::endl;
+    std::cout << "Success function: " << std::endl;
+    sim->print_success_function();
   }
-  std::cerr << "LRU TIME: " << lru_time << std::endl;
-  std::cerr << "IAK TIME: " << iak_time << std::endl;
-  std::cerr << "IAK IP TIME: " << iak2_time << std::endl;
-  std::cerr << "IAK SIP TIME: " << iak3_time << std::endl;
-  std::cerr << "IAK MIP TIME: " << iak4_time << std::endl;
-  std::cerr << "IAKWrapper TIME: " << iak5_time << std::endl;
-  return {lru_success, iak_success, iak2_success, iak3_success, iak4_success, iak5_success};
+  return {succ, time};
+}
+
+SimResult uniform_simulator(CacheSim *sim, uint32_t seed, bool print = false) {
+  std::mt19937 rand(seed); // create random number generator
+  auto start = high_resolution_clock::now();
+  for (uint64_t i = 0; i < ACCESSES; i++) {
+    // compute the next address
+    uint64_t addr = rand() % UNIQUE_IDS;
+
+    // access the address
+    sim->memory_access(addr);
+  }
+  SuccessVector succ = sim->get_success_function();
+  double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
+  if (print) {
+    std::cout << "Success function: " << std::endl;
+    sim->print_success_function();
+  }
+  return {succ, time};
+}
+
+SimResult simulate_on_seq(CacheSim *sim, std::vector<uint64_t> seq, bool print = false) {
+  auto start = high_resolution_clock::now();
+  for (uint64_t i = 0; i < seq.size(); i++) {
+    // access the address
+    sim->memory_access(seq[i]);
+  }
+  SuccessVector succ = sim->get_success_function();
+  double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
+  if (print) {
+    std::cout << "Success function: " << std::endl;
+    sim->print_success_function();
+  }
+  return {succ, time};
+}
+
+std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
+  std::mt19937 rand(seed); // create random number generator
+  std::vector<double> freq_vec;
+  // generate the divisor
+  double divisor = 0;
+  for (uint64_t i = 1; i < UNIQUE_IDS + 1; i++) {
+    divisor += 1 / pow(i, alpha);
+  }
+
+  // now for each id calculate it's normalized frequency
+  for (uint64_t i = 1; i < UNIQUE_IDS + 1; i++)
+    freq_vec.push_back((1 / pow(i, alpha)) / divisor);
+
+  // now push to sequence vector based upon frequency
+  std::vector<uint64_t> seq_vec;
+  for (uint64_t i = 0; i < UNIQUE_IDS; i++) {
+    uint64_t num_items = round(freq_vec[i] * ACCESSES);
+    for (uint64_t j = 0; j < num_items && seq_vec.size() < ACCESSES; j++)
+      seq_vec.push_back(i);
+  }
+
+  // if we have too few accesses make up for it by adding more to most common
+  if (seq_vec.size() < ACCESSES) {
+    uint64_t num_needed = ACCESSES - seq_vec.size();
+    for (uint64_t i = 0; i < num_needed; i++)
+      seq_vec.push_back(i % UNIQUE_IDS);
+  }
+
+  // shuffle the sequence vector
+  std::shuffle(seq_vec.begin(), seq_vec.end(), rand);
+  return seq_vec;
 }
 
 // check that the results of two different simulators are the same
@@ -185,7 +131,10 @@ bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) 
   size_t i = 0;
   uint64_t last_elm = vec_1[0];
   while (i < vec_1.size() && i < vec_2.size()) {
-    if (vec_1[i] != vec_2[i]) {std::cout << "DIFF AT " << i << std::endl; return false;}
+    if (vec_1[i] != vec_2[i]) {
+      std::cout << "DIFF AT " << i << std::endl;
+      return false;
+    }
 
     last_elm = vec_1[i++];
   }
@@ -202,34 +151,126 @@ bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) 
 }
 
 int main() {
-  auto results = working_set_simulator(SEED, false);
-  auto lru_results = results[0];
-  auto iak_results = results[1];
-  auto iak2_results = results[2];
-  auto iak3_results = results[3];
-  auto iak4_results = results[4];
-  auto iak_wrapper = results[5];
+  SuccessVector lru_results;
+  SuccessVector iak_results;
+  SuccessVector iak2_results;
+  SuccessVector iak3_results;
+  SuccessVector iak4_results;
+  SuccessVector iak_wrapper;
 
-  // for (size_t i = 0; i < iak2_results.size(); i++) {
-  //   if (i < iak_wrapper.size())
-  //     std::cout << iak2_results[i] << " " << iak_wrapper[i] << std::endl;
-  //   else
-  //     std::cout << iak2_results[i] << " EMPTY" << std::endl;
-  // }
+#if 0
+  { // Order Statistics Tree
+    LruSizesSim LRU;
+    SimResult result = working_set_simulator(&LRU, SEED);
+    std::cout << "LRU: " << result.latency << " ms" << std::endl;
+    lru_results = result.success;
+  }
+  { // Uniform Accesses
+    LruSizesSim LRU;
+    SimResult result = uniform_simulator(&LRU, SEED);
+    std::cout << "Uniform LRU: " << result.latency << " ms" << std::endl;
+  }
+#endif
 
+#if 0
+  { // IncrementAndKill -- working set sim
+    IncrementAndKill iak;
+    SimResult result = working_set_simulator(&iak, SEED);
+    std::cout << "IncrementAndKill: " << result.latency << " ms" << std::endl;
+    iak_results = result.success;
+  }
+  { // Uniform Accessses
+    IncrementAndKill iak;
+    SimResult result = uniform_simulator(&iak, SEED);
+    std::cout << "Uniform IncrementAndKill: " << result.latency << " ms" << std::endl;
+  }
+#endif
+
+#if 0
+  { // InPlace IncrementAndKill -- working set sim
+    InPlace::IncrementAndKill iak;
+    SimResult result = working_set_simulator(&iak, SEED);
+    std::cout << "InPlace IAK: " << result.latency << " ms" << std::endl;
+    iak2_results = result.success;
+  }
+  { // Uniform Accessses
+    InPlace::IncrementAndKill iak;
+    SimResult result = uniform_simulator(&iak, SEED);
+    std::cout << "Uniform InPlace IAK: " << result.latency << " ms" << std::endl;
+  }
+#endif
+
+#if 0
+  { // Smaller InPlace IncrementAndKill -- working set sim
+    SmallInPlace::IncrementAndKill iak;
+    SimResult result = working_set_simulator(&iak, SEED);
+    std::cout << "Smaller Inplace IAK: " << result.latency << " ms" << std::endl;
+    iak3_results = result.success;
+  }
+  { // Uniform Accessses
+    SmallInPlace::IncrementAndKill iak;
+    SimResult result = uniform_simulator(&iak, SEED);
+    std::cout << "Uniform Smaller Inplace IAK: " << result.latency << " ms" << std::endl;
+  }
+#endif
+
+#if 1
+  { // Minimum InPlace IncrementAndKill -- working set sim
+    MinInPlace::IncrementAndKill iak;
+    SimResult result = working_set_simulator(&iak, SEED);
+    std::cout << "Min InPlace IAK: " << result.latency << " ms" << std::endl;
+    iak4_results = result.success;
+  }
+  { // Uniform Accessses
+    MinInPlace::IncrementAndKill iak;
+    SimResult result = uniform_simulator(&iak, SEED);
+    std::cout << "Uniform Min InPlace IAK: " << result.latency << " ms" << std::endl;
+  }
+#endif
+
+#if 1
+  { // Chunked IncrementAndKill -- working set sim
+    IAKWrapper iak;
+    SimResult result = working_set_simulator(&iak, SEED);
+    std::cout << "Chunked IAK: " << result.latency << " ms" << std::endl;
+    iak_wrapper = result.success;
+  }
+  { // Uniform Accessses
+    IAKWrapper iak;
+    SimResult result = uniform_simulator(&iak, SEED);
+    std::cout << "Uniform Chunked IAK: " << result.latency << " ms" << std::endl;
+  }
+#endif
+
+  std::vector<uint64_t> zipf_seq = generate_zipf(SEED, 1);
+  std::cout << "Zipf sequence length = " << zipf_seq.size() << std::endl;
+  
+  { // Zipfian Accesses
+    IAKWrapper iak;
+    SimResult result = simulate_on_seq(&iak, zipf_seq);
+    std::cout << "Zipf Chunked IAK: " << result.latency << " ms" << std::endl;
+  }
+
+
+  // check correctness using working_set_simulator results
   bool eq = check_equivalent(lru_results, iak_results);
-  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (lru, iak): " << lru_results.size() << ", " << iak_results.size() << std::endl;
+  std::cerr << "Are results equivalent?: " << (eq ? "yes" : "no") << std::endl;
+  std::cerr << "Sizes (lru, iak): " << lru_results.size() << ", " << iak_results.size()
+            << std::endl;
   eq = check_equivalent(iak_results, iak2_results);
-  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak, iak2): " << iak_results.size() << ", " << iak2_results.size() << std::endl;
+  std::cerr << "Are results equivalent?: " << (eq ? "yes" : "no") << std::endl;
+  std::cerr << "Sizes (iak, iak2): " << iak_results.size() << ", " << iak2_results.size()
+            << std::endl;
   eq = check_equivalent(iak2_results, iak3_results);
-  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak2, iak3): " << iak2_results.size() << ", " << iak3_results.size() << std::endl;
+  std::cerr << "Are results equivalent?: " << (eq ? "yes" : "no") << std::endl;
+  std::cerr << "Sizes (iak2, iak3): " << iak2_results.size() << ", " << iak3_results.size()
+            << std::endl;
   eq = check_equivalent(iak3_results, iak4_results);
-  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak3, iak4): " << iak3_results.size() << ", " << iak4_results.size() << std::endl;
+  std::cerr << "Are results equivalent?: " << (eq ? "yes" : "no") << std::endl;
+  std::cerr << "Sizes (iak3, iak4): " << iak3_results.size() << ", " << iak4_results.size()
+            << std::endl;
   eq = check_equivalent(iak4_results, iak_wrapper);
-  std::cerr << "Are results equivalent?: " << (eq? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak4, logu): " << iak4_results.size() << ", " << iak_wrapper.size() << std::endl;
+  std::cerr << "Are results equivalent?: " << (eq ? "yes" : "no") << std::endl;
+  std::cerr << "Sizes (iak4, logu): " << iak4_results.size() << ", " << iak_wrapper.size()
+            << std::endl;
 }

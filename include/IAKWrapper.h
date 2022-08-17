@@ -4,7 +4,7 @@
 
 #include "IncrementAndKillMinInPlace.h"
 
-class IAKWrapper {
+class IAKWrapper : public CacheSim {
   using tuple = std::pair<uint64_t, uint64_t>;
   private:
     // Maximum number of requests in a chunk. Just for accounting purposes
