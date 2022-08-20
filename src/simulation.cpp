@@ -23,6 +23,16 @@ struct SimResult {
   double latency;
 };
 
+// An enum describing the different CacheSims
+enum CacheSimType {
+  OS_TREE,
+  IAK,
+  INPLACE_IAK,
+  SMALL_IAK,
+  MIN_IAK,
+  CHUNK_IAK,
+};
+
 /*
  * Runs a random sequence of page requests that follow a working set distribution.
  * A majority of accesses are made to a somewhat small working set while the rest
@@ -121,6 +131,7 @@ std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
 
   // shuffle the sequence vector
   std::shuffle(seq_vec.begin(), seq_vec.end(), rand);
+  std::cout << "Zipfian sequence memory impact: " << seq_vec.size() * sizeof(uint64_t)/1024/1024 << "MiB" << std::endl;
   return seq_vec;
 }
 
@@ -150,127 +161,88 @@ bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) 
   return true;
 }
 
+CacheSim *new_simulator(CacheSimType sim_enum) {
+  CacheSim *sim;
+
+  switch(sim_enum) {
+    case OS_TREE:
+      sim = new LruSizesSim();
+      break;
+    case IAK:
+      sim = new IncrementAndKill();
+      break;
+    case INPLACE_IAK:
+      sim = new InPlace::IncrementAndKill();
+      break;
+    case SMALL_IAK:
+      sim = new SmallInPlace::IncrementAndKill();
+      break;
+    case MIN_IAK:
+      sim = new MinInPlace::IncrementAndKill();
+      break;
+    case CHUNK_IAK:
+      sim = new IAKWrapper();
+      break;
+    default:
+      std::cerr << "ERROR: Unrecognized sim_enum!" << std::endl;
+      exit(EXIT_FAILURE);
+  }
+
+  return sim;
+}
+
+// Run all workloads and record results
+void run_workloads(CacheSimType sim_enum) {
+  CacheSim *sim;
+  SimResult result;
+
+  // Print header
+  switch(sim_enum) {
+    case OS_TREE:
+      std::cout << "Testing OSTree LRU Sim" << std::endl; break;
+    case IAK:
+      std::cout << "Testing IncrementAndKill LRU Sim" << std::endl; break;
+    case INPLACE_IAK:
+      std::cout << "Testing Inplace IAK LRU Sim" << std::endl; break;
+    case SMALL_IAK:
+      std::cout << "Testing Small Inplace IAK LRU Sim" << std::endl; break;
+    case MIN_IAK:
+      std::cout << "Testing Minimum Inplace IAK LRU Sim" << std::endl; break;
+    case CHUNK_IAK:
+      std::cout << "Testing Chunked IAK LRU Sim" << std::endl; break;
+    default:
+      std::cerr << "ERROR: Unrecognized sim_enum!" << std::endl;
+      exit(EXIT_FAILURE);
+  }
+
+  // uniform accesses simulation
+  sim = new_simulator(sim_enum);
+  result = uniform_simulator(sim, SEED);
+  std::cout << "\tUniform Set Latency = " << result.latency << " ms" << std::endl;
+  delete sim;
+
+  // working set simulation
+  sim = new_simulator(sim_enum);
+  result = working_set_simulator(sim, SEED);
+  std::cout << "\tWorking Set Latency = " << result.latency << " ms" << std::endl;
+  delete sim;
+
+  // test with different Zipfian parameters
+  std::vector<double> zipf_exps{0.1, 0.25, 0.5, 0.75, 1, 1.5, 2.0, 2.5, 3.0};
+  for (double exp : zipf_exps) {
+    sim = new_simulator(sim_enum);
+    std::vector<uint64_t> zipf_seq = generate_zipf(SEED, exp);
+    result = simulate_on_seq(sim, zipf_seq);
+    std::cout << "\tZipfian, alpha=" << exp << " Latency = " << result.latency << " ms" << std::endl;
+    delete sim;
+  }
+}
+
 int main() {
-  SuccessVector lru_results;
-  SuccessVector iak_results;
-  SuccessVector iak2_results;
-  SuccessVector iak3_results;
-  SuccessVector iak4_results;
-  SuccessVector iak_wrapper;
-
-#if 0
-  { // Order Statistics Tree
-    LruSizesSim LRU;
-    SimResult result = working_set_simulator(&LRU, SEED);
-    std::cout << "LRU: " << result.latency << " ms" << std::endl;
-    lru_results = result.success;
-  }
-  { // Uniform Accesses
-    LruSizesSim LRU;
-    SimResult result = uniform_simulator(&LRU, SEED);
-    std::cout << "Uniform LRU: " << result.latency << " ms" << std::endl;
-  }
-#endif
-
-#if 0
-  { // IncrementAndKill -- working set sim
-    IncrementAndKill iak;
-    SimResult result = working_set_simulator(&iak, SEED);
-    std::cout << "IncrementAndKill: " << result.latency << " ms" << std::endl;
-    iak_results = result.success;
-  }
-  { // Uniform Accessses
-    IncrementAndKill iak;
-    SimResult result = uniform_simulator(&iak, SEED);
-    std::cout << "Uniform IncrementAndKill: " << result.latency << " ms" << std::endl;
-  }
-#endif
-
-#if 0
-  { // InPlace IncrementAndKill -- working set sim
-    InPlace::IncrementAndKill iak;
-    SimResult result = working_set_simulator(&iak, SEED);
-    std::cout << "InPlace IAK: " << result.latency << " ms" << std::endl;
-    iak2_results = result.success;
-  }
-  { // Uniform Accessses
-    InPlace::IncrementAndKill iak;
-    SimResult result = uniform_simulator(&iak, SEED);
-    std::cout << "Uniform InPlace IAK: " << result.latency << " ms" << std::endl;
-  }
-#endif
-
-#if 0
-  { // Smaller InPlace IncrementAndKill -- working set sim
-    SmallInPlace::IncrementAndKill iak;
-    SimResult result = working_set_simulator(&iak, SEED);
-    std::cout << "Smaller Inplace IAK: " << result.latency << " ms" << std::endl;
-    iak3_results = result.success;
-  }
-  { // Uniform Accessses
-    SmallInPlace::IncrementAndKill iak;
-    SimResult result = uniform_simulator(&iak, SEED);
-    std::cout << "Uniform Smaller Inplace IAK: " << result.latency << " ms" << std::endl;
-  }
-#endif
-
-#if 1
-  { // Minimum InPlace IncrementAndKill -- working set sim
-    MinInPlace::IncrementAndKill iak;
-    SimResult result = working_set_simulator(&iak, SEED);
-    std::cout << "Min InPlace IAK: " << result.latency << " ms" << std::endl;
-    iak4_results = result.success;
-  }
-  { // Uniform Accessses
-    MinInPlace::IncrementAndKill iak;
-    SimResult result = uniform_simulator(&iak, SEED);
-    std::cout << "Uniform Min InPlace IAK: " << result.latency << " ms" << std::endl;
-  }
-#endif
-
-#if 1
-  { // Chunked IncrementAndKill -- working set sim
-    IAKWrapper iak;
-    SimResult result = working_set_simulator(&iak, SEED);
-    std::cout << "Chunked IAK: " << result.latency << " ms" << std::endl;
-    iak_wrapper = result.success;
-  }
-  { // Uniform Accessses
-    IAKWrapper iak;
-    SimResult result = uniform_simulator(&iak, SEED);
-    std::cout << "Uniform Chunked IAK: " << result.latency << " ms" << std::endl;
-  }
-#endif
-
-  std::vector<uint64_t> zipf_seq = generate_zipf(SEED, 1);
-  std::cout << "Zipf sequence length = " << zipf_seq.size() << std::endl;
-  
-  { // Zipfian Accesses
-    IAKWrapper iak;
-    SimResult result = simulate_on_seq(&iak, zipf_seq);
-    std::cout << "Zipf Chunked IAK: " << result.latency << " ms" << std::endl;
-  }
-
-
-  // check correctness using working_set_simulator results
-  bool eq = check_equivalent(lru_results, iak_results);
-  std::cerr << "Are results equivalent?: " << (eq ? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (lru, iak): " << lru_results.size() << ", " << iak_results.size()
-            << std::endl;
-  eq = check_equivalent(iak_results, iak2_results);
-  std::cerr << "Are results equivalent?: " << (eq ? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak, iak2): " << iak_results.size() << ", " << iak2_results.size()
-            << std::endl;
-  eq = check_equivalent(iak2_results, iak3_results);
-  std::cerr << "Are results equivalent?: " << (eq ? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak2, iak3): " << iak2_results.size() << ", " << iak3_results.size()
-            << std::endl;
-  eq = check_equivalent(iak3_results, iak4_results);
-  std::cerr << "Are results equivalent?: " << (eq ? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak3, iak4): " << iak3_results.size() << ", " << iak4_results.size()
-            << std::endl;
-  eq = check_equivalent(iak4_results, iak_wrapper);
-  std::cerr << "Are results equivalent?: " << (eq ? "yes" : "no") << std::endl;
-  std::cerr << "Sizes (iak4, logu): " << iak4_results.size() << ", " << iak_wrapper.size()
-            << std::endl;
+  // run_workloads(OS_TREE);
+  // run_workloads(IAK);
+  run_workloads(INPLACE_IAK);
+  run_workloads(SMALL_IAK);
+  run_workloads(MIN_IAK);
+  run_workloads(CHUNK_IAK);
 }
