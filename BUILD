@@ -1,11 +1,22 @@
-alias(
-    name = "all",
-    actual = "CacheSim",
-)
-
 test_suite(
     name = "tests",
     tests = ["unit_tests"],
+)
+
+cc_binary(
+	name = "sim",
+	deps = [
+		"CacheSim"
+	],
+	srcs = [
+		"src/simulation.cpp",
+		"include/IAKWrapper.h",
+		"include/IncrementAndFreeze.h",
+		"include/OSTCacheSim.h"
+	],
+	copts = [
+		"-Iinclude"
+	],
 )
 
 cc_library(
@@ -22,7 +33,6 @@ cc_library(
     "src/OSTree.cpp",
     "src/IAKWrapper.cpp",
   ],
-  includes = ["include/"],
   hdrs = [
     "include/IncrementAndFreeze.h",
     "include/OSTCacheSim.h",
@@ -30,7 +40,8 @@ cc_library(
     "include/CacheSim.h"
   ],
 	copts = [
-		"-fopenmp"
+		"-fopenmp",
+		"-Iinclude"
 	],
 	linkopts = [
 		"-fopenmp"
