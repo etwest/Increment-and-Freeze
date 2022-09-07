@@ -9,7 +9,7 @@
 
 #include "IAKWrapper.h"
 #include "IncrementAndFreeze.h"
-#include "LruSizesSim.h"
+#include "OSTCacheSim.h"
 #include "params.h"
 
 using std::chrono::duration;
@@ -157,7 +157,7 @@ CacheSim *new_simulator(CacheSimType sim_enum) {
 
   switch(sim_enum) {
     case OS_TREE:
-      sim = new LruSizesSim();
+      sim = new OSTCacheSim();
       break;
     case IAK:
       sim = new IncrementAndFreeze();

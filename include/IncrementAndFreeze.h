@@ -26,8 +26,9 @@
       int32_t full_amnt = 0;      // fullrange Increment amount
      
       static constexpr uint32_t tmask = 0x3FFFFFFF;
+      static constexpr uint32_t ntmask = ~tmask;
       uint32_t target() const {return _target & tmask;};
-      void set_target(const uint32_t& new_target) {_target &= ~tmask; assert(new_target == (new_target & tmask)); _target |= new_target;};
+      void set_target(const uint32_t& new_target) {_target &= ntmask; assert(new_target == (new_target & tmask)); _target |= new_target;};
       OpType type() const 
       {
         return (OpType)(_target >> 30);

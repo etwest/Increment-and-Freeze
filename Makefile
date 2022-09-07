@@ -6,10 +6,10 @@ CXXFLAGS = $(DEFAULTFLAGS) $(OPTFLAGS)
 vpath %.h include
 vpath %.cpp src
 
-simulatePaging: simulation.o IAKWrapper.o LruSizesSim.o OSTree.o IncrementAndFreeze.o
+simulatePaging: simulation.o IAKWrapper.o OSTCacheSim.o OSTree.o IncrementAndFreeze.o
 	$(CXX) $(CXXFLAGS) $^ -o simulatePaging
 
-simulation.o: include/LruSizesSim.h include/params.h include/OSTree.h include/CacheSim.h include/IAKWrapper.h
+simulation.o: include/OSTCacheSim.h include/params.h include/OSTree.h include/CacheSim.h include/IAKWrapper.h
 OSTree.o: include/OSTree.h
 
 %.o: %.cpp %.h
