@@ -2,7 +2,7 @@
 #include <vector>
 #include <cmath>
 
-#include "IncrementAndKillMinInPlace.h"
+#include "IncrementAndFreeze.h"
 
 class IAKWrapper : public CacheSim {
   using tuple = std::pair<uint64_t, uint64_t>;
@@ -14,9 +14,9 @@ class IAKWrapper : public CacheSim {
     std::vector<size_t> distance_histogram;
 
     // Input to current chunk
-    MinInPlace::IAKInput chunk_input;
+    IAKInput chunk_input;
 
-    MinInPlace::IncrementAndKill iak_alg;
+    IncrementAndFreeze iak_alg;
 
     size_t cur_u = min_u;
 

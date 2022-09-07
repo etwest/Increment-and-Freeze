@@ -5,7 +5,6 @@
 
 #include "CacheSim.h"
 
-namespace MinInPlace {
   struct IAKOutput {
     std::vector<std::pair<size_t, size_t>> living_requests;
     std::vector<size_t> depth_vector;
@@ -282,8 +281,8 @@ namespace MinInPlace {
       }
   };
 
-  // Implements the IncrementAndKillInPlace algorithm
-  class IncrementAndKill: public CacheSim {
+  // Implements the IncrementAndFreezeInPlace algorithm
+  class IncrementAndFreeze: public CacheSim {
     public:
     using req_index_pair = std::pair<uint64_t, uint64_t>;
     private:
@@ -335,8 +334,7 @@ namespace MinInPlace {
      */
     void get_depth_vector(IAKInput &chunk_input);
 
-    IncrementAndKill() = default;
-    ~IncrementAndKill() = default;
+    IncrementAndFreeze() = default;
+    ~IncrementAndFreeze() = default;
     std::vector<uint64_t> get_distance_vector();
   };
-}

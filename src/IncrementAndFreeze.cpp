@@ -1,4 +1,4 @@
-#include "IncrementAndKillMinInPlace.h"
+#include "IncrementAndFreeze.h"
 
 #include <algorithm>
 #include <queue>
@@ -6,15 +6,15 @@
 #include "params.h"
 #include <utility>
 #include <chrono>
-class IncrementAndKill;
+class IncrementAndFreeze;
 
-namespace MinInPlace {
+//namespace MinInPlace {
 
-  void IncrementAndKill::memory_access(uint64_t addr) {
+  void IncrementAndFreeze::memory_access(uint64_t addr) {
     requests.push_back({addr, access_number++});
   }
 
-  void IncrementAndKill::calculate_prevnext(
+  void IncrementAndFreeze::calculate_prevnext(
    std::vector<req_index_pair> &req, std::vector<req_index_pair> *living_req) {
     using std::chrono::high_resolution_clock;
     using std::chrono::duration_cast;
@@ -62,7 +62,7 @@ namespace MinInPlace {
     std::sort(living_req->begin(), living_req->end(), [](auto &left, auto &right){return left.second < right.second; });
   }
 
-  std::vector<uint64_t> IncrementAndKill::get_distance_vector() {
+  std::vector<uint64_t> IncrementAndFreeze::get_distance_vector() {
     std::vector<uint64_t> distance_vector(requests.size()+1);
 
     // Generate the list of operations
@@ -76,13 +76,13 @@ namespace MinInPlace {
     scratch.resize(2*requests.size());
 
 // Increment(prev(i)+1, i-1, 1)
-// Kill(prev(i))
+// Freeze(prev(i))
 
 // We encode the above with:
 
 // Prefix Inc i-1, 1
 // Full increment -1
-// Kill prev(i)
+// Freeze prev(i)
 // Suffix Increment prev(i)
 
 // Note: 0 index vs 1 index
@@ -108,7 +108,7 @@ namespace MinInPlace {
     return distance_vector;
   }
 
-  void IncrementAndKill::get_depth_vector(IAKInput &chunk_input) {
+  void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
     size_t living_size = chunk_input.output.living_requests.size();
 
     IAKOutput &ret = chunk_input.output;
@@ -130,13 +130,13 @@ namespace MinInPlace {
     scratch.resize(arr_size); // MEMORY_ALLOC
     
     // Increment(prev(i)+1, i-1, 1)
-    // Kill(prev(i))
+    // Freeze(prev(i))
 
     // We encode the above with:
 
     // Prefix Inc i-1, 1
     // Full increment -1
-    // Kill prev(i)
+    // Freeze prev(i)
     // Suffix Increment prev(i)
 
     // Null requests to give space for indices where living requests reside
@@ -166,11 +166,11 @@ namespace MinInPlace {
   }
 
   //recursively (and in parallel) perform all the projections
-  void IncrementAndKill::do_projections(std::vector<uint64_t>& distance_vector, ProjSequence cur) {
+  void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, ProjSequence cur) {
     // base case
     // start == end -> d_i [operations]
-    // operations = [Inc, Kill], [Kill, Inc]
-    // if Kill, Inc, then distance = 0 -> sequence = [... p_x, p_x ...]
+    // operations = [Inc, Freeze], [Freeze, Inc]
+    // if Freeze, Inc, then distance = 0 -> sequence = [... p_x, p_x ...]
     // No need to lock here-- this can only occur in exactly one thread
     if (cur.num_ops == 0)
       return;
@@ -203,7 +203,7 @@ namespace MinInPlace {
     }
   }
 
-  std::vector<uint64_t> IncrementAndKill::get_success_function() {
+  std::vector<uint64_t> IncrementAndFreeze::get_success_function() {
     calculate_prevnext(requests);
     auto distances = get_distance_vector();
 
@@ -265,4 +265,4 @@ namespace MinInPlace {
       default: assert(false); return;
     }
   }
-}
+//}

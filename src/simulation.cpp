@@ -8,10 +8,7 @@
 #include <utility>
 
 #include "IAKWrapper.h"
-#include "IncrementAndKill.h"
-#include "IncrementAndKillInPlace.h"
-#include "IncrementAndKillMinInPlace.h"
-#include "IncrementAndKillSmallInPlace.h"
+#include "IncrementAndFreeze.h"
 #include "LruSizesSim.h"
 #include "params.h"
 
@@ -21,16 +18,36 @@ using std::chrono::high_resolution_clock;
 struct SimResult {
   SuccessVector success;
   double latency;
+	bool operator== (const SimResult& other) const
+	{
+		if (success.size() == 0 || other.success.size() == 0) return false;
+		size_t i = 0;
+		uint64_t last_elm = success[0];
+		while (i < success.size() && i < other.success.size()) {
+			if (success[i] != other.success[i]) {
+				std::cout << "DIFF AT " << i << std::endl;
+				return false;
+			}
+			last_elm = success[i++];
+		}
+
+		// assert that any remaining elements in either vector
+		// are identical to last_elm
+		for (size_t j = i; j < success.size(); j++)
+			if (success[j] != last_elm) return false;
+
+		for (size_t j = i; j < other.success.size(); j++)
+			if (other.success[j] != last_elm) return false;
+
+		return true;
+	}
 };
 
 // An enum describing the different CacheSims
 enum CacheSimType {
-  OS_TREE,
-  IAK,
-  INPLACE_IAK,
-  SMALL_IAK,
-  MIN_IAK,
-  CHUNK_IAK,
+	OS_TREE,
+	IAK,
+	CHUNK_IAK,
 };
 
 /*
@@ -42,63 +59,63 @@ enum CacheSimType {
  * returns: The success function and time it took to compute.
  */
 SimResult working_set_simulator(CacheSim *sim, uint32_t seed, bool print = false) {
-  std::mt19937 rand(seed);  // create random number generator
-  auto start = high_resolution_clock::now();
-  for (uint64_t i = 0; i < ACCESSES; i++) {
-    // compute the next address
-    uint64_t working_size = WORKING_SET;
-    uint64_t leftover_size = UNIQUE_IDS - WORKING_SET;
-    double working_chance = rand() / (double)(0xFFFFFFFF);
-    uint64_t addr = rand();
-    if (working_chance <= LOCALITY)
-      addr %= working_size;
-    else
-      addr = (addr % leftover_size) + working_size;
+	std::mt19937 rand(seed);  // create random number generator
+	auto start = high_resolution_clock::now();
+	for (uint64_t i = 0; i < ACCESSES; i++) {
+		// compute the next address
+		uint64_t working_size = WORKING_SET;
+		uint64_t leftover_size = UNIQUE_IDS - WORKING_SET;
+		double working_chance = rand() / (double)(0xFFFFFFFF);
+		uint64_t addr = rand();
+		if (working_chance <= LOCALITY)
+			addr %= working_size;
+		else
+			addr = (addr % leftover_size) + working_size;
 
-    // access the address
-    sim->memory_access(addr);
-  }
-  SuccessVector succ = sim->get_success_function();
-  double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
-  if (print) {
-    std::cout << "Success function: " << std::endl;
-    sim->print_success_function();
-  }
-  return {succ, time};
+		// access the address
+		sim->memory_access(addr);
+	}
+	SuccessVector succ = sim->get_success_function();
+	double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
+	if (print) {
+		std::cout << "Success function: " << std::endl;
+		sim->print_success_function();
+	}
+	return {succ, time};
 }
 
 SimResult uniform_simulator(CacheSim *sim, uint32_t seed, bool print = false) {
-  std::mt19937 rand(seed); // create random number generator
-  auto start = high_resolution_clock::now();
-  for (uint64_t i = 0; i < ACCESSES; i++) {
-    // compute the next address
-    uint64_t addr = rand() % UNIQUE_IDS;
+	std::mt19937 rand(seed); // create random number generator
+	auto start = high_resolution_clock::now();
+	for (uint64_t i = 0; i < ACCESSES; i++) {
+		// compute the next address
+		uint64_t addr = rand() % UNIQUE_IDS;
 
-    // access the address
-    sim->memory_access(addr);
-  }
-  SuccessVector succ = sim->get_success_function();
-  double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
-  if (print) {
-    std::cout << "Success function: " << std::endl;
-    sim->print_success_function();
-  }
-  return {succ, time};
+		// access the address
+		sim->memory_access(addr);
+	}
+	SuccessVector succ = sim->get_success_function();
+	double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
+	if (print) {
+		std::cout << "Success function: " << std::endl;
+		sim->print_success_function();
+	}
+	return {succ, time};
 }
 
 SimResult simulate_on_seq(CacheSim *sim, std::vector<uint64_t> seq, bool print = false) {
-  auto start = high_resolution_clock::now();
-  for (uint64_t i = 0; i < seq.size(); i++) {
-    // access the address
-    sim->memory_access(seq[i]);
-  }
-  SuccessVector succ = sim->get_success_function();
-  double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
-  if (print) {
-    std::cout << "Success function: " << std::endl;
-    sim->print_success_function();
-  }
-  return {succ, time};
+	auto start = high_resolution_clock::now();
+	for (uint64_t i = 0; i < seq.size(); i++) {
+		// access the address
+		sim->memory_access(seq[i]);
+	}
+	SuccessVector succ = sim->get_success_function();
+	double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
+	if (print) {
+		std::cout << "Success function: " << std::endl;
+		sim->print_success_function();
+	}
+	return {succ, time};
 }
 
 std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
@@ -135,32 +152,6 @@ std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
   return seq_vec;
 }
 
-// check that the results of two different simulators are the same
-// IMPORTANT: vectors may be of different sizes
-bool check_equivalent(std::vector<uint64_t> vec_1, std::vector<uint64_t> vec_2) {
-  if (vec_1.size() == 0 || vec_2.size() == 0) return false;
-  size_t i = 0;
-  uint64_t last_elm = vec_1[0];
-  while (i < vec_1.size() && i < vec_2.size()) {
-    if (vec_1[i] != vec_2[i]) {
-      std::cout << "DIFF AT " << i << std::endl;
-      return false;
-    }
-
-    last_elm = vec_1[i++];
-  }
-
-  // assert that any remaining elements in either vector
-  // are identical to last_elm
-  for (size_t j = i; j < vec_1.size(); j++)
-    if (vec_1[j] != last_elm) return false;
-
-  for (size_t j = i; j < vec_2.size(); j++)
-    if (vec_2[j] != last_elm) return false;
-
-  return true;
-}
-
 CacheSim *new_simulator(CacheSimType sim_enum) {
   CacheSim *sim;
 
@@ -169,16 +160,7 @@ CacheSim *new_simulator(CacheSimType sim_enum) {
       sim = new LruSizesSim();
       break;
     case IAK:
-      sim = new IncrementAndKill();
-      break;
-    case INPLACE_IAK:
-      sim = new InPlace::IncrementAndKill();
-      break;
-    case SMALL_IAK:
-      sim = new SmallInPlace::IncrementAndKill();
-      break;
-    case MIN_IAK:
-      sim = new MinInPlace::IncrementAndKill();
+      sim = new IncrementAndFreeze();
       break;
     case CHUNK_IAK:
       sim = new IAKWrapper();
@@ -192,22 +174,18 @@ CacheSim *new_simulator(CacheSimType sim_enum) {
 }
 
 // Run all workloads and record results
-void run_workloads(CacheSimType sim_enum) {
+SimResult run_workloads(CacheSimType sim_enum) {
   CacheSim *sim;
+  SimResult first_result;
   SimResult result;
+
 
   // Print header
   switch(sim_enum) {
     case OS_TREE:
       std::cout << "Testing OSTree LRU Sim" << std::endl; break;
     case IAK:
-      std::cout << "Testing IncrementAndKill LRU Sim" << std::endl; break;
-    case INPLACE_IAK:
-      std::cout << "Testing Inplace IAK LRU Sim" << std::endl; break;
-    case SMALL_IAK:
-      std::cout << "Testing Small Inplace IAK LRU Sim" << std::endl; break;
-    case MIN_IAK:
-      std::cout << "Testing Minimum Inplace IAK LRU Sim" << std::endl; break;
+      std::cout << "Testing IncrementAndFreeze LRU Sim" << std::endl; break;
     case CHUNK_IAK:
       std::cout << "Testing Chunked IAK LRU Sim" << std::endl; break;
     default:
@@ -217,7 +195,7 @@ void run_workloads(CacheSimType sim_enum) {
 
   // uniform accesses simulation
   sim = new_simulator(sim_enum);
-  result = uniform_simulator(sim, SEED);
+  first_result = uniform_simulator(sim, SEED);
   std::cout << "\tUniform Set Latency = " << result.latency << " ms" << std::endl;
   delete sim;
 
@@ -225,6 +203,7 @@ void run_workloads(CacheSimType sim_enum) {
   sim = new_simulator(sim_enum);
   result = working_set_simulator(sim, SEED);
   std::cout << "\tWorking Set Latency = " << result.latency << " ms" << std::endl;
+	
   delete sim;
 
   // test with different Zipfian parameters
@@ -236,13 +215,11 @@ void run_workloads(CacheSimType sim_enum) {
     std::cout << "\tZipfian, alpha=" << exp << " Latency = " << result.latency << " ms" << std::endl;
     delete sim;
   }
+	return first_result;
 }
 
 int main() {
-  // run_workloads(OS_TREE);
-  // run_workloads(IAK);
-  run_workloads(INPLACE_IAK);
-  run_workloads(SMALL_IAK);
-  run_workloads(MIN_IAK);
+  run_workloads(OS_TREE);
+  run_workloads(IAK);
   run_workloads(CHUNK_IAK);
 }
