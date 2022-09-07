@@ -196,7 +196,7 @@ SimResult run_workloads(CacheSimType sim_enum) {
   // uniform accesses simulation
   sim = new_simulator(sim_enum);
   first_result = uniform_simulator(sim, SEED);
-  std::cout << "\tUniform Set Latency = " << result.latency << " ms" << std::endl;
+  std::cout << "\tUniform Set Latency = " << first_result.latency << " ms" << std::endl;
   delete sim;
 
   // working set simulation
