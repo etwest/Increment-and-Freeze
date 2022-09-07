@@ -13,7 +13,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: make
-      run: make
-    - name: run
-      run: ./simulatePaging
+    - name: bazel build
+      run: bazel build unit_tests
+    - name: run tests
+      run: ./bazel-bin/unit_tests
