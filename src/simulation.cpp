@@ -218,8 +218,19 @@ SimResult run_workloads(CacheSimType sim_enum) {
 	return first_result;
 }
 
-int main() {
-  run_workloads(OS_TREE);
-  run_workloads(IAK);
-  run_workloads(CHUNK_IAK);
+int main(int argc, char **argv) {
+  bool verify = false;
+  if (argc == 2 && argv[1] == "--verify") verify = true;
+
+  SimResult os_res  = run_workloads(OS_TREE);
+  SimResult iak_res = run_workloads(IAK);
+  SimResult chk_res = run_workloads(CHUNK_IAK);
+
+  if (verify) {
+    std::cout << "OSTree and IAK are: ";
+    std::cout << (os_res == iak_res ? "equivalent" : "ERROR: different") << std::endl;
+
+    std::cout << "OSTree and CHUNK_IAK are: ";
+    std::cout << (os_res == chk_res ? "equivalent" : "ERROR: different") << std::endl;
+  }
 }
