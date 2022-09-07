@@ -8,6 +8,8 @@ build --copt -Werror
 build --copt -D_GLIBCXX_PARALLEL
 build --copt -g 
 build --strip=never
+build --copt -march=native
+build --copt -mtune=native
 
 build:debug --copt -fno-omit-frame-pointer
 build:debug --copt -fsanitize=address

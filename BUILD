@@ -15,8 +15,12 @@ cc_binary(
 		"include/OSTCacheSim.h"
 	],
 	copts = [
-		"-Iinclude"
+		"-Iinclude",
+		"-fopenmp"
 	],
+	linkopts = [
+		"-lgomp",
+	]
 )
 
 cc_library(
