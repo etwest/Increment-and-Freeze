@@ -220,7 +220,10 @@ SimResult run_workloads(CacheSimType sim_enum) {
 
 int main(int argc, char **argv) {
   bool verify = false;
-  if (argc == 2 && std::string(argv[1]) == "--verify") verify = true;
+  if (argc == 2 && std::string(argv[1]) == "--verify") {
+    std::cout << "Comparing and verifying results!" << std::endl;
+    verify = true;
+  }
 
   SimResult os_res  = run_workloads(OS_TREE);
   SimResult iak_res = run_workloads(IAK);
