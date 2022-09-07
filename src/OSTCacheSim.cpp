@@ -1,9 +1,9 @@
-#include "LruSizesSim.h"
+#include "OSTCacheSim.h"
 
 #include <iostream>
 
 // perform a memory access and use the LRU_queue to update the success function
-void LruSizesSim::memory_access(uint64_t addr) {
+void OSTCacheSim::memory_access(uint64_t addr) {
   uint64_t ts = access_number++;
 
   // attempt to find the addr in the OSTree
@@ -26,7 +26,7 @@ void LruSizesSim::memory_access(uint64_t addr) {
 // then insert it back with an updated timestamp.
 // return the rank of the page before updating the timestamp
 // assumes that a page with the old_ts exists in the LRU_queue
-size_t LruSizesSim::move_front_queue(uint64_t old_ts, uint64_t new_ts) {
+size_t OSTCacheSim::move_front_queue(uint64_t old_ts, uint64_t new_ts) {
   std::pair<size_t, uint64_t> found = LRU_queue.find(old_ts);
 
   LRU_queue.remove(found.first);
@@ -36,7 +36,7 @@ size_t LruSizesSim::move_front_queue(uint64_t old_ts, uint64_t new_ts) {
 
 // return the success function by starting at the back of the
 // page_hits vector and summing the elements to the front
-std::vector<uint64_t> LruSizesSim::get_success_function() {
+std::vector<uint64_t> OSTCacheSim::get_success_function() {
   uint64_t nhits = 0;
 
   // build vector to return based upon the number of unique pages accessed

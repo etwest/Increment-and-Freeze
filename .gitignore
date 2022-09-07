@@ -7,3 +7,6 @@ delme
 *.out*
 *.DS_Store
 fault_results.txt
+
+# Bazel stuff
+bazel*

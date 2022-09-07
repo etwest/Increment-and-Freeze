@@ -1,0 +1,20 @@
+startup --host_jvm_args=-XX:-UseParallelGC
+
+build --cxxopt="-std=c++2a" 
+build --jobs 30 --color=yes
+build --copt -O3
+build --copt -Wall
+build --copt -Werror
+build --copt -D_GLIBCXX_PARALLEL
+build --copt -g 
+build --strip=never
+build --copt -march=native
+build --copt -mtune=native
+
+build:debug --copt -fno-omit-frame-pointer
+build:debug --copt -fsanitize=address
+build:debug --copt -fsanitize=undefined
+build:debug --copt -fsanitize=leak
+build:debug --linkopt -fsanitize=address
+build:debug --linkopt -fsanitize=undefined 
+build:debug --linkopt -fsanitize=leak

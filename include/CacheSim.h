@@ -3,6 +3,8 @@
 #include <iostream>
 #include <vector>
 
+typedef std::vector<uint64_t> SuccessVector;
+
 class CacheSim {
  protected:
   uint64_t access_number = 1;  // simulated timestamp
@@ -16,7 +18,7 @@ class CacheSim {
    */
   virtual void memory_access(uint64_t addr) = 0;
 
-  virtual std::vector<uint64_t> get_success_function() = 0;
+  virtual SuccessVector get_success_function() = 0;
 
   void print_success_function() {
     // TODO: This is too verbose for real data.

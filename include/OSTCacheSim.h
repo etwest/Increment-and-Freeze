@@ -11,19 +11,19 @@
 #include "CacheSim.h"
 
 /*
- * An LruSizesSim simulates LRU running on every possible
+ * An OSTCacheSim simulates LRU running on every possible
  * memory size from 1 to MEM_SIZE.
  * Returns a success function which gives the number of page faults
  * for every memory size.
  */
-class LruSizesSim : public CacheSim {
+class OSTCacheSim : public CacheSim {
  private:
   std::vector<uint64_t> page_hits;  // vector used to construct success function
   OSTreeHead LRU_queue;             // order statistics tree for LRU depth
   std::unordered_map<uint64_t, uint64_t> page_table;  // map from v_addr to ts
  public:
-  LruSizesSim() = default;
-  ~LruSizesSim() = default;
+  OSTCacheSim() = default;
+  ~OSTCacheSim() = default;
 
   /*
    * Performs a memory access upon a given virtual page

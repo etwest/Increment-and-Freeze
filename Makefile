@@ -1,15 +1,15 @@
 CXX = g++
-OPTFLAGS = -O3
-DEFAULTFLAGS = -g -std=c++2a -Wall -I./include -D_GLIBCXX_PARALLEL -fopenmp
+OPTFLAGS = -O3 -DNDEBUG
+DEFAULTFLAGS = -g -std=c++2a -Wall -I./include -D_GLIBCXX_PARALLEL -fopenmp -fsanitize=address -fsanitize=leak -fsanitize=undefined
 CXXFLAGS = $(DEFAULTFLAGS) $(OPTFLAGS)
 
 vpath %.h include
 vpath %.cpp src
 
-simulatePaging: simulation.o LruSizesSim.o OSTree.o IncrementAndKill.o
+simulatePaging: simulation.o IAKWrapper.o OSTCacheSim.o OSTree.o IncrementAndFreeze.o
 	$(CXX) $(CXXFLAGS) $^ -o simulatePaging
 
-simulation.o: include/LruSizesSim.h include/params.h include/OSTree.h include/CacheSim.h
+simulation.o: include/OSTCacheSim.h include/params.h include/OSTree.h include/CacheSim.h include/IAKWrapper.h
 OSTree.o: include/OSTree.h
 
 %.o: %.cpp %.h
