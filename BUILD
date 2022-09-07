@@ -1,3 +1,12 @@
+alias(
+    name = "all",
+    actual = "CacheSim",
+)
+
+test_suite(
+    name = "tests",
+    tests = ["unit_tests"],
+)
 
 cc_library(
   name = "CacheSim",
@@ -20,6 +29,7 @@ cc_library(
     "include/IAKWrapper.h",
     "include/CacheSim.h"
   ],
+	copts=["-fopenmp"]
 )
 
 # Compile unit tests
