@@ -29,7 +29,12 @@ cc_library(
     "include/IAKWrapper.h",
     "include/CacheSim.h"
   ],
-	copts=["-fopenmp"]
+	copts = [
+		"-fopenmp"
+	],
+	linkopts = [
+		"-fopenmp"
+	]
 )
 
 # Compile unit tests

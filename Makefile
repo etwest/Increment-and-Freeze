@@ -1,6 +1,6 @@
 CXX = g++
 OPTFLAGS = -O3 -DNDEBUG
-DEFAULTFLAGS = -g -std=c++2a -Wall -I./include -D_GLIBCXX_PARALLEL -fopenmp -fsanitize=address -fsanitize=leak
+DEFAULTFLAGS = -g -std=c++2a -Wall -I./include -D_GLIBCXX_PARALLEL -fopenmp -fsanitize=address -fsanitize=leak -fsanitize=undefined
 CXXFLAGS = $(DEFAULTFLAGS) $(OPTFLAGS)
 
 vpath %.h include
