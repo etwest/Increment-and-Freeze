@@ -11,7 +11,7 @@ class IAKWrapper : public CacheSim {
     size_t max_recorded_chunk_size = 0;
 
     // Vector of stack distances
-    std::vector<size_t> distance_histogram;
+    std::vector<size_t> distance_histogram; // TODO: Bounded by cM
 
     // Input to current chunk
     IAKInput chunk_input;
@@ -25,10 +25,15 @@ class IAKWrapper : public CacheSim {
 
     constexpr static size_t min_u = 65536; // minimum size of requests array before running IAK
 
+    // Bound on u to limit depth vector to a maximum memory size
+    size_t max_living_req = ((size_t)-1) / max_u_mult; // default = unbounded 
+
     inline size_t get_u() { return cur_u;};
-    inline void update_u() {
-      size_t upper_u = max_u_mult * chunk_input.output.living_requests.size();
-      cur_u = chunk_input.output.living_requests.size() * min_u_mult < cur_u ? cur_u : upper_u;
+
+    // Function to update value of u given a living requests size
+    inline void update_u(size_t num_living) {
+      size_t upper_u = max_u_mult * num_living;
+      cur_u = num_living * min_u_mult < cur_u ? cur_u : upper_u;
     };
 
     void process_requests();
@@ -37,11 +42,12 @@ class IAKWrapper : public CacheSim {
     // Logs a memory access to simulate. The order this function is called in matters.
     void memory_access(uint64_t addr);
     
-    /* Returns the success function.
-     * Does *a lot* of work.
-     * When calling print_success_function, the answer is re-computed.
+    /* Returns the success function after processing requests in the current chunk.
+     * Does some work, up to u log u depending on the number of unprocessed requests.
      */
     std::vector<size_t> get_success_function();
+
     IAKWrapper() = default;
+    IAKWrapper(size_t max_memory) : max_living_req(max_memory) {};
     ~IAKWrapper() = default;
 };

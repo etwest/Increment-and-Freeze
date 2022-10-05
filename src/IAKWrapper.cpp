@@ -51,22 +51,29 @@ void IAKWrapper::process_requests() {
 
   // std::cout << "GET DEPTH TIME: " << depth_time << std::endl;
 
-  ::IAKOutput &result = chunk_input.output;
+  IAKOutput& result = chunk_input.output;
   // print_result(result);
+
+  // Resize the living requests if necessary to fit within max_living_req
+  if (result.living_requests.size() > max_living_req) {
+    auto it = result.living_requests.begin();
+    size_t size = result.living_requests.size();
+    result.living_requests.erase(it, it + (size - max_living_req));
+  }
 
   distance_histogram.resize(result.living_requests.size() + 1);
 
   // update depth_vector based upon living requests input to current chunk
-	for (size_t i = 0; i < prev_living_size; i++) {
-		result.depth_vector[i+1] += prev_living_size - i -1;
-	}
+  for (size_t i = 0; i < prev_living_size; i++) {
+    result.depth_vector[i+1] += prev_living_size - i -1;
+  }
   
   // Do not add living requests to distance histogram
   // 2-pointer walk through the depth vector and living requests
   // add to distance_histogram if access number not in living requests
   size_t living_idx = 0;
   for (size_t i = 0; i < result.depth_vector.size() - 1; i++) {
-		size_t depth = result.depth_vector[i+1];
+    size_t depth = result.depth_vector[i+1]; // stack depth of request i+1
     // if (depth >= distance_histogram.size())
     //   std::cout << "depth: " << depth << "/" << distance_histogram.size() - 1 << std::endl;
     assert(depth < distance_histogram.size());
@@ -89,7 +96,7 @@ void IAKWrapper::process_requests() {
   // std::cout << "First index of distance histogram = " << distance_histogram[1] << std::endl;
 
   // prepare for next iteration
-  update_u();
+  update_u(chunk_input.output.living_requests.size());
   chunk_input.chunk_requests.reserve(get_u());
   chunk_input.chunk_requests.insert(chunk_input.chunk_requests.end(), result.living_requests.begin(), result.living_requests.end());
 }
