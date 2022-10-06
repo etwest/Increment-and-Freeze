@@ -11,24 +11,18 @@ class IAKWrapper : public CacheSim {
     size_t max_recorded_chunk_size = 0;
 
     // Vector of stack distances
-    std::vector<size_t> distance_histogram; // TODO: Bounded by cM
+    std::vector<size_t> distance_histogram;
 
     // Input to current chunk
     IAKInput chunk_input;
 
     IncrementAndFreeze iak_alg;
 
-    size_t cur_u = min_u;
+    size_t cur_u;
+    size_t max_living_req;
 
     constexpr static size_t max_u_mult = 16; // chunk <= max_u_mult * u
     constexpr static size_t min_u_mult = 8;  // chunk > min_u_mult * u
-
-    constexpr static size_t min_u = 65536; // minimum size of requests array before running IAK
-
-    // Bound on u to limit depth vector to a maximum memory size
-    size_t max_living_req = ((size_t)-1) / max_u_mult; // default = unbounded 
-
-    inline size_t get_u() { return cur_u;};
 
     // Function to update value of u given a living requests size
     inline void update_u(size_t num_living) {
@@ -47,7 +41,15 @@ class IAKWrapper : public CacheSim {
      */
     std::vector<size_t> get_success_function();
 
-    IAKWrapper() = default;
-    IAKWrapper(size_t max_memory) : max_living_req(max_memory) {};
+    inline size_t get_u() { return cur_u;};
+
+    // IAKWrapper Constructor.
+    // min_chunk_size: minimum size of requests array before running IAK bigger values of 
+    //                 min_chunk_size means more parallelism but more memory consumption.
+    // max_cache_size: Limit on the memory sizes for which we report the hit rate. For example a 
+    //                 max cache size of 1 GiB means that we report hit rate for all memory sizes
+    //                 <= 1 GiB.
+    IAKWrapper(size_t min_chunk_size=65536, size_t max_cache_size=((size_t)-1)/max_u_mult) 
+      : cur_u(min_chunk_size), max_living_req(max_cache_size) {};
     ~IAKWrapper() = default;
 };

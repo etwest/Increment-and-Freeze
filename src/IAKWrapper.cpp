@@ -64,23 +64,24 @@ void IAKWrapper::process_requests() {
   distance_histogram.resize(result.living_requests.size() + 1);
 
   // update depth_vector based upon living requests input to current chunk
-  for (size_t i = 0; i < prev_living_size; i++) {
-    result.depth_vector[i+1] += prev_living_size - i -1;
+  for (size_t i = 1; i < prev_living_size; i++) {
+    result.depth_vector[i] += prev_living_size - i;
   }
   
   // Do not add living requests to distance histogram
   // 2-pointer walk through the depth vector and living requests
   // add to distance_histogram if access number not in living requests
   size_t living_idx = 0;
-  for (size_t i = 0; i < result.depth_vector.size() - 1; i++) {
-    size_t depth = result.depth_vector[i+1]; // stack depth of request i+1
-    // if (depth >= distance_histogram.size())
-    //   std::cout << "depth: " << depth << "/" << distance_histogram.size() - 1 << std::endl;
-    assert(depth < distance_histogram.size());
+  for (size_t i = 1; i < result.depth_vector.size(); i++) {
+    size_t depth = result.depth_vector[i]; // stack depth of request i
+    assert(depth / max_u_mult < distance_histogram.size());
 
-    // If this index is killed than update distance histogram
-    if (living_idx >= result.living_requests.size() || i + 1 != result.living_requests[living_idx].second)
-      distance_histogram[depth]++;
+    // If we still have living requests to process and the current request is not a living request
+    if (living_idx >= result.living_requests.size() || i != result.living_requests[living_idx].second) {
+      if (depth < distance_histogram.size()) // don't update with depth out of bounds
+        distance_histogram[depth]++;
+    }
+    // If current is a living request, increment living request pointer
     else if (living_idx < result.living_requests.size())
       ++living_idx;
   }

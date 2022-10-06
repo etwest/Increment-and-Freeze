@@ -58,6 +58,7 @@ cc_test(
   size = "small",
   srcs = [
     "test/unit_tests.cpp", 
+    "test/memory_cutoff_tests.cpp"
   ],
   includes = ["include/"],
   deps = [
