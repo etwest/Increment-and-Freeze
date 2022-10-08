@@ -18,15 +18,13 @@ void IAKWrapper::memory_access(uint64_t addr) {
 
 void print_result(::IAKOutput result) {
   std::cout << "living requests" << std::endl;
-  for (auto living: result.living_requests) {
+  for (auto living: result.living_requests)
     std::cout << living.first << "," << living.second << " ";
-  }
   std::cout << std::endl;
 
   std::cout << "depth vector: " << result.depth_vector.size() << std::endl;
-  for (size_t i = 0; i < result.depth_vector.size() - 1; i++) {
+  for (size_t i = 0; i < result.depth_vector.size() - 1; i++)
     std::cout << result.depth_vector[i+1] << " ";
-  }
   std::cout << std::endl;
 }
 
@@ -37,12 +35,12 @@ void IAKWrapper::process_requests() {
 
   // std::cout << std::endl;
   // std::cout << "Processing chunk" << std::endl;
-  // std::cout << "Living requests " << living.size() << std::endl;
-  // std::cout << "New requests " << requests.size() << std::endl;
-
+  // std::cout << "Living requests " << chunk_input.output.living_requests.size() << std::endl;
+  // std::cout << "New requests " << chunk_input.chunk_requests.size() << std::endl;
   // std::cout << "CHUNK:" << std::endl;
-  // for (auto item : requests)
+  // for (auto item : chunk_input.chunk_requests)
   //   std::cout << item.first << "," << item.second << std::endl;
+  
   size_t prev_living_size = chunk_input.output.living_requests.size();
 
   // auto start = std::chrono::high_resolution_clock::now();
@@ -54,14 +52,7 @@ void IAKWrapper::process_requests() {
   IAKOutput& result = chunk_input.output;
   // print_result(result);
 
-  // Resize the living requests if necessary to fit within max_living_req
-  if (result.living_requests.size() > max_living_req) {
-    auto it = result.living_requests.begin();
-    size_t size = result.living_requests.size();
-    result.living_requests.erase(it, it + (size - max_living_req));
-  }
-
-  distance_histogram.resize(result.living_requests.size() + 1);
+  distance_histogram.resize(1 + std::min(result.living_requests.size(), max_living_req));
 
   // update depth_vector based upon living requests input to current chunk
   for (size_t i = 1; i < prev_living_size; i++) {
@@ -86,6 +77,13 @@ void IAKWrapper::process_requests() {
       ++living_idx;
   }
 
+  // Resize the living requests if necessary to fit within max_living_req
+  if (result.living_requests.size() > max_living_req) {
+    auto it = result.living_requests.begin();
+    size_t size = result.living_requests.size();
+    result.living_requests.erase(it, it + (size - max_living_req));
+  }
+
   // Fix the index of the living requests so they count up from 1
   size_t num_living = 0;
   for (auto &living_req : result.living_requests)
@@ -104,8 +102,10 @@ void IAKWrapper::process_requests() {
 
 std::vector<size_t> IAKWrapper::get_success_function() {
   // Ensure all requests processed
-  if (chunk_input.chunk_requests.size() > 0) {
+  if (chunk_input.chunk_requests.size() - chunk_input.output.living_requests.size() > 0) {
+    // std::cout << "Processing chunk of size " << chunk_input.chunk_requests.size() << " before get_success_function()." << std::endl;
     process_requests();
+    std::cout << "logu max memory usage: " << sizeof(::Op) * 2 * 2 * max_recorded_chunk_size * 1.0 / GB << " GB" << std::endl;
   }
 
   // TODO: parallel prefix sum for integrating
@@ -119,7 +119,6 @@ std::vector<size_t> IAKWrapper::get_success_function() {
   //for (auto& success : success_func)
   //  success /= running_count;
   // std::cout << max_recorded_chunk_size << std::endl;
-  std::cout << "logu Requesting memory: " << sizeof(::Op) * 2 * 2 * max_recorded_chunk_size * 1.0 / GB << " GB" << std::endl;
   return success_func;
 }
 

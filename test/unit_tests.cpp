@@ -56,7 +56,7 @@ TEST_P(CacheSimUnitTests, SimpleTest) {
   for (size_t i = 3; i < svec.size(); i++) {
     ASSERT_EQ(svec[i], 2); // assert rest only get 2 hits
   }
-	delete sim;
+  delete sim;
 }
 
 // Validate the success function returned by the CacheSim
@@ -94,7 +94,7 @@ TEST_P(CacheSimUnitTests, ValidateSuccess) {
   for (size_t i = 7; i < svec.size(); i++) {
     ASSERT_EQ(svec[i], 12 * repeats - 6); // assert rest are same
   }
-	delete sim;
+  delete sim;
 }
 
 // Validate the success function returned by the CacheSim
@@ -136,5 +136,5 @@ TEST_P(CacheSimUnitTests, MultipleSuccessCalls) {
       ASSERT_EQ(svec[i], 12 * (l+1) * rep_per_loop - 6); // assert rest are same
     }
   }
-	delete sim;
+  delete sim;
 }

@@ -12,9 +12,9 @@ class CacheSim {
   CacheSim() = default;
   virtual ~CacheSim() = default;
   /*
-   * Perform a memory access upon a given virtual page
-   * virtual_addr:   the virtual address to access
-   * returns         nothing
+   * Perform a memory access upon a given id
+   * addr:    the id to access 
+   * returns  nothing
    */
   virtual void memory_access(uint64_t addr) = 0;
 

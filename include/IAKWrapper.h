@@ -41,7 +41,8 @@ class IAKWrapper : public CacheSim {
      */
     std::vector<size_t> get_success_function();
 
-    inline size_t get_u() { return cur_u;};
+    inline size_t get_u() { return cur_u; };
+    inline size_t get_mem_limit() { return max_living_req; };
 
     // IAKWrapper Constructor.
     // min_chunk_size: minimum size of requests array before running IAK bigger values of 
