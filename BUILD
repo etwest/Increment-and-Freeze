@@ -71,7 +71,7 @@ cc_test(
   name = "unit_tests",
   size = "small",
   srcs = [
-    "test/unit_tests.cpp",
+      "unit_tests.cc",
   ],
   deps = [
     "@googletest//:gtest_main",
