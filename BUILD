@@ -10,7 +10,7 @@ cc_binary(
         ":ost_cache_sim",
     ],
     srcs = [
-	"src/simulation.cpp",
+	"simulation.cc",
     ],
     linkopts = [
 	"-lgomp",
