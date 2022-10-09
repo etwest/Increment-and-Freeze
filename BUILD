@@ -25,12 +25,18 @@ cc_binary(
 
 cc_library(
     name = "cache_sim",
-    hdrs = ["cache_sim.h"]
+    hdrs = ["cache_sim.h"],
 )
 
 cc_library(
     name = "params",
-    hdrs = ["params.h"]
+    hdrs = ["params.h"],
+)
+
+cc_library(
+    name = "ostree",
+    hdrs = ["ostree.h"],
+    srcs = ["ostree.cc"],
 )
 
 cc_library(
@@ -38,11 +44,9 @@ cc_library(
   srcs = [
     "include/IncrementAndFreeze.h",
     "include/OSTCacheSim.h",
-    "include/OSTree.h",
     "include/IAKWrapper.h",
     "src/IncrementAndFreeze.cpp",
     "src/OSTCacheSim.cpp",
-    "src/OSTree.cpp",
     "src/IAKWrapper.cpp",
   ],
   hdrs = [
@@ -53,6 +57,7 @@ cc_library(
   deps = [
       ":cache_sim",
       ":params",
+      ":ostree",
   ],
   copts = [
       "-fopenmp",

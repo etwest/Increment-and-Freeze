@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "cache_sim.h"
-#include "OSTree.h"
+#include "ostree.h"
 
 /*
  * An OSTCacheSim simulates LRU running on every possible
