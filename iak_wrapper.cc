@@ -3,7 +3,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <chrono>
 #include <iostream>
 #include <memory>
 #include <utility>

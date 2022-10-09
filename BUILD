@@ -6,6 +6,7 @@ test_suite(
 cc_binary(
     name = "sim",
     deps = [
+        "@absl//absl/time:time",
 	":iak_wrapper",
         ":ost_cache_sim",
     ],

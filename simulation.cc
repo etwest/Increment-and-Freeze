@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <cmath>
@@ -8,116 +7,112 @@
 #include <string>
 #include <vector>
 
+#include "absl/time/clock.h"
 #include "cache_sim.h"
 #include "iak_wrapper.h"
 #include "increment_and_freeze.h"
 #include "ost_cache_sim.h"
 #include "params.h"
 
-using std::chrono::duration;
-using std::chrono::high_resolution_clock;
-
 struct SimResult {
   CacheSim::SuccessVector success;
-  double latency;
-	bool operator== (const SimResult& other) const
-	{
-		if (success.size() == 0 || other.success.size() == 0) return false;
-		size_t i = 0;
-		uint64_t last_elm = success[0];
-		while (i < success.size() && i < other.success.size()) {
-			if (success[i] != other.success[i]) {
-				std::cout << "DIFF AT " << i << std::endl;
-				return false;
-			}
-			last_elm = success[i++];
-		}
+  absl::Duration latency;
+  bool operator== (const SimResult& other) const
+  {
+    if (success.size() == 0 || other.success.size() == 0) return false;
+    size_t i = 0;
+    uint64_t last_elm = success[0];
+    while (i < success.size() && i < other.success.size()) {
+      if (success[i] != other.success[i]) {
+        std::cout << "DIFF AT " << i << std::endl;
+        return false;
+      }
+      last_elm = success[i++];
+    }
 
-		// assert that any remaining elements in either vector
-		// are identical to last_elm
-		for (size_t j = i; j < success.size(); j++)
-			if (success[j] != last_elm) return false;
+    // assert that any remaining elements in either vector
+    // are identical to last_elm
+    for (size_t j = i; j < success.size(); j++)
+      if (success[j] != last_elm) return false;
 
-		for (size_t j = i; j < other.success.size(); j++)
-			if (other.success[j] != last_elm) return false;
+    for (size_t j = i; j < other.success.size(); j++)
+      if (other.success[j] != last_elm) return false;
 
-		return true;
-	}
+    return true;
+  }
 };
 
 // An enum describing the different CacheSims
 enum CacheSimType {
-	OS_TREE,
-	IAK,
-	CHUNK_IAK,
+  OS_TREE,
+  IAK,
+  CHUNK_IAK,
 };
 
-/*
- * Runs a random sequence of page requests that follow a working set distribution.
- * A majority of accesses are made to a somewhat small working set while the rest
- * are made randomly to a much larger amount of memory
- * seed:    The seed to the random number generator.
- * print:   If true print out the results of the simulation.
- * returns: The success function and time it took to compute.
- */
+// Runs a random sequence of page requests that follow a working set
+// distribution.  A majority of accesses are made to a somewhat small working
+// set while the rest are made randomly to a much larger amount of memory.
+//  * seed:    The seed to the random number generator.
+//  * print:   If true print out the results of the simulation.
+//  * returns: The success function and time it took to compute.
 SimResult working_set_simulator(CacheSim *sim, uint32_t seed, bool print = false) {
-	std::mt19937 rand(seed);  // create random number generator
-	auto start = high_resolution_clock::now();
-	for (uint64_t i = 0; i < kAccesses; i++) {
-		// compute the next address
-		uint64_t working_size = kWorkingSet;
-		uint64_t leftover_size = kUniqueIds - kWorkingSet;
-		double working_chance = rand() / (double)(0xFFFFFFFF);
-		uint64_t addr = rand();
-		if (working_chance <= kLocality)
-			addr %= working_size;
-		else
-			addr = (addr % leftover_size) + working_size;
+  std::mt19937 rand(seed);  // create random number generator
+  auto start = absl::Now();
+  for (uint64_t i = 0; i < kAccesses; i++) {
+    // compute the next address
+    uint64_t working_size = kWorkingSet;
+    uint64_t leftover_size = kUniqueIds - kWorkingSet;
+    double working_chance = rand() / (double)(0xFFFFFFFF);
+    uint64_t addr = rand();
+    if (working_chance <= kLocality)
+      addr %= working_size;
+    else
+      addr = (addr % leftover_size) + working_size;
 
-		// access the address
-		sim->memory_access(addr);
-	}
-        CacheSim::SuccessVector succ = sim->get_success_function();
-	double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
-	if (print) {
-		std::cout << "Success function: " << std::endl;
-		sim->print_success_function();
-	}
-	return {succ, time};
+    // access the address
+    sim->memory_access(addr);
+  }
+  CacheSim::SuccessVector succ = sim->get_success_function();
+  auto duration = absl::Now() - start;
+  if (print) {
+    std::cout << "Success function: " << std::endl;
+    sim->print_success_function();
+  }
+  return {succ, duration};
 }
 
 SimResult uniform_simulator(CacheSim *sim, uint32_t seed, bool print = false) {
-	std::mt19937 rand(seed); // create random number generator
-	auto start = high_resolution_clock::now();
-	for (uint64_t i = 0; i < kAccesses; i++) {
-		// compute the next address
-		uint64_t addr = rand() % kUniqueIds;
+  std::mt19937 rand(seed); // create random number generator
+  auto start = absl::Now();
+  for (uint64_t i = 0; i < kAccesses; i++) {
+    // compute the next address
+    uint64_t addr = rand() % kUniqueIds;
 
-		// access the address
-		sim->memory_access(addr);
-	}
-        CacheSim::SuccessVector succ = sim->get_success_function();
-	double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
-	if (print) {
-		std::cout << "Success function: " << std::endl;
-		sim->print_success_function();
-	}
-	return {succ, time};
+    // access the address
+    sim->memory_access(addr);
+  }
+  CacheSim::SuccessVector succ = sim->get_success_function();
+  auto duration = absl::Now() - start;
+  if (print) {
+    std::cout << "Success function: " << std::endl;
+    sim->print_success_function();
+  }
+  return {succ, duration};
 }
 
 SimResult simulate_on_seq(CacheSim *sim, std::vector<uint64_t> seq, bool print = false) {
-	auto start = high_resolution_clock::now();
-	for (uint64_t i = 0; i < seq.size(); i++) {
-		// access the address
-		sim->memory_access(seq[i]);
-	}
-        CacheSim::SuccessVector succ = sim->get_success_function();
-	double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
-	if (print) {
-		std::cout << "Success function: " << std::endl;
-		sim->print_success_function();
-	}
-	return {succ, time};
+  auto start = absl::Now();
+  for (uint64_t i = 0; i < seq.size(); i++) {
+    // access the address
+    sim->memory_access(seq[i]);
+  }
+  CacheSim::SuccessVector succ = sim->get_success_function();
+  auto duration = absl::Now() - start;
+  if (print) {
+    std::cout << "Success function: " << std::endl;
+    sim->print_success_function();
+  }
+  return {succ, duration};
 }
 
 std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
@@ -218,7 +213,7 @@ SimResult run_workloads(CacheSimType sim_enum) {
               << result.latency << " ms" << std::endl;
     delete sim;
   }
-	return first_result;
+  return first_result;
 }
 
 int main(int argc, char **argv) {
