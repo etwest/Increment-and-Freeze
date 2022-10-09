@@ -1,9 +1,14 @@
-#pragma once
+#ifndef ONLINE_CACHE_SIMULATOR_INCLUDE_INCREMENTANDFREEZE_H_
+#define ONLINE_CACHE_SIMULATOR_INCLUDE_INCREMENTANDFREEZE_H_
 
-#include <iostream>
-#include <cassert>
+#include <stddef.h>    // for size_t
+#include <cassert>     // for assert
+#include <cstdint>     // for uint64_t, uint32_t, int64_t, int32_t
+#include <iostream>    // for operator<<, basic_ostream::operator<<, basic_o...
+#include <utility>     // for pair, move, swap
+#include <vector>      // for vector, vector<>::iterator
 
-#include "CacheSim.h"
+#include "CacheSim.h"  // for CacheSim
 
   struct IAKOutput {
     std::vector<std::pair<size_t, size_t>> living_requests;
@@ -22,18 +27,18 @@
     private:
       //OpType type = Null;     // Do we increment or kill?
       uint32_t _target = 0; // kill target
-      static constexpr uint32_t inc_amnt = 1;      // subrange Increment amount 
+      static constexpr uint32_t inc_amnt = 1;      // subrange Increment amount
       int32_t full_amnt = 0;      // fullrange Increment amount
-     
+
       static constexpr uint32_t tmask = 0x3FFFFFFF;
       static constexpr uint32_t ntmask = ~tmask;
       uint32_t target() const {return _target & tmask;};
       void set_target(const uint32_t& new_target) {_target &= ntmask; assert(new_target == (new_target & tmask)); _target |= new_target;};
-      OpType type() const 
+      OpType type() const
       {
         return (OpType)(_target >> 30);
       };
-      void set_type(const OpType& t) 
+      void set_type(const OpType& t)
       {
         _target &= tmask;
         _target |= ((int)t << 30);
@@ -300,7 +305,7 @@
      * Requests is copied, not modified.
      * Precondition: requests must be properly populated.
      */
-    void calculate_prevnext(std::vector<req_index_pair> &req, 
+    void calculate_prevnext(std::vector<req_index_pair> &req,
       std::vector<req_index_pair> *living_req=nullptr);
 
 		/* Vector of operations used in ProjSequence to store memory
@@ -316,7 +321,7 @@
     // Shortcut to access prev in prevnext.
     uint64_t& prev(uint64_t i) {return prev_arr[i];}
     /* Helper dunction to get_distance_vector.
-     * Recursively (and in parallel) populates the distance vector if the 
+     * Recursively (and in parallel) populates the distance vector if the
      * projection is small enough, or calls itself with smaller projections otherwise.
      */
     void do_projections(std::vector<uint64_t>& distance_vector, ProjSequence seq);
@@ -328,7 +333,7 @@
      * When calling print_success_function, the answer is re-computed.
      */
     std::vector<uint64_t> get_success_function();
-    
+
     /*
      * Process a chunk of requests using the living requests from the previous chunk
      * Return the new living requests and the depth_vector
@@ -339,3 +344,5 @@
     ~IncrementAndFreeze() = default;
     std::vector<uint64_t> get_distance_vector();
   };
+
+#endif  // ONLINE_CACHE_SIMULATOR_INCLUDE_INCREMENTANDFREEZE_H_

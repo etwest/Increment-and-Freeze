@@ -1,7 +1,16 @@
 #include "IAKWrapper.h"
-#include "params.h"
 
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
 #include <chrono>
+#include <iostream>
+#include <memory>
+#include <utility>
+#include <vector>
+
+#include "IncrementAndFreeze.h"
+#include "params.h"
 
 void IAKWrapper::memory_access(uint64_t addr) {
   chunk_input.chunk_requests.push_back({addr, chunk_input.chunk_requests.size() + 1});

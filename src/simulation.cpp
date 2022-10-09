@@ -1,13 +1,14 @@
-#include <stdlib.h>
-
 #include <algorithm>
 #include <chrono>
-#include <cinttypes>
-#include <fstream>
+#include <cstdint>
+#include <cstdlib>
+#include <cmath>
+#include <iostream>
 #include <random>
-#include <set>
-#include <utility>
+#include <string>
+#include <vector>
 
+#include "CacheSim.h"
 #include "IAKWrapper.h"
 #include "IncrementAndFreeze.h"
 #include "OSTCacheSim.h"

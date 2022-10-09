@@ -1,7 +1,12 @@
+#ifndef ONLINE_CACHE_SIMULATOR_INCLUDE_IAKWRAPPER_H_
+#define ONLINE_CACHE_SIMULATOR_INCLUDE_IAKWRAPPER_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <vector>
-#include <cmath>
+#include <utility>
 
+#include "CacheSim.h"
 #include "IncrementAndFreeze.h"
 
 class IAKWrapper : public CacheSim {
@@ -36,7 +41,7 @@ class IAKWrapper : public CacheSim {
   public:
     // Logs a memory access to simulate. The order this function is called in matters.
     void memory_access(uint64_t addr);
-    
+
     /* Returns the success function.
      * Does *a lot* of work.
      * When calling print_success_function, the answer is re-computed.
@@ -45,3 +50,5 @@ class IAKWrapper : public CacheSim {
     IAKWrapper() = default;
     ~IAKWrapper() = default;
 };
+
+#endif  // ONLINE_CACHE_SIMULATOR_INCLUDE_IAKWRAPPER_H_
