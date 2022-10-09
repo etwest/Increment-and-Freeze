@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "cache_sim.h"
-#include "IAKWrapper.h"
+#include "iak_wrapper.h"
 #include "increment_and_freeze.h"
 #include "ost_cache_sim.h"
 #include "params.h"

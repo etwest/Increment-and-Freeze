@@ -4,22 +4,17 @@ test_suite(
 )
 
 cc_binary(
-	name = "sim",
-	deps = [
-		"CacheSim",
-                ":ost_cache_sim",
-	],
-	srcs = [
-		"src/simulation.cpp",
-		"include/IAKWrapper.h",
-	],
-	copts = [
-		"-Iinclude",
-		"-fopenmp"
-	],
-	linkopts = [
-		"-lgomp",
-	]
+    name = "sim",
+    deps = [
+	":iak_wrapper",
+        ":ost_cache_sim",
+    ],
+    srcs = [
+	"src/simulation.cpp",
+    ],
+    linkopts = [
+	"-lgomp",
+    ]
 )
 
 cc_library(
@@ -62,27 +57,13 @@ cc_library(
 )
 
 cc_library(
-  name = "CacheSim",
-  srcs = [
-    "include/IAKWrapper.h",
-    "src/IAKWrapper.cpp",
-  ],
-  hdrs = [
-    "include/IAKWrapper.h",
-  ],
-  deps = [
-      ":cache_sim",
-      ":params",
-      ":increment_and_freeze",
-      ":ostree",
-  ],
-  copts = [
-      "-fopenmp",
-      "-Iinclude"
-  ],
-  linkopts = [
-  "-fopenmp"
-  ]
+    name = "iak_wrapper",
+    hdrs = ["iak_wrapper.h"],
+    srcs = ["iak_wrapper.cc"],
+    deps = [
+        ":increment_and_freeze",
+        ":params",
+    ],
 )
 
 # Compile unit tests
@@ -92,10 +73,12 @@ cc_test(
   srcs = [
     "test/unit_tests.cpp",
   ],
-  includes = ["include/"],
   deps = [
     "@googletest//:gtest_main",
-    "CacheSim",
+    ":iak_wrapper",
     ":ost_cache_sim",
   ],
+  linkopts = [
+      "-lgomp",
+  ]
 )
