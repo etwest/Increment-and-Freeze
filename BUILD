@@ -29,13 +29,17 @@ cc_library(
 )
 
 cc_library(
+    name = "params",
+    hdrs = ["params.h"]
+)
+
+cc_library(
   name = "CacheSim",
   srcs = [
     "include/IncrementAndFreeze.h",
     "include/OSTCacheSim.h",
     "include/OSTree.h",
     "include/IAKWrapper.h",
-    "include/params.h",
     "src/IncrementAndFreeze.cpp",
     "src/OSTCacheSim.cpp",
     "src/OSTree.cpp",
@@ -48,6 +52,7 @@ cc_library(
   ],
   deps = [
       ":cache_sim",
+      ":params",
   ],
   copts = [
       "-fopenmp",

@@ -1,5 +1,5 @@
-#ifndef PARAMS_H_GUARD
-#define PARAMS_H_GUARD
+#ifndef ONLINE_CACHE_SIMULATOR_PARAMS_H_
+#define ONLINE_CACHE_SIMULATOR_PARAMS_H_
 
 constexpr uint64_t GB = 1 << 30;
 constexpr uint64_t MB = 1 << 20;
@@ -19,4 +19,5 @@ static_assert(LOCALITY >= 0 && LOCALITY <= 1);
 
 const std::string OUT_FILE = "fault_results.txt";
 
-#endif
+#endif  // ONLINE_CACHE_SIMULATOR_PARAMS_H_
+
