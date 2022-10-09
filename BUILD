@@ -24,13 +24,17 @@ cc_binary(
 )
 
 cc_library(
+    name = "cache_sim",
+    hdrs = ["cache_sim.h"]
+)
+
+cc_library(
   name = "CacheSim",
   srcs = [
     "include/IncrementAndFreeze.h",
     "include/OSTCacheSim.h",
     "include/OSTree.h",
     "include/IAKWrapper.h",
-    "include/CacheSim.h",
     "include/params.h",
     "src/IncrementAndFreeze.cpp",
     "src/OSTCacheSim.cpp",
@@ -41,15 +45,17 @@ cc_library(
     "include/IncrementAndFreeze.h",
     "include/OSTCacheSim.h",
     "include/IAKWrapper.h",
-    "include/CacheSim.h"
   ],
-	copts = [
-		"-fopenmp",
-		"-Iinclude"
-	],
-	linkopts = [
-		"-fopenmp"
-	]
+  deps = [
+      ":cache_sim",
+  ],
+  copts = [
+      "-fopenmp",
+      "-Iinclude"
+  ],
+  linkopts = [
+  "-fopenmp"
+  ]
 )
 
 # Compile unit tests

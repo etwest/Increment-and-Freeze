@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "CacheSim.h"
+#include "cache_sim.h"
 #include "IAKWrapper.h"
 #include "IncrementAndFreeze.h"
 #include "OSTCacheSim.h"
@@ -18,7 +18,7 @@ using std::chrono::duration;
 using std::chrono::high_resolution_clock;
 
 struct SimResult {
-  SuccessVector success;
+  CacheSim::SuccessVector success;
   double latency;
 	bool operator== (const SimResult& other) const
 	{
@@ -77,7 +77,7 @@ SimResult working_set_simulator(CacheSim *sim, uint32_t seed, bool print = false
 		// access the address
 		sim->memory_access(addr);
 	}
-	SuccessVector succ = sim->get_success_function();
+        CacheSim::SuccessVector succ = sim->get_success_function();
 	double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
 	if (print) {
 		std::cout << "Success function: " << std::endl;
@@ -96,7 +96,7 @@ SimResult uniform_simulator(CacheSim *sim, uint32_t seed, bool print = false) {
 		// access the address
 		sim->memory_access(addr);
 	}
-	SuccessVector succ = sim->get_success_function();
+        CacheSim::SuccessVector succ = sim->get_success_function();
 	double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
 	if (print) {
 		std::cout << "Success function: " << std::endl;
@@ -111,7 +111,7 @@ SimResult simulate_on_seq(CacheSim *sim, std::vector<uint64_t> seq, bool print =
 		// access the address
 		sim->memory_access(seq[i]);
 	}
-	SuccessVector succ = sim->get_success_function();
+        CacheSim::SuccessVector succ = sim->get_success_function();
 	double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
 	if (print) {
 		std::cout << "Success function: " << std::endl;

@@ -38,6 +38,10 @@ class CacheSimUnitTests : public testing::TestWithParam<CacheSimType> {
 };
 INSTANTIATE_TEST_SUITE_P(CacheSimSuite, CacheSimUnitTests, testing::Values(OS_TREE, IAK, CHUNK_IAK));
 
+namespace {
+using SuccessVector = CacheSim::SuccessVector;
+}  // namespace
+
 // Very simple validation of success function
 TEST_P(CacheSimUnitTests, SimpleTest) {
   CacheSim *sim = new_simulator(GetParam());

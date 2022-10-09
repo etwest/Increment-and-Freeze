@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "cache_sim.h"
 #include "OSTree.h"
-#include "CacheSim.h"
 
 /*
  * An OSTCacheSim simulates LRU running on every possible

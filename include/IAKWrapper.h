@@ -6,7 +6,7 @@
 #include <vector>
 #include <utility>
 
-#include "CacheSim.h"
+#include "cache_sim.h"
 #include "IncrementAndFreeze.h"
 
 class IAKWrapper : public CacheSim {
