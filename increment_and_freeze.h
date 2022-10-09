@@ -1,8 +1,8 @@
-#ifndef ONLINE_CACHE_SIMULATOR_INCLUDE_INCREMENTANDFREEZE_H_
-#define ONLINE_CACHE_SIMULATOR_INCLUDE_INCREMENTANDFREEZE_H_
+#ifndef ONLINE_CACHE_SIMULATOR_INCREMENT_AND_FREEZE_H_
+#define ONLINE_CACHE_SIMULATOR_INCREMENT_AND_FREEZE_H_
 
-#include <stddef.h>    // for size_t
 #include <cassert>     // for assert
+#include <cstddef>     // for size_t
 #include <cstdint>     // for uint64_t, uint32_t, int64_t, int32_t
 #include <iostream>    // for operator<<, basic_ostream::operator<<, basic_o...
 #include <utility>     // for pair, move, swap
@@ -345,4 +345,4 @@ class IncrementAndFreeze: public CacheSim {
   std::vector<uint64_t> get_distance_vector();
 };
 
-#endif  // ONLINE_CACHE_SIMULATOR_INCLUDE_INCREMENTANDFREEZE_H_
+#endif  // ONLINE_CACHE_SIMULATOR_INCREMENT_AND_FREEZE_H_

@@ -1,4 +1,4 @@
-#include "IncrementAndFreeze.h"
+#include "increment_and_freeze.h"
 
 #include <algorithm>
 #include <omp.h>

@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include "IncrementAndFreeze.h"
+#include "increment_and_freeze.h"
 #include "params.h"
 
 void IAKWrapper::memory_access(uint64_t addr) {

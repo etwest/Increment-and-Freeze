@@ -12,7 +12,6 @@ cc_binary(
 	srcs = [
 		"src/simulation.cpp",
 		"include/IAKWrapper.h",
-		"include/IncrementAndFreeze.h",
 	],
 	copts = [
 		"-Iinclude",
@@ -50,20 +49,31 @@ cc_library(
 )
 
 cc_library(
+    name = "increment_and_freeze",
+    hdrs = ["increment_and_freeze.h"],
+    srcs = ["increment_and_freeze.cc"],
+    deps = [
+        ":cache_sim",
+        ":params",
+    ],
+    copts = [
+	"-fopenmp",
+    ],
+)
+
+cc_library(
   name = "CacheSim",
   srcs = [
-    "include/IncrementAndFreeze.h",
     "include/IAKWrapper.h",
-    "src/IncrementAndFreeze.cpp",
     "src/IAKWrapper.cpp",
   ],
   hdrs = [
-    "include/IncrementAndFreeze.h",
     "include/IAKWrapper.h",
   ],
   deps = [
       ":cache_sim",
       ":params",
+      ":increment_and_freeze",
       ":ostree",
   ],
   copts = [

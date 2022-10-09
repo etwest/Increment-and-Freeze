@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "cache_sim.h"
-#include "IncrementAndFreeze.h"
+#include "increment_and_freeze.h"
 
 class IAKWrapper : public CacheSim {
   using tuple = std::pair<uint64_t, uint64_t>;

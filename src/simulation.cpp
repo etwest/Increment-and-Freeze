@@ -10,7 +10,7 @@
 
 #include "cache_sim.h"
 #include "IAKWrapper.h"
-#include "IncrementAndFreeze.h"
+#include "increment_and_freeze.h"
 #include "ost_cache_sim.h"
 #include "params.h"
 
