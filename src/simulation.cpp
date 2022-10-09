@@ -1,5 +1,6 @@
 #include <stdlib.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cinttypes>
 #include <fstream>

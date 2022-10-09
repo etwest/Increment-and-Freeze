@@ -1,6 +1,6 @@
 startup --host_jvm_args=-XX:-UseParallelGC
 
-build --cxxopt="-std=c++2a" 
+build --cxxopt="-std=c++17" 
 build --jobs 30 --color=yes
 build --copt -O3
 build --copt -Wall

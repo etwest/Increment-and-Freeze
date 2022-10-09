@@ -6,6 +6,8 @@
 #include "params.h"
 #include <utility>
 #include <chrono>
+#include <string>
+
 class IncrementAndFreeze;
 
 //namespace MinInPlace {
