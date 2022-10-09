@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 
 // Include our code
-#include "IAKWrapper.h"
-#include "IncrementAndFreeze.h"
-#include "OSTCacheSim.h"
+#include "iak_wrapper.h"
+#include "increment_and_freeze.h"
+#include "ost_cache_sim.h"
 
 // An enum describing the different CacheSims
 enum CacheSimType {
@@ -37,6 +37,10 @@ class CacheSimUnitTests : public testing::TestWithParam<CacheSimType> {
 
 };
 INSTANTIATE_TEST_SUITE_P(CacheSimSuite, CacheSimUnitTests, testing::Values(OS_TREE, IAK, CHUNK_IAK));
+
+namespace {
+using SuccessVector = CacheSim::SuccessVector;
+}  // namespace
 
 // Very simple validation of success function
 TEST_P(CacheSimUnitTests, SimpleTest) {

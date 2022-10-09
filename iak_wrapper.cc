@@ -1,4 +1,4 @@
-#include "IAKWrapper.h"
+#include "iak_wrapper.h"
 
 #include <cassert>
 #include <cstddef>
@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include "IncrementAndFreeze.h"
+#include "increment_and_freeze.h"
 #include "params.h"
 
 void IAKWrapper::memory_access(uint64_t addr) {
@@ -120,7 +120,9 @@ std::vector<size_t> IAKWrapper::get_success_function() {
   //for (auto& success : success_func)
   //  success /= running_count;
   // std::cout << max_recorded_chunk_size << std::endl;
-  std::cout << "logu Requesting memory: " << sizeof(::Op) * 2 * 2 * max_recorded_chunk_size * 1.0 / GB << " GB" << std::endl;
+  std::cout << "logu Requesting memory: " 
+            << sizeof(::Op) * 2 * 2 * max_recorded_chunk_size * 1.0 / kGB
+            << " GB" << std::endl;
   return success_func;
 }
 

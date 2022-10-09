@@ -6,8 +6,8 @@
 #include <vector>
 #include <utility>
 
-#include "CacheSim.h"
-#include "IncrementAndFreeze.h"
+#include "cache_sim.h"
+#include "increment_and_freeze.h"
 
 class IAKWrapper : public CacheSim {
   using tuple = std::pair<uint64_t, uint64_t>;

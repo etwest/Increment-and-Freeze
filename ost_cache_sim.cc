@@ -1,4 +1,4 @@
-#include "OSTCacheSim.h"
+#include "ost_cache_sim.h"
 
 #include <utility>
 
