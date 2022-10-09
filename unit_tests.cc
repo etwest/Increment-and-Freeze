@@ -12,25 +12,18 @@ enum CacheSimType {
   CHUNK_IAK,
 };
 
-CacheSim *new_simulator(CacheSimType sim_enum) {
-  CacheSim *sim;
-
+std::unique_ptr<CacheSim> new_simulator(CacheSimType sim_enum) {
   switch(sim_enum) {
     case OS_TREE:
-      sim = new OSTCacheSim();
-      break;
+      return std::make_unique<OSTCacheSim>();
     case IAK:
-      sim = new IncrementAndFreeze();
-      break;
+      return std::make_unique<IncrementAndFreeze>();
     case CHUNK_IAK:
-      sim = new IAKWrapper();
-      break;
+      return std::make_unique<IAKWrapper>();
     default:
       std::cerr << "ERROR: Unrecognized sim_enum!" << std::endl;
       exit(EXIT_FAILURE);
   }
-
-  return sim;
 }
 
 class CacheSimUnitTests : public testing::TestWithParam<CacheSimType> {
@@ -44,7 +37,7 @@ using SuccessVector = CacheSim::SuccessVector;
 
 // Very simple validation of success function
 TEST_P(CacheSimUnitTests, SimpleTest) {
-  CacheSim *sim = new_simulator(GetParam());
+  std::unique_ptr<CacheSim> sim = new_simulator(GetParam());
 
   // add a few updates
   sim->memory_access(1);
@@ -60,12 +53,11 @@ TEST_P(CacheSimUnitTests, SimpleTest) {
   for (size_t i = 3; i < svec.size(); i++) {
     ASSERT_EQ(svec[i], 2); // assert rest only get 2 hits
   }
-	delete sim;
 }
 
 // Validate the success function returned by the CacheSim
 TEST_P(CacheSimUnitTests, ValidateSuccess) {
-  CacheSim *sim = new_simulator(GetParam());
+  std::unique_ptr<CacheSim> sim = new_simulator(GetParam());
 
   // add a few updates
   size_t repeats = 20;
@@ -98,13 +90,12 @@ TEST_P(CacheSimUnitTests, ValidateSuccess) {
   for (size_t i = 7; i < svec.size(); i++) {
     ASSERT_EQ(svec[i], 12 * repeats - 6); // assert rest are same
   }
-	delete sim;
 }
 
 // Validate the success function returned by the CacheSim
 // when multiple calls are made to get_success_function
 TEST_P(CacheSimUnitTests, MultipleSuccessCalls) {
-  CacheSim *sim = new_simulator(GetParam());
+  std::unique_ptr<CacheSim> sim = new_simulator(GetParam());
 
   // add a few updates
   size_t loops        = 3;
@@ -140,5 +131,4 @@ TEST_P(CacheSimUnitTests, MultipleSuccessCalls) {
       ASSERT_EQ(svec[i], 12 * (l+1) * rep_per_loop - 6); // assert rest are same
     }
   }
-	delete sim;
 }
