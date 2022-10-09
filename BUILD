@@ -6,13 +6,13 @@ test_suite(
 cc_binary(
 	name = "sim",
 	deps = [
-		"CacheSim"
+		"CacheSim",
+                ":ost_cache_sim",
 	],
 	srcs = [
 		"src/simulation.cpp",
 		"include/IAKWrapper.h",
 		"include/IncrementAndFreeze.h",
-		"include/OSTCacheSim.h"
 	],
 	copts = [
 		"-Iinclude",
@@ -40,18 +40,25 @@ cc_library(
 )
 
 cc_library(
+    name = "ost_cache_sim",
+    hdrs = ["ost_cache_sim.h"],
+    srcs = ["ost_cache_sim.cc"],
+    deps = [
+        ":cache_sim",
+        ":ostree",
+    ],
+)
+
+cc_library(
   name = "CacheSim",
   srcs = [
     "include/IncrementAndFreeze.h",
-    "include/OSTCacheSim.h",
     "include/IAKWrapper.h",
     "src/IncrementAndFreeze.cpp",
-    "src/OSTCacheSim.cpp",
     "src/IAKWrapper.cpp",
   ],
   hdrs = [
     "include/IncrementAndFreeze.h",
-    "include/OSTCacheSim.h",
     "include/IAKWrapper.h",
   ],
   deps = [
@@ -78,6 +85,7 @@ cc_test(
   includes = ["include/"],
   deps = [
     "@googletest//:gtest_main",
-    "CacheSim"
+    "CacheSim",
+    ":ost_cache_sim",
   ],
 )

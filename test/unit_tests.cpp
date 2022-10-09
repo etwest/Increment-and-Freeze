@@ -3,7 +3,7 @@
 // Include our code
 #include "IAKWrapper.h"
 #include "IncrementAndFreeze.h"
-#include "OSTCacheSim.h"
+#include "ost_cache_sim.h"
 
 // An enum describing the different CacheSims
 enum CacheSimType {

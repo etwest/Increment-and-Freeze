@@ -11,7 +11,7 @@
 #include "cache_sim.h"
 #include "IAKWrapper.h"
 #include "IncrementAndFreeze.h"
-#include "OSTCacheSim.h"
+#include "ost_cache_sim.h"
 #include "params.h"
 
 using std::chrono::duration;
