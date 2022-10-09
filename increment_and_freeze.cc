@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <omp.h>
 #include <utility>
-#include <chrono>
 
 #include "params.h"
 
@@ -13,10 +12,6 @@ void IncrementAndFreeze::memory_access(uint64_t addr) {
 
 void IncrementAndFreeze::calculate_prevnext(
     std::vector<req_index_pair> &req, std::vector<req_index_pair> *living_req) {
-  using std::chrono::high_resolution_clock;
-  using std::chrono::duration_cast;
-  using std::chrono::duration;
-  using std::chrono::milliseconds;
 
   // put all requests of the same addr next to each other
   // then order those by access_number
