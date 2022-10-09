@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ONLINE_CACHE_SIMULATOR_INCLUDE_CACHESIM_H_
+#define ONLINE_CACHE_SIMULATOR_INCLUDE_CACHESIM_H_
 
 #include <iostream>
 #include <vector>
@@ -27,3 +28,5 @@ class CacheSim {
       std::cout << page << ": " << func[page] << std::endl;
   }
 };
+
+#endif  // ONLINE_CACHE_SIMULATOR_INCLUDE_CACHESIM_H_

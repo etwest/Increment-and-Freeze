@@ -1,13 +1,12 @@
-#ifndef RAM_H_GUARD
-#define RAM_H_GUARD
+#ifndef ONLINE_CACHE_SIMULATOR_INCLUDE_OSTCACHESIM_H_
+#define ONLINE_CACHE_SIMULATOR_INCLUDE_OSTCACHESIM_H_
 
-#include <fstream>
-#include <list>
+#include <cstddef>
+#include <cstdint>
 #include <unordered_map>
 #include <vector>
 
 #include "OSTree.h"
-#include "params.h"
 #include "CacheSim.h"
 
 /*
@@ -51,4 +50,4 @@ class OSTCacheSim : public CacheSim {
   std::vector<uint64_t> get_success_function();
 };
 
-#endif
+#endif  // ONLINE_CACHE_SIMULATOR_INCLUDE_OSTCACHESIM_H_
