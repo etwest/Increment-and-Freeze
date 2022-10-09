@@ -66,7 +66,9 @@ std::vector<uint64_t> IncrementAndFreeze::get_distance_vector() {
   // Here, we init enough space for all operations.
   // Every kill is either a kill or not
   // Every subrange increment can expand into at most 2 non-passive ops
-  std::cout << "MIP Requesting memory: " << sizeof(Op) * 2 * 2 * requests.size() * 1.0 / GB << " GB" << std::endl;
+  std::cout << "MIP Requesting memory: " 
+            << sizeof(Op) * 2 * 2 * requests.size() * 1.0 / kGB 
+            << " GB" << std::endl;
   operations.clear();
   operations.resize(2*requests.size());
   scratch.clear();
