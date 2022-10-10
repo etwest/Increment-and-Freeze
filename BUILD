@@ -53,7 +53,7 @@ cc_library(
         ":params",
     ],
     copts = [
-	"-fopenmp",
+#        "-fopenmp",
     ],
 )
 
@@ -81,6 +81,6 @@ cc_test(
     ":ost_cache_sim",
   ],
   linkopts = [
-      "-lgomp",
+#      "-lgomp",
   ]
 )
