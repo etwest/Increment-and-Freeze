@@ -9,7 +9,7 @@ constexpr uint64_t kSeed = 298234433;   // seed for the randomness
 
 // general workload parameters
 constexpr uint64_t kAccesses   = 10'000'000;  // the number of memory accesses
-constexpr uint64_t kIdUniverseSize  = 1e7;  // the total number of unique ids
+constexpr uint64_t kIdUniverseSize  = 1e5;  // the total number of unique ids
 
 // params for the representative workload
 constexpr uint64_t kWorkingSet = 50'000; // number of commonly accessed addresses

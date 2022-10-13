@@ -1,33 +1,39 @@
-#! /usr/local/bin/python3
-
-import numpy
-import sys
 import matplotlib.pyplot as plt
+import argparse
+import os
 
-def get_zipf(a, size):
-	return numpy.random.zipf(a, size)
+parser = argparse.ArgumentParser(description="creates graphs of zipfian distributions")
+parser.add_argument("txt_files", nargs='+', help="files containing distributions")
+args = parser.parse_args()
 
-if __name__ == '__main__':
-	if len(sys.argv) != 3:
-		print("Invalid ARGS: Must be ziph.py [alpha] [num_samples]")
-		exit()
-	alpha = float(sys.argv[1])
-	size  = int(sys.argv[2])
+if not os.path.exists("images"):
+    os.mkdir("images")
 
-	if alpha < 1:
-		print("Invalid ARGS: alpha must be greater than 1")
-		exit();
-	if size < 1:
-		print("Invalid ARGS: size must be greater than 1")
-		exit();
+for file in args.txt_files:
+	with open(file, "r") as inFile:
+		line = inFile.readline()
+		while(line[0] == '#'):
+			line = inFile.readline()
 
-	outFile = open("ziph_data", "w")
+		ids = []
+		repetitions = []
+		while(line != ""):
+			data = line.split(":")
+			i = int(data[0].rstrip()) + 1
+			reps = int(data[1].rstrip())
 
-	samples = get_zipf(alpha, size)
-	for sample in samples:
-		outFile.write(str(sample) + "\n")
+			ids.append(i)
+			repetitions.append(reps)
+			
+			line = inFile.readline()
 
-	# plt.hist(samples[samples<1000], 1000, density=True)
-	# plt.show()
+		plt.plot(ids, repetitions, label=file.split("_")[2][:-5])
 
-	
+plt.legend()
+plt.xlabel("Ids")
+plt.ylabel("Counts")
+plt.yscale("log")
+plt.xscale("log")
+plt.savefig("Distributions.png");
+plt.show()
+plt.clf()

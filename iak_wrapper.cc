@@ -37,10 +37,6 @@ void print_result(::IAKOutput result) {
 }
 
 void IAKWrapper::process_requests() {
-  // update recorded chunk size
-  if (chunk_input.chunk_requests.size() > max_recorded_chunk_size)
-    max_recorded_chunk_size = chunk_input.chunk_requests.size();
-
   // std::cout << std::endl;
   // std::cout << "Processing chunk" << std::endl;
   // std::cout << "Living requests " << chunk_input.output.living_requests.size() << std::endl;
@@ -53,8 +49,12 @@ void IAKWrapper::process_requests() {
 
   // auto start = std::chrono::high_resolution_clock::now();
   iak_alg.get_depth_vector(chunk_input);
-  // auto depth_time =  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
 
+  // update maximum memory usage
+  if (iak_alg.get_memory_usage() > memory_usage)
+    memory_usage = iak_alg.get_memory_usage();
+  
+  // auto depth_time =  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
   // std::cout << "GET DEPTH TIME: " << depth_time << std::endl;
 
   IAKOutput& result = chunk_input.output;
@@ -113,7 +113,6 @@ std::vector<size_t> IAKWrapper::get_success_function() {
   if (chunk_input.chunk_requests.size() - chunk_input.output.living_requests.size() > 0) {
     // std::cout << "Processing chunk of size " << chunk_input.chunk_requests.size() << " before get_success_function()." << std::endl;
     process_requests();
-    std::cout << "logu max memory usage: " << sizeof(::Op) * 2 * 2 * max_recorded_chunk_size * 1.0 / kGB << " GB" << std::endl;
   }
 
   // TODO: parallel prefix sum for integrating

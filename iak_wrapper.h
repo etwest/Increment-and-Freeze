@@ -12,9 +12,6 @@
 class IAKWrapper : public CacheSim {
   using tuple = std::pair<uint64_t, uint64_t>;
   private:
-    // Maximum number of requests in a chunk. Just for accounting purposes
-    size_t max_recorded_chunk_size = 0;
-
     // Vector of stack distances
     std::vector<size_t> distance_histogram;
 

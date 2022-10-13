@@ -6,6 +6,7 @@
 #include <random>
 #include <string>
 #include <vector>
+#include <fstream>
 
 #include "absl/time/clock.h"
 #include "cache_sim.h"
@@ -116,6 +117,7 @@ SimResult simulate_on_seq(CacheSim *sim, std::vector<uint64_t> seq, bool print =
 }
 
 std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
+  // std::ofstream zipf_hist("Zipf_hist_" + std::to_string(alpha) + ".data");
   std::mt19937 rand(seed); // create random number generator
   std::vector<double> freq_vec;
   // generate the divisor
@@ -132,6 +134,7 @@ std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
   std::vector<uint64_t> seq_vec;
   for (uint64_t i = 0; i < kIdUniverseSize; i++) {
     uint64_t num_items = round(freq_vec[i] * kAccesses);
+    // zipf_hist << i << ":" << num_items << std::endl;
     for (uint64_t j = 0; j < num_items && seq_vec.size() < kAccesses; j++)
       seq_vec.push_back(i);
   }
@@ -145,7 +148,7 @@ std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
 
   // shuffle the sequence vector
   std::shuffle(seq_vec.begin(), seq_vec.end(), rand);
-  std::cout << "Zipfian sequence memory impact: " << seq_vec.size() * sizeof(uint64_t)/1024/1024 << "MiB" << std::endl;
+  // std::cout << "Zipfian sequence memory impact: " << seq_vec.size() * sizeof(uint64_t)/1024/1024 << "MiB" << std::endl;
   return seq_vec;
 }
 
@@ -202,15 +205,17 @@ SimResult run_workloads(CacheSimType sim_enum, size_t minimum_chunk=65536, size_
   // uniform accesses simulation
   sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
   first_result = uniform_simulator(sim, kSeed);
-  std::cout << "\tUniform Set Latency = " << first_result.latency << " ms" << std::endl;
+  std::cout << "\tUniform Set Latency = " << first_result.latency << " sec" << std::endl;
+  std::cout << "\tMemory Usage = " << sim->get_memory_usage() << std::endl;
   delete sim;
 
-  // working set simulation
-  sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
-  result = working_set_simulator(sim, kSeed);
-  std::cout << "\tWorking Set Latency = " << result.latency << " ms" << std::endl;
+  // // working set simulation
+  // sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
+  // result = working_set_simulator(sim, kSeed);
+  // std::cout << "\tWorking Set Latency = " << result.latency << " sec" << std::endl;
+  // std::cout << "\tMemory Usage = " << sim->get_memory_usage() << std::endl;
 
-  delete sim;
+  // delete sim;
 
   // test with different Zipfian parameters
   std::vector<double> zipf_exps{0.1, 0.25, 0.5, 0.75, 1, 1.5, 2.0, 2.5, 3.0};
@@ -219,28 +224,29 @@ SimResult run_workloads(CacheSimType sim_enum, size_t minimum_chunk=65536, size_
     std::vector<uint64_t> zipf_seq = generate_zipf(kSeed, exp);
     result = simulate_on_seq(sim, zipf_seq);
     std::cout << "\tZipfian, alpha=" << exp << " Latency = "
-              << result.latency << " ms" << std::endl;
+              << result.latency << " sec" << std::endl;
+              std::cout << "\tMemory Usage = " << sim->get_memory_usage() << std::endl;
     delete sim;
   }
   return first_result;
 }
 
 int main(int argc, char **argv) {
-  bool verify = false;
+  // bool verify = false;
   if (argc == 2 && std::string(argv[1]) == "--verify") {
     std::cout << "Comparing and verifying results!" << std::endl;
-    verify = true;
+    // verify = true;
   }
 
-  SimResult os_res  = run_workloads(OS_TREE);
+  // SimResult os_res  = run_workloads(OS_TREE);
   SimResult iak_res = run_workloads(IAK);
   SimResult chk_res = run_workloads(CHUNK_IAK);
 
-  if (verify) {
-    std::cout << "OSTree and IAK are: ";
-    std::cout << (os_res == iak_res ? "equivalent" : "ERROR: different") << std::endl;
+  // if (verify) {
+  //   std::cout << "OSTree and IAK are: ";
+  //   std::cout << (os_res == iak_res ? "equivalent" : "ERROR: different") << std::endl;
 
-    std::cout << "OSTree and CHUNK_IAK are: ";
-    std::cout << (os_res == chk_res ? "equivalent" : "ERROR: different") << std::endl;
-  }
+  //   std::cout << "OSTree and CHUNK_IAK are: ";
+  //   std::cout << (os_res == chk_res ? "equivalent" : "ERROR: different") << std::endl;
+  // }
 }

@@ -7,6 +7,7 @@
 class CacheSim {
  protected:
   uint64_t access_number = 1;  // simulated timestamp
+  size_t memory_usage = 0; // memory usage of the cache sim
  public:
   using SuccessVector = std::vector<uint64_t>;
 
@@ -27,6 +28,7 @@ class CacheSim {
     for (uint64_t page = 1; page < func.size(); page++)
       std::cout << page << ": " << func[page] << std::endl;
   }
+  size_t get_memory_usage() { return memory_usage; }
 };
 
 #endif  // ONLINE_CACHE_SIMULATOR_INCLUDE_CACHE_SIM_H_

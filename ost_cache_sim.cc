@@ -39,6 +39,9 @@ size_t OSTCacheSim::move_front_queue(uint64_t old_ts, uint64_t new_ts) {
 std::vector<uint64_t> OSTCacheSim::get_success_function() {
   uint64_t nhits = 0;
 
+  // update the memory usage of the OSTreeSim
+  memory_usage = LRU_queue.get_weight() * sizeof(OSTree);
+
   // build vector to return based upon the number of unique pages accessed
   // we index this vector by 1 so make it one larger
   std::vector<uint64_t> success(page_hits.size()+1);
