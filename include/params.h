@@ -9,14 +9,14 @@ constexpr uint64_t SEED = 298234433;   // seed for the randomness
 
 // general workload parameters
 constexpr uint64_t ACCESSES    = 1e7;  // the number of memory accesses
-constexpr uint64_t UNIQUE_IDS  = 1e7;  // the total number of unique ids
+constexpr uint64_t UNIVERSE_SIZE  = 1e7;  // number of unique ids (the size of the universe)
 
 // params for the representative workload
 constexpr uint64_t WORKING_SET = 5e4;  // number of commonly accessed addresses
 constexpr double LOCALITY      = .95;  // with what probability to we access a common address
-static_assert(WORKING_SET <= UNIQUE_IDS);
-static_assert(LOCALITY >= 0 && LOCALITY <= 1);
 
-const std::string OUT_FILE = "fault_results.txt";
+// error checking
+static_assert(WORKING_SET <= UNIVERSE_SIZE);
+static_assert(LOCALITY >= 0 && LOCALITY <= 1);
 
 #endif

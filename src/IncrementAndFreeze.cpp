@@ -161,7 +161,7 @@ class IncrementAndFreeze;
     // We want to spin up a bunch of threads, but only start with 1.
     // More will be added in by do_projections.
 #pragma omp parallel
-#pragma omp single
+#pragma omp single   // nowait?
     do_projections(ret.depth_vector, std::move(init_seq));
   }
 

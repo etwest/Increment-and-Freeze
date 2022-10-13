@@ -64,7 +64,7 @@ SimResult working_set_simulator(CacheSim *sim, uint32_t seed, bool print = false
   for (uint64_t i = 0; i < ACCESSES; i++) {
     // compute the next address
     uint64_t working_size = WORKING_SET;
-    uint64_t leftover_size = UNIQUE_IDS - WORKING_SET;
+    uint64_t leftover_size = UNIVERSE_SIZE - WORKING_SET;
     double working_chance = rand() / (double)(0xFFFFFFFF);
     uint64_t addr = rand();
     if (working_chance <= LOCALITY)
@@ -89,7 +89,7 @@ SimResult uniform_simulator(CacheSim *sim, uint32_t seed, bool print = false) {
   auto start = high_resolution_clock::now();
   for (uint64_t i = 0; i < ACCESSES; i++) {
     // compute the next address
-    uint64_t addr = rand() % UNIQUE_IDS;
+    uint64_t addr = rand() % UNIVERSE_SIZE;
 
     // access the address
     sim->memory_access(addr);
@@ -123,17 +123,17 @@ std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
   std::vector<double> freq_vec;
   // generate the divisor
   double divisor = 0;
-  for (uint64_t i = 1; i < UNIQUE_IDS + 1; i++) {
+  for (uint64_t i = 1; i < UNIVERSE_SIZE + 1; i++) {
     divisor += 1 / pow(i, alpha);
   }
 
   // now for each id calculate it's normalized frequency
-  for (uint64_t i = 1; i < UNIQUE_IDS + 1; i++)
+  for (uint64_t i = 1; i < UNIVERSE_SIZE + 1; i++)
     freq_vec.push_back((1 / pow(i, alpha)) / divisor);
 
   // now push to sequence vector based upon frequency
   std::vector<uint64_t> seq_vec;
-  for (uint64_t i = 0; i < UNIQUE_IDS; i++) {
+  for (uint64_t i = 0; i < UNIVERSE_SIZE; i++) {
     uint64_t num_items = round(freq_vec[i] * ACCESSES);
     for (uint64_t j = 0; j < num_items && seq_vec.size() < ACCESSES; j++)
       seq_vec.push_back(i);
@@ -143,7 +143,7 @@ std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
   if (seq_vec.size() < ACCESSES) {
     uint64_t num_needed = ACCESSES - seq_vec.size();
     for (uint64_t i = 0; i < num_needed; i++)
-      seq_vec.push_back(i % UNIQUE_IDS);
+      seq_vec.push_back(i % UNIVERSE_SIZE);
   }
 
   // shuffle the sequence vector
