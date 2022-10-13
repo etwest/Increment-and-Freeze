@@ -4,52 +4,67 @@ test_suite(
 )
 
 cc_binary(
-	name = "sim",
-	deps = [
-		"CacheSim"
-	],
-	srcs = [
-		"src/simulation.cpp",
-		"include/IAKWrapper.h",
-		"include/IncrementAndFreeze.h",
-		"include/OSTCacheSim.h"
-	],
-	copts = [
-		"-Iinclude",
-		"-fopenmp"
-	],
-	linkopts = [
-		"-lgomp",
-	]
+    name = "sim",
+    deps = [
+        "@absl//absl/time:time",
+        ":iak_wrapper",
+        ":ost_cache_sim",
+    ],
+    srcs = [
+	"simulation.cc",
+    ],
+    linkopts = [
+	"-lgomp",
+    ]
 )
 
 cc_library(
-  name = "CacheSim",
-  srcs = [
-    "include/IncrementAndFreeze.h", 
-    "include/OSTCacheSim.h",
-    "include/OSTree.h",
-    "include/IAKWrapper.h",
-    "include/CacheSim.h",
-    "include/params.h",
-    "src/IncrementAndFreeze.cpp", 
-    "src/OSTCacheSim.cpp",
-    "src/OSTree.cpp",
-    "src/IAKWrapper.cpp",
-  ],
-  hdrs = [
-    "include/IncrementAndFreeze.h",
-    "include/OSTCacheSim.h",
-    "include/IAKWrapper.h",
-    "include/CacheSim.h"
-  ],
-	copts = [
-		"-fopenmp",
-		"-Iinclude"
-	],
-	linkopts = [
-		"-fopenmp"
-	]
+    name = "cache_sim",
+    hdrs = ["cache_sim.h"],
+)
+
+cc_library(
+    name = "params",
+    hdrs = ["params.h"],
+)
+
+cc_library(
+    name = "ostree",
+    hdrs = ["ostree.h"],
+    srcs = ["ostree.cc"],
+)
+
+cc_library(
+    name = "ost_cache_sim",
+    hdrs = ["ost_cache_sim.h"],
+    srcs = ["ost_cache_sim.cc"],
+    deps = [
+        ":cache_sim",
+        ":ostree",
+    ],
+)
+
+cc_library(
+    name = "increment_and_freeze",
+    hdrs = ["increment_and_freeze.h"],
+    srcs = ["increment_and_freeze.cc"],
+    deps = [
+        ":cache_sim",
+        ":params",
+    ],
+    copts = [
+	"-fopenmp",
+    ],
+)
+
+cc_library(
+    name = "iak_wrapper",
+    hdrs = ["iak_wrapper.h"],
+    srcs = ["iak_wrapper.cc"],
+    deps = [
+        ":increment_and_freeze",
+        ":params",
+    ],
 )
 
 # Compile unit tests
@@ -57,12 +72,15 @@ cc_test(
   name = "unit_tests",
   size = "small",
   srcs = [
-    "test/unit_tests.cpp", 
-    "test/memory_cutoff_tests.cpp"
+        "unit_tests.cc",
+        "memory_cutoff_tests.cc"
   ],
-  includes = ["include/"],
   deps = [
     "@googletest//:gtest_main",
-    "CacheSim"
+    ":iak_wrapper",
+    ":ost_cache_sim",
   ],
+  linkopts = [
+      "-lgomp",
+  ]
 )

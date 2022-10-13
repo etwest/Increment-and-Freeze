@@ -14,6 +14,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: bazel build
-      run: bazel build unit_tests
+      run: bazel build unit_tests --config=debug
     - name: run tests
       run: ./bazel-bin/unit_tests

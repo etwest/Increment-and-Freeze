@@ -1,23 +1,22 @@
-#include <stdlib.h>
-
-#include <chrono>
-#include <cinttypes>
-#include <fstream>
+#include <algorithm>
+#include <cstdint>
+#include <cstdlib>
+#include <cmath>
+#include <iostream>
 #include <random>
-#include <set>
-#include <utility>
+#include <string>
+#include <vector>
 
-#include "IAKWrapper.h"
-#include "IncrementAndFreeze.h"
-#include "OSTCacheSim.h"
+#include "absl/time/clock.h"
+#include "cache_sim.h"
+#include "iak_wrapper.h"
+#include "increment_and_freeze.h"
+#include "ost_cache_sim.h"
 #include "params.h"
 
-using std::chrono::duration;
-using std::chrono::high_resolution_clock;
-
 struct SimResult {
-  SuccessVector success;
-  double latency;
+  CacheSim::SuccessVector success;
+  absl::Duration latency;
   bool operator== (const SimResult& other) const
   {
     if (success.size() == 0 || other.success.size() == 0) return false;
@@ -50,24 +49,22 @@ enum CacheSimType {
   CHUNK_IAK,
 };
 
-/*
- * Runs a random sequence of page requests that follow a working set distribution.
- * A majority of accesses are made to a somewhat small working set while the rest
- * are made randomly to a much larger amount of memory
- * seed:    The seed to the random number generator.
- * print:   If true print out the results of the simulation.
- * returns: The success function and time it took to compute.
- */
+// Runs a random sequence of page requests that follow a working set
+// distribution.  A majority of accesses are made to a somewhat small working
+// set while the rest are made randomly to a much larger amount of memory.
+//  * seed:    The seed to the random number generator.
+//  * print:   If true print out the results of the simulation.
+//  * returns: The success function and time it took to compute.
 SimResult working_set_simulator(CacheSim *sim, uint32_t seed, bool print = false) {
   std::mt19937 rand(seed);  // create random number generator
-  auto start = high_resolution_clock::now();
-  for (uint64_t i = 0; i < ACCESSES; i++) {
+  auto start = absl::Now();
+  for (uint64_t i = 0; i < kAccesses; i++) {
     // compute the next address
-    uint64_t working_size = WORKING_SET;
-    uint64_t leftover_size = UNIVERSE_SIZE - WORKING_SET;
+    uint64_t working_size = kWorkingSet;
+    uint64_t leftover_size = kIdUniverseSize - kWorkingSet;
     double working_chance = rand() / (double)(0xFFFFFFFF);
     uint64_t addr = rand();
-    if (working_chance <= LOCALITY)
+    if (working_chance <= kLocality)
       addr %= working_size;
     else
       addr = (addr % leftover_size) + working_size;
@@ -75,47 +72,47 @@ SimResult working_set_simulator(CacheSim *sim, uint32_t seed, bool print = false
     // access the address
     sim->memory_access(addr);
   }
-  SuccessVector succ = sim->get_success_function();
-  double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
+  CacheSim::SuccessVector succ = sim->get_success_function();
+  auto duration = absl::Now() - start;
   if (print) {
     std::cout << "Success function: " << std::endl;
     sim->print_success_function();
   }
-  return {succ, time};
+  return {succ, duration};
 }
 
 SimResult uniform_simulator(CacheSim *sim, uint32_t seed, bool print = false) {
   std::mt19937 rand(seed); // create random number generator
-  auto start = high_resolution_clock::now();
-  for (uint64_t i = 0; i < ACCESSES; i++) {
+  auto start = absl::Now();
+  for (uint64_t i = 0; i < kAccesses; i++) {
     // compute the next address
-    uint64_t addr = rand() % UNIVERSE_SIZE;
+    uint64_t addr = rand() % kIdUniverseSize;
 
     // access the address
     sim->memory_access(addr);
   }
-  SuccessVector succ = sim->get_success_function();
-  double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
+  CacheSim::SuccessVector succ = sim->get_success_function();
+  auto duration = absl::Now() - start;
   if (print) {
     std::cout << "Success function: " << std::endl;
     sim->print_success_function();
   }
-  return {succ, time};
+  return {succ, duration};
 }
 
 SimResult simulate_on_seq(CacheSim *sim, std::vector<uint64_t> seq, bool print = false) {
-  auto start = high_resolution_clock::now();
+  auto start = absl::Now();
   for (uint64_t i = 0; i < seq.size(); i++) {
     // access the address
     sim->memory_access(seq[i]);
   }
-  SuccessVector succ = sim->get_success_function();
-  double time = duration<double>(high_resolution_clock::now() - start).count() * 1e3;
+  CacheSim::SuccessVector succ = sim->get_success_function();
+  auto duration = absl::Now() - start;
   if (print) {
     std::cout << "Success function: " << std::endl;
     sim->print_success_function();
   }
-  return {succ, time};
+  return {succ, duration};
 }
 
 std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
@@ -123,32 +120,32 @@ std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
   std::vector<double> freq_vec;
   // generate the divisor
   double divisor = 0;
-  for (uint64_t i = 1; i < UNIVERSE_SIZE + 1; i++) {
+  for (uint64_t i = 1; i < kIdUniverseSize + 1; i++) {
     divisor += 1 / pow(i, alpha);
   }
 
   // now for each id calculate it's normalized frequency
-  for (uint64_t i = 1; i < UNIVERSE_SIZE + 1; i++)
+  for (uint64_t i = 1; i < kIdUniverseSize + 1; i++)
     freq_vec.push_back((1 / pow(i, alpha)) / divisor);
 
   // now push to sequence vector based upon frequency
   std::vector<uint64_t> seq_vec;
-  for (uint64_t i = 0; i < UNIVERSE_SIZE; i++) {
-    uint64_t num_items = round(freq_vec[i] * ACCESSES);
-    for (uint64_t j = 0; j < num_items && seq_vec.size() < ACCESSES; j++)
+  for (uint64_t i = 0; i < kIdUniverseSize; i++) {
+    uint64_t num_items = round(freq_vec[i] * kAccesses);
+    for (uint64_t j = 0; j < num_items && seq_vec.size() < kAccesses; j++)
       seq_vec.push_back(i);
   }
 
   // if we have too few accesses make up for it by adding more to most common
-  if (seq_vec.size() < ACCESSES) {
-    uint64_t num_needed = ACCESSES - seq_vec.size();
+  if (seq_vec.size() < kAccesses) {
+    uint64_t num_needed = kAccesses - seq_vec.size();
     for (uint64_t i = 0; i < num_needed; i++)
-      seq_vec.push_back(i % UNIVERSE_SIZE);
+      seq_vec.push_back(i % kIdUniverseSize);
   }
 
   // shuffle the sequence vector
   std::shuffle(seq_vec.begin(), seq_vec.end(), rand);
-  // std::cout << "Zipfian sequence memory impact: " << seq_vec.size() * sizeof(uint64_t)/1024/1024 << "MiB" << std::endl;
+  std::cout << "Zipfian sequence memory impact: " << seq_vec.size() * sizeof(uint64_t)/1024/1024 << "MiB" << std::endl;
   return seq_vec;
 }
 
@@ -182,6 +179,7 @@ SimResult run_workloads(CacheSimType sim_enum, size_t minimum_chunk=65536, size_
   SimResult first_result;
   SimResult result;
 
+
   // Print header
   switch(sim_enum) {
     case OS_TREE:
@@ -203,24 +201,25 @@ SimResult run_workloads(CacheSimType sim_enum, size_t minimum_chunk=65536, size_
 
   // uniform accesses simulation
   sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
-  first_result = uniform_simulator(sim, SEED);
+  first_result = uniform_simulator(sim, kSeed);
   std::cout << "\tUniform Set Latency = " << first_result.latency << " ms" << std::endl;
   delete sim;
 
   // working set simulation
   sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
-  result = working_set_simulator(sim, SEED);
+  result = working_set_simulator(sim, kSeed);
   std::cout << "\tWorking Set Latency = " << result.latency << " ms" << std::endl;
-  
+
   delete sim;
 
   // test with different Zipfian parameters
   std::vector<double> zipf_exps{0.1, 0.25, 0.5, 0.75, 1, 1.5, 2.0, 2.5, 3.0};
   for (double exp : zipf_exps) {
     sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
-    std::vector<uint64_t> zipf_seq = generate_zipf(SEED, exp);
+    std::vector<uint64_t> zipf_seq = generate_zipf(kSeed, exp);
     result = simulate_on_seq(sim, zipf_seq);
-    std::cout << "\tZipfian, alpha=" << exp << " Latency = " << result.latency << " ms" << std::endl;
+    std::cout << "\tZipfian, alpha=" << exp << " Latency = "
+              << result.latency << " ms" << std::endl;
     delete sim;
   }
   return first_result;

@@ -1,14 +1,13 @@
-#ifndef RAM_H_GUARD
-#define RAM_H_GUARD
+#ifndef ONLINE_CACHE_SIMULATOR_OST_CACHE_SIM_H_
+#define ONLINE_CACHE_SIMULATOR_OST_CACHE_SIM_H_
 
-#include <fstream>
-#include <list>
+#include <cstddef>
+#include <cstdint>
 #include <unordered_map>
 #include <vector>
 
-#include "OSTree.h"
-#include "params.h"
-#include "CacheSim.h"
+#include "cache_sim.h"
+#include "ostree.h"
 
 /*
  * An OSTCacheSim simulates LRU running on every possible
@@ -51,4 +50,4 @@ class OSTCacheSim : public CacheSim {
   std::vector<uint64_t> get_success_function();
 };
 
-#endif
+#endif  // ONLINE_CACHE_SIMULATOR_OST_CACHE_SIM_H_

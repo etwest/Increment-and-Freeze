@@ -1,6 +1,7 @@
 startup --host_jvm_args=-XX:-UseParallelGC
 
-build --cxxopt="-std=c++2a" 
+# Google uses c++17.  And this code didn't compile with c++2a.
+build --cxxopt="-std=c++17" 
 build --jobs 30 --color=yes
 build --copt -O3
 build --copt -Wall

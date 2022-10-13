@@ -1,7 +1,15 @@
-#include "IAKWrapper.h"
-#include "params.h"
+#include "iak_wrapper.h"
 
-#include <chrono>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <iostream>
+#include <memory>
+#include <utility>
+#include <vector>
+
+#include "increment_and_freeze.h"
+#include "params.h"
 
 void IAKWrapper::memory_access(uint64_t addr) {
   chunk_input.chunk_requests.push_back({addr, chunk_input.chunk_requests.size() + 1});
@@ -105,7 +113,7 @@ std::vector<size_t> IAKWrapper::get_success_function() {
   if (chunk_input.chunk_requests.size() - chunk_input.output.living_requests.size() > 0) {
     // std::cout << "Processing chunk of size " << chunk_input.chunk_requests.size() << " before get_success_function()." << std::endl;
     process_requests();
-    std::cout << "logu max memory usage: " << sizeof(::Op) * 2 * 2 * max_recorded_chunk_size * 1.0 / GB << " GB" << std::endl;
+    std::cout << "logu max memory usage: " << sizeof(::Op) * 2 * 2 * max_recorded_chunk_size * 1.0 / kGB << " GB" << std::endl;
   }
 
   // TODO: parallel prefix sum for integrating

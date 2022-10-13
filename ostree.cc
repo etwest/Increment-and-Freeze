@@ -1,6 +1,6 @@
-#include "OSTree.h"
+#include "ostree.h"
 
-#include <iostream>
+#include <utility>
 
 // All new trees have weight 1, as there are no children
 OSTree::OSTree(uint64_t ts, uint64_t value) : weight(1), ts(ts), value(value){};

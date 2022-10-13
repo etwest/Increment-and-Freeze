@@ -1,8 +1,13 @@
+#ifndef ONLINE_CACHE_SIMULATOR_INCLUDE_IAKWRAPPER_H_
+#define ONLINE_CACHE_SIMULATOR_INCLUDE_IAKWRAPPER_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <vector>
-#include <cmath>
+#include <utility>
 
-#include "IncrementAndFreeze.h"
+#include "cache_sim.h"
+#include "increment_and_freeze.h"
 
 class IAKWrapper : public CacheSim {
   using tuple = std::pair<uint64_t, uint64_t>;
@@ -54,3 +59,5 @@ class IAKWrapper : public CacheSim {
       : cur_u(min_chunk_size), max_living_req(max_cache_size) {};
     ~IAKWrapper() = default;
 };
+
+#endif  // ONLINE_CACHE_SIMULATOR_INCLUDE_IAKWRAPPER_H_

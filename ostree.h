@@ -1,3 +1,6 @@
+#ifndef ONLINE_CACHE_SIMULATOR_OSTREE_H_
+#define ONLINE_CACHE_SIMULATOR_OSTREE_H_
+
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -142,3 +145,5 @@ class OSTreeHead {
    */
   size_t get_weight() { return head == nullptr ? 0 : head->get_weight(); }
 };
+
+#endif  // ONLINE_CACHE_SIMULATOR_OSTREE_H_

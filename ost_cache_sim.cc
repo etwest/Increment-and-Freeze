@@ -1,6 +1,6 @@
-#include "OSTCacheSim.h"
+#include "ost_cache_sim.h"
 
-#include <iostream>
+#include <utility>
 
 // perform a memory access and use the LRU_queue to update the success function
 void OSTCacheSim::memory_access(uint64_t addr) {

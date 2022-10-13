@@ -1,14 +1,15 @@
-#pragma once
+#ifndef ONLINE_CACHE_SIMULATOR_CACHE_SIM_H_
+#define ONLINE_CACHE_SIMULATOR_CACHE_SIM_H_
 
 #include <iostream>
 #include <vector>
-
-typedef std::vector<uint64_t> SuccessVector;
 
 class CacheSim {
  protected:
   uint64_t access_number = 1;  // simulated timestamp
  public:
+  using SuccessVector = std::vector<uint64_t>;
+
   CacheSim() = default;
   virtual ~CacheSim() = default;
   /*
@@ -27,3 +28,5 @@ class CacheSim {
       std::cout << page << ": " << func[page] << std::endl;
   }
 };
+
+#endif  // ONLINE_CACHE_SIMULATOR_INCLUDE_CACHE_SIM_H_
