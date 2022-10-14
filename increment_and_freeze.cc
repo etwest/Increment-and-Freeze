@@ -95,11 +95,7 @@ std::vector<uint64_t> IncrementAndFreeze::get_distance_vector() {
 
   // begin the recursive process
   //TODO: add a constructor for this????
-  ProjSequence init_seq(1, requests.size());
-  init_seq.op_seq = operations.begin();
-  init_seq.scratch = scratch.begin();
-  init_seq.num_ops = operations.size();
-  init_seq.len = operations.size();
+  ProjSequence init_seq(1, requests.size(), operations.begin(), scratch.begin(), operations.size(), operations.size());
 
   // We want to spin up a bunch of threads, but only start with 1.
   // More will be added in by do_projections.

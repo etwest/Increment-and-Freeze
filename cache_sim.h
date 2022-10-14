@@ -6,8 +6,13 @@
 
 #include "absl/time/clock.h"
 
+#ifdef DEBUG_PERF
 #define STARTTIME(X) auto X = absl::Now()
 #define STOPTIME(X)  std::cout << #X ": " << absl::Now() - X << std::endl;
+#else //DEBUG_PERF
+#define STARTTIME(X) 
+#define STOPTIME(X)  
+#endif //DEBUG_PERF
 
 class CacheSim {
  protected:
