@@ -10,6 +10,7 @@
 
 #include "cache_sim.h"  // for CacheSim
 
+
 struct IAKOutput {
   std::vector<std::pair<size_t, size_t>> living_requests;
   std::vector<size_t> depth_vector;

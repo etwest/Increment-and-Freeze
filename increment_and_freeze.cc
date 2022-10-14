@@ -17,13 +17,14 @@ void IncrementAndFreeze::calculate_prevnext(
   // then order those by access_number
   std::vector<req_index_pair> requestcopy = req; // MEMORY_ALLOC (operator= for vector)
 
-  // auto start = high_resolution_clock::now();
+	STARTTIME(sort);
   std::sort(requestcopy.begin(), requestcopy.end());
-  // auto sort_time =  duration_cast<milliseconds>(high_resolution_clock::now() - start).count();
+	STOPTIME(sort);
 
   // std::cout << "SORT TIME: " << sort_time << std::endl;
   prev_arr.resize(requestcopy.size() + 1); // good memory allocation, persists between calls and based on size of requests arr
 
+	STARTTIME(prevnext);
 #pragma omp parallel for
   for (uint64_t i = 0; i < requestcopy.size(); i++) {
     auto [addr, access_num] = requestcopy[i];
@@ -42,6 +43,7 @@ void IncrementAndFreeze::calculate_prevnext(
       }
     }
   }
+	STOPTIME(prevnext);
 
   if (living_req == nullptr)
     return;
@@ -51,10 +53,13 @@ void IncrementAndFreeze::calculate_prevnext(
   living_req->push_back(requestcopy[requestcopy.size()-1]);
 
   // sort by access number
+	STARTTIME(sort2);
   std::sort(living_req->begin(), living_req->end(), [](auto &left, auto &right){return left.second < right.second; });
+	STOPTIME(sort2);
 }
 
 std::vector<uint64_t> IncrementAndFreeze::get_distance_vector() {
+	STARTTIME(getdistancevector);
   std::vector<uint64_t> distance_vector(requests.size()+1);
 
   // update memory usage of IncrementAndFreeze
@@ -102,10 +107,13 @@ std::vector<uint64_t> IncrementAndFreeze::get_distance_vector() {
 #pragma omp single
   do_projections(distance_vector, std::move(init_seq));
 
+	STOPTIME(getdistancevector);
   return distance_vector;
 }
 
 void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
+	STARTTIME(getdepthvector);
+
   size_t living_size = chunk_input.output.living_requests.size();
 
   IAKOutput &ret = chunk_input.output;
@@ -163,6 +171,8 @@ void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
 #pragma omp parallel
 #pragma omp single
   do_projections(ret.depth_vector, std::move(init_seq));
+	
+	STOPTIME(getdepthvector);
 }
 
 //recursively (and in parallel) perform all the projections
@@ -203,24 +213,42 @@ void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, 
   }
 }
 
+
+// Reduction for parallel addition of arrays
+// See https://stackoverflow.com/questions/43168661/openmp-and-reduction-on-stdvector
+#pragma omp declare reduction(vec_uint64_t_plus : std::vector<uint64_t> : \
+                              std::transform(omp_out.begin(), omp_out.end(), omp_in.begin(), omp_out.begin(), std::plus<uint64_t>())) \
+                    initializer(omp_priv = decltype(omp_orig)(omp_orig.size()))
+
+
 std::vector<uint64_t> IncrementAndFreeze::get_success_function() {
+	STARTTIME(get_success_fnc);
   calculate_prevnext(requests);
   auto distances = get_distance_vector();
 
+	STARTTIME(converting_distances_to_succ);
   // a point representation of successes
   std::vector<uint64_t> success(distances.size());
+	#pragma omp parallel for //reduction(vec_uint64_t_plus : success)
   for (uint64_t i = 0; i < distances.size() - 1; i++) {
     // std::cout << distances[i + 1] << " ";
-    if (prev(i + 1) != 0) success[distances[prev(i + 1)]]++;
+    if (prev(i + 1) == 0) continue;
+		auto index = distances[prev(i+1)];
+		#pragma omp atomic update
+		success[index]++;
   }
   // std::cout << std::endl;
+	STOPTIME(converting_distances_to_succ);
 
+	STARTTIME(sequential_prefix_sum);
   // integrate
   uint64_t running_count = 0;
   for (uint64_t i = 1; i < success.size(); i++) {
     running_count += success[i];
     success[i] = running_count;
   }
+	STOPTIME(sequential_prefix_sum);
+	STOPTIME(get_success_fnc);
   return success;
 }
 

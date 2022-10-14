@@ -4,6 +4,11 @@
 #include <iostream>
 #include <vector>
 
+#include "absl/time/clock.h"
+
+#define STARTTIME(X) auto X = absl::Now()
+#define STOPTIME(X)  std::cout << #X ": " << absl::Now() - X << std::endl;
+
 class CacheSim {
  protected:
   uint64_t access_number = 1;  // simulated timestamp
