@@ -71,6 +71,7 @@ void IAKWrapper::process_requests() {
   // Do not add living requests to distance histogram
   // 2-pointer walk through the depth vector and living requests
   // add to distance_histogram if access number not in living requests
+  STARTTIME(two_pointer_walk);
   size_t living_idx = 0;
   for (size_t i = 1; i < result.depth_vector.size(); i++) {
     size_t depth = result.depth_vector[i]; // stack depth of request i
@@ -85,6 +86,7 @@ void IAKWrapper::process_requests() {
     else if (living_idx < result.living_requests.size())
       ++living_idx;
   }
+  STOPTIME(two_pointer_walk);
 
   // Resize the living requests if necessary to fit within max_living_req
   if (result.living_requests.size() > max_living_req) {
