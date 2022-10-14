@@ -37,6 +37,7 @@ void print_result(::IAKOutput result) {
 }
 
 void IAKWrapper::process_requests() {
+  STARTTIME(proc_req);
   // std::cout << std::endl;
   // std::cout << "Processing chunk" << std::endl;
   // std::cout << "Living requests " << chunk_input.output.living_requests.size() << std::endl;
@@ -106,6 +107,7 @@ void IAKWrapper::process_requests() {
   update_u(chunk_input.output.living_requests.size());
   chunk_input.chunk_requests.reserve(get_u());
   chunk_input.chunk_requests.insert(chunk_input.chunk_requests.end(), result.living_requests.begin(), result.living_requests.end());
+  STOPTIME(proc_req);
 }
 
 std::vector<size_t> IAKWrapper::get_success_function() {
