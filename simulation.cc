@@ -241,6 +241,8 @@ int main(int argc, char **argv) {
   // SimResult os_res  = run_workloads(OS_TREE);
   SimResult iak_res = run_workloads(IAK);
   SimResult chk_res = run_workloads(CHUNK_IAK);
+  if (kMemoryLimit < kIdUniverseSize)
+    SimResult chk_lim_res = run_workloads(CHUNK_IAK, 65536, kMemoryLimit);
 
   // if (verify) {
   //   std::cout << "OSTree and IAK are: ";
