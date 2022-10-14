@@ -16,7 +16,7 @@ struct IAKOutput {
 };
 
 struct IAKInput {
-  IAKOutput output;
+  IAKOutput output;                                      // output of the previous chunk
   std::vector<std::pair<size_t, size_t>> chunk_requests; // living requests and fresh requests
 };
 

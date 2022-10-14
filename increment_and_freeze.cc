@@ -57,13 +57,16 @@ void IncrementAndFreeze::calculate_prevnext(
 std::vector<uint64_t> IncrementAndFreeze::get_distance_vector() {
   std::vector<uint64_t> distance_vector(requests.size()+1);
 
+  // update memory usage of IncrementAndFreeze
+  memory_usage = sizeof(Op) * 4 * requests.size();
+
   // Generate the list of operations
   // Here, we init enough space for all operations.
   // Every kill is either a kill or not
   // Every subrange increment can expand into at most 2 non-passive ops
-  std::cout << "MIP Requesting memory: " 
-            << sizeof(Op) * 2 * 2 * requests.size() * 1.0 / kGB 
-            << " GB" << std::endl;
+  // std::cout << "MIP Requesting memory: " 
+  //           << sizeof(Op) * 2 * 2 * requests.size() * 1.0 / kGB 
+  //           << " GB" << std::endl;
   operations.clear();
   operations.resize(2*requests.size());
   scratch.clear();
@@ -117,7 +120,10 @@ void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
   // Every kill is either a kill or not
   // Every subrange increment can expand into at most 2 non-passive ops
   size_t arr_size = 2 * (chunk_input.chunk_requests.size());
-  // std::cout << "D_MIP Requesting memory: " << sizeof(Op) * 2 * arr_size * 1.0 / GB << " GB" << std::endl;
+  
+  // update memory usage of IncrementAndFreeze
+  memory_usage = sizeof(Op) * 2 * arr_size;
+  
   operations.clear();
   operations.resize(arr_size); // MEMORY_ALLOC
   scratch.clear();

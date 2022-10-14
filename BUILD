@@ -7,7 +7,7 @@ cc_binary(
     name = "sim",
     deps = [
         "@absl//absl/time:time",
-	":iak_wrapper",
+        ":iak_wrapper",
         ":ost_cache_sim",
     ],
     srcs = [
@@ -72,7 +72,8 @@ cc_test(
   name = "unit_tests",
   size = "small",
   srcs = [
-      "unit_tests.cc",
+        "unit_tests.cc",
+        "memory_cutoff_tests.cc"
   ],
   deps = [
     "@googletest//:gtest_main",
