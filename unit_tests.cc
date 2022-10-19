@@ -1,6 +1,4 @@
-#include <gtest/gtest.h>
-
-// Include our code
+#include "gtest/gtest.h"
 #include "iak_wrapper.h"
 #include "increment_and_freeze.h"
 #include "ost_cache_sim.h"

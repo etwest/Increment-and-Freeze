@@ -53,7 +53,7 @@ cc_library(
         ":params",
     ],
     copts = [
-	"-fopenmp",
+        "-fopenmp",
     ],
 )
 

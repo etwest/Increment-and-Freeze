@@ -11,6 +11,7 @@ build --copt -g
 build --strip=never
 build --copt -march=native
 build --copt -mtune=native
+build --copt -Wno-stringop-overflow
 
 build:debug --copt -fno-omit-frame-pointer
 build:debug --copt -fsanitize=address
