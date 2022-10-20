@@ -1,5 +1,5 @@
-#ifndef ONLINE_CACHE_SIMULATOR_OST_CACHE_SIM_H_
-#define ONLINE_CACHE_SIMULATOR_OST_CACHE_SIM_H_
+#ifndef ONLINE_CACHE_SIMULATOR_CONTAINER_CACHE_SIM_H_
+#define ONLINE_CACHE_SIMULATOR_CONTAINER_CACHE_SIM_H_
 
 #include <cstddef>
 #include <cstdint>
@@ -7,22 +7,22 @@
 #include <vector>
 
 #include "cache_sim.h"
-#include "ostree.h"
+#include "container/order_statistic_set.h"
 
 /*
- * An OSTCacheSim simulates LRU running on every possible
+ * An ContainerCacheSim simulates LRU running on every possible
  * memory size from 1 to MEM_SIZE.
  * Returns a success function which gives the number of page faults
  * for every memory size.
  */
-class OSTCacheSim : public CacheSim {
+class ContainerCacheSim : public CacheSim {
  private:
   std::vector<uint64_t> page_hits;  // vector used to construct success function
-  OSTreeHead LRU_queue;             // order statistics tree for LRU depth
-  std::unordered_map<uint64_t, uint64_t> page_table;  // map from v_addr to ts
+  cachelib::OrderStatisticSet<size_t, std::greater<>> LRU_queue; // order statistics tree for LRU depth
+  std::unordered_map<uint64_t, uint64_t> page_table;  // map from addr to ts
  public:
-  OSTCacheSim() = default;
-  ~OSTCacheSim() = default;
+  ContainerCacheSim() = default;
+  ~ContainerCacheSim() = default;
 
   /*
    * Performs a memory access upon a given virtual page
@@ -50,4 +50,4 @@ class OSTCacheSim : public CacheSim {
   std::vector<uint64_t> get_success_function();
 };
 
-#endif  // ONLINE_CACHE_SIMULATOR_OST_CACHE_SIM_H_
+#endif  // ONLINE_CACHE_SIMULATOR_CONTAINER_CACHE_SIM_H_

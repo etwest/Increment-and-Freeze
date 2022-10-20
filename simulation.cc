@@ -13,6 +13,7 @@
 #include "iak_wrapper.h"
 #include "increment_and_freeze.h"
 #include "ost_cache_sim.h"
+#include "container_cache_sim.h"
 #include "params.h"
 
 struct SimResult {
@@ -46,6 +47,7 @@ struct SimResult {
 // An enum describing the different CacheSims
 enum CacheSimType {
   OS_TREE,
+  OS_SET,
   IAK,
   CHUNK_IAK,
 };
@@ -159,6 +161,9 @@ CacheSim *new_simulator(CacheSimType sim_enum, size_t minimum_chunk=65536, size_
     case OS_TREE:
       sim = new OSTCacheSim();
       break;
+    case OS_SET:
+      sim = new ContainerCacheSim();
+      break;
     case IAK:
       sim = new IncrementAndFreeze();
       break;
@@ -187,6 +192,8 @@ SimResult run_workloads(CacheSimType sim_enum, size_t minimum_chunk=65536, size_
   switch(sim_enum) {
     case OS_TREE:
       std::cout << "Testing OSTree LRU Sim" << std::endl; break;
+    case OS_SET:
+      std::cout << "Testing ContainerCacheSim" << std::endl; break;
     case IAK:
       std::cout << "Testing IncrementAndFreeze LRU Sim" << std::endl; break;
     case CHUNK_IAK:
@@ -238,7 +245,8 @@ int main(int argc, char **argv) {
     // verify = true;
   }
 
-  // SimResult os_res  = run_workloads(OS_TREE);
+  SimResult os_res  = run_workloads(OS_TREE);
+  SimResult con_res = run_workloads(OS_SET);
   SimResult iak_res = run_workloads(IAK);
   SimResult chk_res = run_workloads(CHUNK_IAK);
   if (kMemoryLimit < kIdUniverseSize)

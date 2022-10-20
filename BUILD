@@ -9,6 +9,7 @@ cc_binary(
         "@absl//absl/time:time",
         ":iak_wrapper",
         ":ost_cache_sim",
+        ":container_cache_sim",
     ],
     srcs = [
 	"simulation.cc",
@@ -41,6 +42,16 @@ cc_library(
     deps = [
         ":cache_sim",
         ":ostree",
+    ],
+)
+
+cc_library(
+    name = "container_cache_sim",
+    hdrs = ["container_cache_sim.h"],
+    srcs = ["container_cache_sim.cc"],
+    deps = [
+        ":cache_sim",
+        "//container:order_statistic_set",
     ],
 )
 
@@ -79,7 +90,7 @@ cc_test(
     "@googletest//:gtest_main",
     ":iak_wrapper",
     ":ost_cache_sim",
-    "//container:order_statistic_set",
+    ":container_cache_sim",
   ],
   linkopts = [
       "-lgomp",

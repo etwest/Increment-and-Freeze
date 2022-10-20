@@ -2,7 +2,7 @@
 #include "iak_wrapper.h"
 #include "increment_and_freeze.h"
 #include "ost_cache_sim.h"
-#include "container/order_statistic_set.h"
+#include "container_cache_sim.h"
 
 // An enum describing the different CacheSims
 enum CacheSimType {
@@ -15,9 +15,9 @@ enum CacheSimType {
 std::unique_ptr<CacheSim> new_simulator(CacheSimType sim_enum) {
   switch(sim_enum) {
     case OS_TREE:
-      return std::make_unique<OSTCacheSim<OSTreeHead>>();
+      return std::make_unique<OSTCacheSim>();
     case OS_SET:
-      return std::make_unique<OSTCacheSim<OrderStatisticSet>>();
+      return std::make_unique<ContainerCacheSim>();
     case IAK:
       return std::make_unique<IncrementAndFreeze>();
     case CHUNK_IAK:
@@ -31,7 +31,7 @@ std::unique_ptr<CacheSim> new_simulator(CacheSimType sim_enum) {
 class CacheSimUnitTests : public testing::TestWithParam<CacheSimType> {
 
 };
-INSTANTIATE_TEST_SUITE_P(CacheSimSuite, CacheSimUnitTests, testing::Values(OS_TREE, IAK, CHUNK_IAK));
+INSTANTIATE_TEST_SUITE_P(CacheSimSuite, CacheSimUnitTests, testing::Values(OS_TREE, OS_SET, IAK, CHUNK_IAK));
 
 namespace {
 using SuccessVector = CacheSim::SuccessVector;
