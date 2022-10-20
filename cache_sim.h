@@ -4,6 +4,20 @@
 #include <iostream>
 #include <vector>
 
+#include "absl/time/clock.h"
+
+#ifdef DEBUG_PERF
+inline uint8_t _depth = 0;
+#define STARTTIME(X) auto X = absl::Now(); _depth++;
+#define STOPTIME(X)  \
+    _depth--; \
+    for (uint8_t _i = 0; _i < _depth; _i++) {std::cout << "\t";} \
+    std::cout << #X ": " << absl::Now() - X << std::endl;
+#else //DEBUG_PERF
+#define STARTTIME(X) 
+#define STOPTIME(X)  
+#endif //DEBUG_PERF
+
 class CacheSim {
  protected:
   uint64_t access_number = 1;  // simulated timestamp

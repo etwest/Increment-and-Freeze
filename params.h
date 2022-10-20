@@ -8,9 +8,9 @@ constexpr uint64_t kKB = 1 << 10;
 constexpr uint64_t kSeed = 298234433;   // seed for the randomness
 
 // general workload parameters
-constexpr uint64_t kAccesses       = 10'000'000; // the number of memory accesses
-constexpr uint64_t kIdUniverseSize = 1'000'000;  // the total number of unique ids
-constexpr uint64_t kMemoryLimit    = 100'000;    // memory limit -- depth vector size
+constexpr uint64_t kAccesses       = 100'000'000; // the number of memory accesses
+constexpr uint64_t kIdUniverseSize = 5'000'000;  // the total number of unique ids
+constexpr uint64_t kMemoryLimit    = 1'000'000;    // memory limit -- depth vector size
 
 // params for the representative workload
 constexpr uint64_t kWorkingSet = 50'000; // number of commonly accessed addresses

@@ -10,6 +10,7 @@
 
 #include "cache_sim.h"  // for CacheSim
 
+
 struct IAKOutput {
   std::vector<std::pair<size_t, size_t>> living_requests;
   std::vector<size_t> depth_vector;
@@ -122,9 +123,12 @@ class ProjSequence {
   uint64_t start;
   uint64_t end;
 
-  // Initialize an empty projection with bounds
+  // Initialize an empty projection with bounds (to be filled in by partition)
   ProjSequence(uint64_t start, uint64_t end) : start(start), end(end) {};
 
+  // Init a projection with bounds and iterators
+  ProjSequence(uint64_t start, uint64_t end, std::vector<Op>::iterator op_seq, std::vector<Op>::iterator scratch, size_t num_ops, size_t len) : len(len), op_seq(op_seq), scratch(scratch), num_ops(num_ops), start(start), end(end) {};
+  
   void partition(ProjSequence& left, ProjSequence& right) {
     // std::cout << "Performing partition upon projected sequence" << std::endl;
     // std::cout << "num_ops = " << num_ops << std::endl;

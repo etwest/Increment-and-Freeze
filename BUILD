@@ -6,7 +6,6 @@ test_suite(
 cc_binary(
     name = "sim",
     deps = [
-        "@absl//absl/time:time",
         ":iak_wrapper",
         ":ost_cache_sim",
     ],
@@ -21,6 +20,9 @@ cc_binary(
 cc_library(
     name = "cache_sim",
     hdrs = ["cache_sim.h"],
+    deps = [
+        "@absl//absl/time:time",
+    ],
 )
 
 cc_library(
