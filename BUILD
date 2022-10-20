@@ -8,6 +8,7 @@ cc_binary(
     deps = [
         ":iak_wrapper",
         ":ost_cache_sim",
+        ":container_cache_sim",
     ],
     srcs = [
 	"simulation.cc",
@@ -47,6 +48,16 @@ cc_library(
 )
 
 cc_library(
+    name = "container_cache_sim",
+    hdrs = ["container_cache_sim.h"],
+    srcs = ["container_cache_sim.cc"],
+    deps = [
+        ":cache_sim",
+        "//container:order_statistic_set",
+    ],
+)
+
+cc_library(
     name = "increment_and_freeze",
     hdrs = ["increment_and_freeze.h"],
     srcs = ["increment_and_freeze.cc"],
@@ -81,6 +92,7 @@ cc_test(
     "@googletest//:gtest_main",
     ":iak_wrapper",
     ":ost_cache_sim",
+    ":container_cache_sim",
   ],
   linkopts = [
       "-lgomp",

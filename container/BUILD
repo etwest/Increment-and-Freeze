@@ -17,6 +17,7 @@ cc_library(
 cc_library(
     name = "order_statistic_set",
     hdrs = ["order_statistic_set.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":raw_order_statistic_set",
         "@com_github_google_glog//:glog",
