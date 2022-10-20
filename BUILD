@@ -79,6 +79,7 @@ cc_test(
     "@googletest//:gtest_main",
     ":iak_wrapper",
     ":ost_cache_sim",
+    "//container:order_statistic_set",
   ],
   linkopts = [
       "-lgomp",

@@ -15,10 +15,11 @@
  * Returns a success function which gives the number of page faults
  * for every memory size.
  */
+template <typename OSSet>
 class OSTCacheSim : public CacheSim {
  private:
   std::vector<uint64_t> page_hits;  // vector used to construct success function
-  OSTreeHead LRU_queue;             // order statistics tree for LRU depth
+  OSSet LRU_queue;             // order statistics tree for LRU depth
   std::unordered_map<uint64_t, uint64_t> page_table;  // map from v_addr to ts
  public:
   OSTCacheSim() = default;

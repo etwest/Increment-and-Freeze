@@ -3,6 +3,7 @@
 #include <utility>
 
 // perform a memory access and use the LRU_queue to update the success function
+template <typename OSSet>
 void OSTCacheSim::memory_access(uint64_t addr) {
   uint64_t ts = access_number++;
 
@@ -26,6 +27,7 @@ void OSTCacheSim::memory_access(uint64_t addr) {
 // then insert it back with an updated timestamp.
 // return the rank of the page before updating the timestamp
 // assumes that a page with the old_ts exists in the LRU_queue
+template <typename OSSet>
 size_t OSTCacheSim::move_front_queue(uint64_t old_ts, uint64_t new_ts) {
   std::pair<size_t, uint64_t> found = LRU_queue.find(old_ts);
 
@@ -36,6 +38,7 @@ size_t OSTCacheSim::move_front_queue(uint64_t old_ts, uint64_t new_ts) {
 
 // return the success function by starting at the back of the
 // page_hits vector and summing the elements to the front
+template <typename OSSet>
 std::vector<uint64_t> OSTCacheSim::get_success_function() {
   uint64_t nhits = 0;
 
