@@ -93,14 +93,14 @@ TEST(MemoryCutoffTests, MultipleSuccessCalls) {
 }
 
 TEST(MemoryCutoffTests, CompareToIAF) {
-  //IAKWrapper unlim_sim(64); // default chunk size 64 and no memory limit
-  std::vector<IAKWrapper> sims {{64, 7}, {64, 11}, {64, 16}, {64, 24}, {64, 32}, {64}};
+  // default chunk size 512 with various memory limits
+  std::vector<IAKWrapper> sims {{512, 7}, {512, 11}, {512, 16}, {512, 32}, {512, 64}, {512}};
 
   // random number generator
   std::mt19937_64 gen(42);
-  std::uniform_int_distribution<int> distribution(1,50);
+  std::uniform_int_distribution<int> distribution(1,1000);
   
-  // add random updates from range [1, 50)
+  // add random updates from range [1, 1000)
   for (int i = 0; i < 100000; i++) {
     uint64_t num = distribution(gen);
     for (auto& sim : sims)

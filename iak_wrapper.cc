@@ -75,7 +75,6 @@ void IAKWrapper::process_requests() {
   size_t living_idx = 0;
   for (size_t i = 1; i < result.depth_vector.size(); i++) {
     size_t depth = result.depth_vector[i]; // stack depth of request i
-    assert(depth / max_u_mult < distance_histogram.size());
 
     // If we still have living requests to process and the current request is not a living request
     if (living_idx >= result.living_requests.size() || i != result.living_requests[living_idx].second) {

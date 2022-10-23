@@ -23,8 +23,8 @@ class IAKWrapper : public CacheSim {
     size_t cur_u;
     size_t max_living_req;
 
-    constexpr static size_t max_u_mult = 16; // chunk <= max_u_mult * u
-    constexpr static size_t min_u_mult = 8;  // chunk > min_u_mult * u
+    constexpr static size_t max_u_mult = 4; // chunk <= max_u_mult * u
+    constexpr static size_t min_u_mult = 3;  // chunk > min_u_mult * u
 
     // Function to update value of u given a living requests size
     inline void update_u(size_t num_living) {
