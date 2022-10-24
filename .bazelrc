@@ -12,6 +12,7 @@ build --strip=never
 build --copt -march=native
 build --copt -mtune=native
 build --copt -Wno-stringop-overflow
+build --copt -Werror=maybe-uninitialized
 
 build:debug --copt -fno-omit-frame-pointer
 build:debug --copt -fsanitize=address

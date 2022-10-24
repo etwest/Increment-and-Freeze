@@ -12,8 +12,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: bazel build
+    - uses: actions/checkout@v3
+    - name: bazel build sim
+      run: bazel build sim
+    - name: bazel build tests
       run: bazel build unit_tests --config=debug
     - name: run tests
       run: ./bazel-bin/unit_tests

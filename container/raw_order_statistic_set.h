@@ -1017,7 +1017,7 @@ class SetExtractedNode {
 
  private:
   std::optional<value_type> value_ = std::nullopt;
-  size_t rank_;
+  size_t rank_ = 0;
 };
 
 }  // namespace cachelib_internal
