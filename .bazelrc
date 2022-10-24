@@ -26,16 +26,19 @@ build:debug --copt -O1
 
 build:perftest --copt -DDEBUG_PERF
 
+#INSTRUCTION: download opencilk to /opt/opencilk
+# Run with (export CC=/opt/opencilk/bin/clang++; bazel test tests --config cilk --test_output=all )
+
 build:cilk --copt -DUSE_CILK
 build:cilk --copt -fopencilk
 build:cilk --linkopt -fopencilk
 # CILK RACE DETECTOR
-#build:cilk --copt -fsanitize=cilksan
-#build:cilk --linkopt -fsanitize=cilksan
+#build:cilk --copt -fsanitize=cilk
+#build:cilk --linkopt -fsanitize=cilk
 # CILK WORK SPAN
-#build:cilk --linkopt -fcilktool=cilkscale
-#build:cilk --copt -fcilktool=cilkscale
+build:cilk --linkopt -fcilktool=cilkscale
+build:cilk --copt -fcilktool=cilkscale
 # CILK SANITIZERS
-build:cilk --linkopt -fsanitize=address
-build:cilk --copt -fsanitize=address
-build:cilk --copt -O1
+#build:cilk --linkopt -fsanitize=address
+#build:cilk --copt -fsanitize=address
+build:cilk --copt -O3
