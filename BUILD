@@ -20,7 +20,10 @@ cc_binary(
 
 cc_library(
     name = "cache_sim",
-    hdrs = ["cache_sim.h"],
+    hdrs = [
+        "cache_sim.h",
+        "sim_factory.h",
+    ],
     deps = [
         "@absl//absl/time:time",
     ],
