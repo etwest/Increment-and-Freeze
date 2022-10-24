@@ -16,6 +16,25 @@ void IncrementAndFreeze::memory_access(uint64_t addr) {
   requests.push_back({addr, access_number++});
 }
 
+
+#ifdef USE_CILK
+void init_vpair(void *view) {
+  using req_index_pair = IncrementAndFreeze::req_index_pair;
+  new (view) std::vector<req_index_pair>();
+}
+void append_vpair(void *left, void *right)
+{
+  using req_index_pair = IncrementAndFreeze::req_index_pair;
+  std::vector<req_index_pair> *pleft = static_cast<std::vector<req_index_pair> *>(left);
+  std::vector<req_index_pair> *pright = static_cast<std::vector<req_index_pair> *>(right);
+  
+  pleft->insert(pleft->end(), pright->begin(), pright->end());
+
+  using namespace std;
+  pright->~vector<req_index_pair>();
+}
+#endif
+
 void IncrementAndFreeze::calculate_prevnext(
     std::vector<req_index_pair> &req, std::vector<req_index_pair> *living_req) {
 
@@ -31,15 +50,16 @@ void IncrementAndFreeze::calculate_prevnext(
 
   STARTTIME(prevnext);
 #ifdef USE_CILK
-    std::mutex mux;
 #else
 #pragma omp parallel
 #endif
   {
-    std::vector<req_index_pair> living_req_priv;
+
 #ifdef USE_CILK
+  std::vector<req_index_pair> cilk_reducer(init_vpair, append_vpair) living_req_reducer;
   cilk_for
 #else
+    std::vector<req_index_pair> living_req_priv;
 #pragma omp for nowait // nowait removes the barrier, so the critical copying can happen ASAP
   for
 #endif
@@ -53,20 +73,24 @@ void IncrementAndFreeze::calculate_prevnext(
       } else {
         prev(access_num) = 0;  // last is different so prev = 0
         if (living_req != nullptr && i > 0) { // add last to living requests
+#ifdef USE_CILK
+          living_req_reducer.push_back(requestcopy[i-1]);
+#else
           living_req_priv.push_back(requestcopy[i-1]);
+#endif
         }
       }
     }
     if (living_req != nullptr)
     {
 #ifdef USE_CILK
-    std::lock_guard<std::mutex> guard(mux);
+  *living_req = living_req_reducer;
 #else
 #pragma omp critical
-#endif
       living_req->insert(living_req->end(), 
           std::make_move_iterator(living_req_priv.begin()), 
           std::make_move_iterator(living_req_priv.end()));
+#endif
     }
   }
   STOPTIME(prevnext);

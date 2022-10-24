@@ -35,3 +35,7 @@ build:cilk --linkopt -fopencilk
 # CILK WORK SPAN
 #build:cilk --linkopt -fcilktool=cilkscale
 #build:cilk --copt -fcilktool=cilkscale
+# CILK SANITIZERS
+build:cilk --linkopt -fsanitize=address
+build:cilk --copt -fsanitize=address
+build:cilk --copt -O1
