@@ -1,18 +1,19 @@
 startup --host_jvm_args=-XX:-UseParallelGC
 
-# Google uses c++17.  And this code didn't compile with c++2a.
+# Google uses c++17
 build --cxxopt="-std=c++17" 
 build --jobs 30 --color=yes
 build --copt -O3
 build --copt -Wall
 build --copt -Werror
-build --copt -D_GLIBCXX_PARALLEL
 build --copt -g 
 build --strip=never
 build --copt -march=native
 build --copt -mtune=native
-build --copt -Wno-stringop-overflow
-build --copt -Werror=maybe-uninitialized
+# Disable the below values for cilk compilation
+#build --copt -D_GLIBCXX_PARALLEL
+#build --copt -Wno-stringop-overflow
+#build --copt -Werror=maybe-uninitialized
 
 build:debug --copt -fno-omit-frame-pointer
 build:debug --copt -fsanitize=address
@@ -24,3 +25,13 @@ build:debug --linkopt -fsanitize=leak
 build:debug --copt -O1
 
 build:perftest --copt -DDEBUG_PERF
+
+build:cilk --copt -DUSE_CILK
+build:cilk --copt -fopencilk
+build:cilk --linkopt -fopencilk
+# CILK RACE DETECTOR
+#build:cilk --copt -fsanitize=cilksan
+#build:cilk --linkopt -fsanitize=cilksan
+# CILK WORK SPAN
+#build:cilk --linkopt -fcilktool=cilkscale
+#build:cilk --copt -fcilktool=cilkscale

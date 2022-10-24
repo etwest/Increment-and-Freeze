@@ -1,9 +1,15 @@
 #include "increment_and_freeze.h"
 
 #include <algorithm>
-#include <omp.h>
-#include <utility>
 
+#ifdef USE_CILK
+#include <cilk/cilk.h>
+#include <mutex>
+#else
+#include <omp.h>
+#endif
+
+#include <utility>
 #include "params.h"
 
 void IncrementAndFreeze::memory_access(uint64_t addr) {
@@ -24,11 +30,20 @@ void IncrementAndFreeze::calculate_prevnext(
   prev_arr.resize(requestcopy.size() + 1); // good memory allocation, persists between calls and based on size of requests arr
 
   STARTTIME(prevnext);
+#ifdef USE_CILK
+    std::mutex mux;
+#else
 #pragma omp parallel
+#endif
   {
     std::vector<req_index_pair> living_req_priv;
+#ifdef USE_CILK
+  cilk_for
+#else
 #pragma omp for nowait // nowait removes the barrier, so the critical copying can happen ASAP
-    for (uint64_t i = 0; i < requestcopy.size(); i++) {
+  for
+#endif
+     (uint64_t i = 0; i < requestcopy.size(); i++) {
       auto [addr, access_num] = requestcopy[i];
       auto [last_addr, last_access_num] = i == 0 ? req_index_pair(0, 0): requestcopy[i-1];
 
@@ -44,7 +59,11 @@ void IncrementAndFreeze::calculate_prevnext(
     }
     if (living_req != nullptr)
     {
+#ifdef USE_CILK
+    std::lock_guard<std::mutex> guard(mux);
+#else
 #pragma omp critical
+#endif
       living_req->insert(living_req->end(), 
           std::make_move_iterator(living_req_priv.begin()), 
           std::make_move_iterator(living_req_priv.end()));
@@ -105,10 +124,15 @@ std::vector<uint64_t> IncrementAndFreeze::get_distance_vector() {
 
   // We want to spin up a bunch of threads, but only start with 1.
   // More will be added in by do_projections.
+#ifdef USE_CILK
+  cilk_scope
+#else
 #pragma omp parallel
 #pragma omp single
-  do_projections(distance_vector, std::move(init_seq));
-
+#endif
+  {
+    do_projections(distance_vector, std::move(init_seq));
+  }
   STOPTIME(getdistancevector);
   return distance_vector;
 }
@@ -170,9 +194,15 @@ void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
   // We want to spin up a bunch of threads, but only start with 1.
   // More will be added in by do_projections.
   STARTTIME(projections);
+#ifdef USE_CILK
+  cilk_scope
+#else
 #pragma omp parallel
 #pragma omp single
-  do_projections(ret.depth_vector, std::move(init_seq));
+#endif
+  {
+    do_projections(ret.depth_vector, std::move(init_seq));
+  }
 
   STOPTIME(projections);
   STOPTIME(getdepthvector);
@@ -208,11 +238,16 @@ void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, 
     ProjSequence snd_half(mid + 1, cur.end);
 
     cur.partition(fst_half, snd_half);
+#ifdef USE_CILK
+    cilk_spawn do_projections(distance_vector, std::move(fst_half));
 
+    do_projections(distance_vector, std::move(snd_half));
+#else
 #pragma omp task shared(distance_vector) mergeable final(dist <= 1024) 
     do_projections(distance_vector, std::move(fst_half));
 
     do_projections(distance_vector, std::move(snd_half));
+#endif
   }
 }
 
@@ -224,12 +259,22 @@ std::vector<uint64_t> IncrementAndFreeze::get_success_function() {
   STARTTIME(converting_distances_to_succ);
   // a point representation of successes
   std::vector<uint64_t> success(distances.size());
-#pragma omp parallel for //reduction(vec_uint64_t_plus : success)
-  for (uint64_t i = 0; i < distances.size() - 1; i++) {
+#ifdef USE_CILK
+  std::vector<std::mutex> muxs(success.size());
+  cilk_for
+#else
+#pragma omp parallel fort // nowait removes the barrier, so the critical copying can happen ASAP
+  for
+#endif
+  (uint64_t i = 0; i < distances.size() - 1; i++) {
     // std::cout << distances[i + 1] << " ";
     if (prev(i + 1) == 0) continue;
     auto index = distances[prev(i+1)];
+#ifdef USE_CILK
+    std::lock_guard<std::mutex> guard(muxs[index]);
+#else
 #pragma omp atomic update
+#endif
     success[index]++;
   }
   // std::cout << std::endl;
