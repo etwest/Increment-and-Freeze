@@ -157,8 +157,8 @@ void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
   // Note: 0 index vs 1 index
   for (uint64_t i = living_size; i < chunk_input.chunk_requests.size(); i++) {
     auto[request_id, request_index] = chunk_input.chunk_requests[i];
-    operations[2*i] = Op(request_index - 1, -1); // PreFix i, +1, Full -1
-    operations[2*i+1] = Op(prev(request_index)); // PostFix i, +1, Full +0 (and freeze target)
+    operations[2*i] = Op(request_index - 1, -1); // Prefix i-1, Full -1
+    operations[2*i+1] = Op(prev(request_index)); // Postfix prev(i), Full +0 (freeze before +full)
   }
   STOPTIME(living_populate);
 
@@ -181,10 +181,7 @@ void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
 //recursively (and in parallel) perform all the projections
 void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, ProjSequence cur) {
   // base case
-  // start == end -> d_i [operations]
-  // operations = [Inc, Freeze], [Freeze, Inc]
-  // if Freeze, Inc, then distance = 1 -> sequence = [... p_x, p_x ...]
-  // No need to lock here-- this can only occur in exactly one thread
+  // brute force algorithm to solve problems of size <= kIafBaseCase
   if (cur.end - cur.start < kIafBaseCase) {
     do_base_case(distance_vector, cur);
     return;
