@@ -157,8 +157,8 @@ void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
   // Note: 0 index vs 1 index
   for (uint64_t i = living_size; i < chunk_input.chunk_requests.size(); i++) {
     auto[request_id, request_index] = chunk_input.chunk_requests[i];
-    operations[2*i] = Op(request_index - 1, -1); // Prefix i, +1, Full -1
-    operations[2*i+1] = Op(prev(request_index));
+    operations[2*i] = Op(request_index - 1, -1); // PreFix i, +1, Full -1
+    operations[2*i+1] = Op(prev(request_index)); // PostFix i, +1, Full +0 (and freeze target)
   }
   STOPTIME(living_populate);
 
@@ -183,21 +183,11 @@ void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, 
   // base case
   // start == end -> d_i [operations]
   // operations = [Inc, Freeze], [Freeze, Inc]
-  // if Freeze, Inc, then distance = 0 -> sequence = [... p_x, p_x ...]
+  // if Freeze, Inc, then distance = 1 -> sequence = [... p_x, p_x ...]
   // No need to lock here-- this can only occur in exactly one thread
-  if (cur.num_ops == 0)
+  if (cur.end - cur.start < kIafBaseCase) {
+    do_base_case(distance_vector, cur);
     return;
-  if (cur.start == cur.end) {
-    if (cur.len > 0 && cur.op_seq[0].get_type() != Postfix) {
-      distance_vector[cur.start] = cur.op_seq[0].get_full_amnt();
-      if (cur.len > 1 && cur.op_seq[1].get_type() == Postfix) {
-        distance_vector[cur.start] += cur.op_seq[1].get_inc_amnt();
-      }
-    }
-    else if (cur.len > 0)
-      distance_vector[cur.start] = cur.op_seq[1].get_inc_amnt();
-    else
-      distance_vector[cur.start] = 0;
   }
   else {
     uint64_t dist = cur.end - cur.start;
@@ -213,6 +203,33 @@ void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, 
     do_projections(distance_vector, std::move(fst_half));
 
     do_projections(distance_vector, std::move(snd_half));
+  }
+}
+
+void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& distance_vector, ProjSequence cur) {
+  bool frozen[kIafBaseCase];
+  std::fill(frozen, frozen+kIafBaseCase, false);
+
+  for (uint64_t i = 0; i < cur.len; i++) {
+    Op &op = cur.op_seq[i];
+
+    if (op.get_type() == Prefix)
+      for (uint64_t j = cur.start; j < op.get_target() + 1; j++)
+        if (!frozen[j - cur.start]) distance_vector[j] += op.get_inc_amnt();
+
+    if (op.get_type() == Postfix)
+      for (uint64_t j = op.get_target(); j < cur.end + 1; j++) {
+        if (j == 0) continue;
+        if (!frozen[j - cur.start]) distance_vector[j] += op.get_inc_amnt();
+      }
+
+    if (op.get_type() == Postfix && op.get_target() != 0)
+      frozen[op.get_target() - cur.start] = true;
+
+    if (op.get_full_amnt() != 0) {
+      for (uint64_t j = cur.start; j < cur.end + 1; j++)
+        if (!frozen[j - cur.start]) distance_vector[j] += op.get_full_amnt();
+    }
   }
 }
 

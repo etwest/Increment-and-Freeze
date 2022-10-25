@@ -80,10 +80,10 @@ class Op {
         os << "Null" << ". + " << op.full_amnt;
         break;
       case Prefix:
-        os << "0-" << op.target() << ". + " << op.full_amnt;
+        os << "Prefix: 0-" << op.target() << ". + " << op.full_amnt;
         break;
       case Postfix:
-        os << op.target() << "-Inf" << ". + " << op.full_amnt;
+        os << "Postfix: " << op.target() << "-Inf" << ". + " << op.full_amnt;
         break;
 
     }
@@ -329,6 +329,13 @@ class IncrementAndFreeze: public CacheSim {
    * projection is small enough, or calls itself with smaller projections otherwise.
    */
   void do_projections(std::vector<uint64_t>& distance_vector, ProjSequence seq);
+ 
+  /*
+   * Helper function for solving a projected sequence using the brute force algorithm
+   * This takes time O(n^2) but requires no recursion or other overheads. Thus, we can
+   * use it to solve larger base cases then a projection of size 1.
+   */
+  void do_base_case(std::vector<uint64_t>& distance_vector, ProjSequence seq);
  public:
   // Logs a memory access to simulate. The order this function is called in matters.
   void memory_access(uint64_t addr);
