@@ -21,7 +21,10 @@ struct IAKInput {
   std::vector<std::pair<size_t, size_t>> chunk_requests; // living requests and fresh requests
 };
 
-enum OpType {Null=0, Prefix=1, Postfix=2};
+// Operation types and be Prefix, Postfix, or Null
+// OpType is used to encode Prefix and Postfix
+// Null is encoded by an entirely zero _target variable
+enum OpType {Prefix=0, Postfix=1};
 
 // A single operation, such as increment or kill
 class Op {
@@ -31,21 +34,23 @@ class Op {
   static constexpr uint32_t inc_amnt = 1;      // subrange Increment amount
   int32_t full_amnt = 0;      // fullrange Increment amount
 
-  static constexpr uint32_t tmask = 0x3FFFFFFF;
+  static constexpr uint32_t tmask = 0x7FFFFFFF;
   static constexpr uint32_t ntmask = ~tmask;
   uint32_t target() const {return _target & tmask;};
-  void set_target(const uint32_t& new_target) {_target &= ntmask; assert(new_target == (new_target & tmask)); _target |= new_target;};
-  OpType type() const
-  {
-    return (OpType)(_target >> 30);
+  void set_target(const uint32_t& new_target) {
+    assert(new_target == (new_target & tmask));
+    _target &= ntmask;
+    _target |= new_target;
   };
-  void set_type(const OpType& t)
-  {
+  
+  OpType type() const { return (OpType)(_target >> 31); };
+  void make_null() { _target = 0; }
+  void set_type(const OpType& t) {
     _target &= tmask;
-    _target |= ((int)t << 30);
+    _target |= ((int)t << 31);
   };
  public:
-  // create an Prefix
+  // create an Prefix (if target is 0 -> becomes a Null op)
   Op(uint64_t target, int64_t full_amnt)
       : full_amnt(full_amnt){set_type(Prefix); set_target(target);};
 
@@ -53,7 +58,7 @@ class Op {
   Op(uint64_t target){set_type(Postfix); set_target(target);};
 
   // Uninitialized. Used to parallelize making a vector of this without push_back
-  Op(){ set_type(Null);};
+  Op() : _target(0) {};
 
   // create a new Op by projecting another one
   Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end);
@@ -75,18 +80,12 @@ class Op {
   }
 
   friend std::ostream& operator<<(std::ostream& os, const Op& op) {
-    switch(op.type()) {
-      case Null:
-        os << "Null" << ". + " << op.full_amnt;
-        break;
-      case Prefix:
-        os << "0-" << op.target() << ". + " << op.full_amnt;
-        break;
-      case Postfix:
-        os << op.target() << "-Inf" << ". + " << op.full_amnt;
-        break;
-
-    }
+    if (op.is_null())
+      os << "Null: " << "+ " << op.full_amnt;
+    else if (op.get_type() == Prefix)
+      os << "Prefix: 0-" << op.target() << ". + " << op.full_amnt;
+    else
+      os << "Postfix: " << op.target() << "-Inf" << ". + " << op.full_amnt;
     return os;
   }
 
@@ -94,8 +93,9 @@ class Op {
     full_amnt += oth.full_amnt;
   }
 
-  bool isNull() {
-    return (get_full_amnt() == 0 && get_type() == Null);
+  // return if this operation has no impact
+  bool no_impact() {
+    return (get_full_amnt() == 0 && is_null());
   }
 
   // is this operation passive in the projection defined by
@@ -105,7 +105,8 @@ class Op {
   }
 
 
-  OpType get_type() {return type();}
+  OpType get_type() const {return type();}
+  bool is_null() const { return _target == 0; }
   uint64_t get_target() {return target();}
   uint64_t get_inc_amnt()  {return inc_amnt;}
   int64_t get_full_amnt()  {return full_amnt;}
@@ -246,31 +247,28 @@ class ProjSequence {
 
 
   // We project and merge here. 
-      size_t project_op(Op& new_op, size_t start, size_t end, size_t pos) {
+  size_t project_op(Op& new_op, size_t start, size_t end, size_t pos) {
     Op proj_op = Op(new_op, start, end);
 
-    if (proj_op.isNull()) return pos;
-    assert(proj_op.get_type() == Null || new_op.get_type() == Null || new_op.get_full_amnt() + new_op.get_inc_amnt() == proj_op.get_full_amnt() + proj_op.get_inc_amnt());
+    if (proj_op.no_impact()) return pos;
+    assert(proj_op.is_null() || new_op.is_null() || new_op.get_full_amnt() + new_op.get_inc_amnt() == proj_op.get_full_amnt() + proj_op.get_inc_amnt());
 
     // The first element is always replaced
-    if (pos == 0)
-    {
+    if (pos == 0) {
       scratch[0] = std::move(proj_op);
       return 1;
     }
 
     // The previous element may be replacable if it is Null
     // Unless we are a kill/Suffix, then we have an explicit barrier here.
-    if (pos > 0 && scratch[pos-1].get_type() == Null && proj_op.get_type() != Postfix)
-    {
+    if (pos > 0 && scratch[pos-1].is_null() && proj_op.get_type() != Postfix) {
       proj_op.add_full(scratch[pos-1]);
       scratch[pos-1] = std::move(proj_op);
       return pos;
     }
 
     // If we are null (a full increment), we do not need to take up space
-    if (pos > 0 && proj_op.get_type() == Null)
-    {
+    if (pos > 0 && proj_op.is_null()) {
       scratch[pos-1].add_full(proj_op);
       return pos;
     }

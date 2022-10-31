@@ -69,36 +69,27 @@ std::vector<uint64_t> IncrementAndFreeze::get_distance_vector() {
   STARTTIME(getdistancevector);
   std::vector<uint64_t> distance_vector(requests.size()+1);
 
-  // update memory usage of IncrementAndFreeze
-  memory_usage = sizeof(Op) * 4 * requests.size();
-
-  // Generate the list of operations
-  // Here, we init enough space for all operations.
-  // Every kill is either a kill or not
-  // Every subrange increment can expand into at most 2 non-passive ops
-  // std::cout << "MIP Requesting memory: " 
-  //           << sizeof(Op) * 2 * 2 * requests.size() * 1.0 / kGB 
-  //           << " GB" << std::endl;
+  // Size of operations array is bounded
   operations.clear();
-  operations.resize(2*requests.size());
-  scratch.clear();
-  scratch.resize(2*requests.size());
-
-  // Increment(prev(i)+1, i-1, 1)
-  // Freeze(prev(i))
-
-  // We encode the above with:
-
-  // Prefix Inc i-1, 1
-  // Full increment -1
-  // Freeze prev(i)
-  // Suffix Increment prev(i)
+  operations.resize(2*requests.size()); // TODO: We can probably calculate this exactly with some output from prevnext
 
   // Note: 0 index vs 1 index
-  for (uint64_t i = 0; i < requests.size(); i++) {
-    operations[2*i] = Op(i, -1); // Prefix i, +1, Full -1        
-    operations[2*i+1] = Op(prev(i+1));
+  for (uint64_t i = 1; i <= requests.size(); i++) {
+    if (prev(i) > 0) {
+      operations[2*i - 2] = Op(i-1, -1); // Prefix  i-1, +1, Full -1        
+      operations[2*i - 1] = Op(prev(i)); // Postfix prev(i), +1, Full 0
+    }
+    else { // can't freeze 0
+      operations[2*i -2] = Op(i-1, 0);   // Prefix  i-1, +1, Full 0
+    }
   }
+
+  // create scratch space
+  scratch.clear();
+  scratch.resize(operations.size());
+
+  // update memory usage of IncrementAndFreeze
+  memory_usage = sizeof(Op) * 2 * operations.size();
 
   // begin the recursive process
   ProjSequence init_seq(1, requests.size(), operations.begin(), scratch.begin(), operations.size(), operations.size());
@@ -140,16 +131,6 @@ void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
   scratch.clear();
   scratch.resize(arr_size); // MEMORY_ALLOC
 
-  // Increment(prev(i)+1, i-1, 1)
-  // Freeze(prev(i))
-
-  // We encode the above with:
-
-  // Prefix Inc i-1, 1
-  // Full increment -1
-  // Freeze prev(i)
-  // Suffix Increment prev(i)
-
   // Null requests to give space for indices where living requests reside
   STOPTIME(memory_allocs);
 
@@ -157,8 +138,13 @@ void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
   // Note: 0 index vs 1 index
   for (uint64_t i = living_size; i < chunk_input.chunk_requests.size(); i++) {
     auto[request_id, request_index] = chunk_input.chunk_requests[i];
-    operations[2*i] = Op(request_index - 1, -1); // Prefix i, +1, Full -1
-    operations[2*i+1] = Op(prev(request_index));
+    if (prev(request_index) > 0) {
+      operations[2*i]     = Op(request_index-1, -1); // Prefix  req-1, +1, Full -1        
+      operations[2*i + 1] = Op(prev(request_index)); // Postfix prev(req), +1, Full 0
+    }
+    else { // can't freeze 0
+      operations[2*i] = Op(request_index-1, 0);      // Prefix  req-1, +1, Full 0
+    }
   }
   STOPTIME(living_populate);
 
@@ -251,15 +237,17 @@ std::vector<uint64_t> IncrementAndFreeze::get_success_function() {
 Op::Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end) {
   _target = oth_op._target;
   full_amnt = oth_op.full_amnt;
+  if (is_null()) return;
+
   switch(oth_op.type()) {
     case Prefix: //we affect before target
       if (proj_start > target())
       {
-        set_type(Null);
+        make_null();
       }
       else if (proj_end <= target()) //full inc case
       {
-        set_type(Null);
+        make_null();
         full_amnt += oth_op.inc_amnt;
       }
       else // prefix case
@@ -270,20 +258,17 @@ Op::Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end) {
     case Postfix: //we affect after target
       if (proj_end < target())
       {
-        set_type(Null);
+        make_null();
       }
       else if (proj_start > target()) //full inc case
       { // We can't collapse if the target is in the range-- we still need the kill information
-        set_type(Null);
+        make_null();
         full_amnt += oth_op.inc_amnt;
       }
       else // Postfix case
       {
         set_type(Postfix);
       }
-      return;
-    case Null:
-      set_type(Null);
       return;
     default: assert(false); return;
   }
