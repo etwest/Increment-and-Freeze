@@ -210,18 +210,22 @@ void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& distance_vector, Pr
   for (uint64_t i = 0; i < cur.len; i++) {
     Op &op = cur.op_seq[i];
 
-    if (op.get_type() == Prefix)
-      for (uint64_t j = cur.start; j < op.get_target() + 1; j++)
-        if (!frozen[j - cur.start]) distance_vector[j] += op.get_inc_amnt();
+    // can skip any nulls that are not first
+    if (op.get_type() == Null && i != 0) continue;
 
-    if (op.get_type() == Postfix)
-      for (uint64_t j = op.get_target(); j < cur.end + 1; j++) {
+    if (op.get_type() == Prefix) {
+      for (uint64_t j = cur.start; j <= op.get_target(); j++)
+        if (!frozen[j - cur.start]) distance_vector[j] += op.get_inc_amnt();
+    }
+    else if (op.get_type() == Postfix) {
+      for (uint64_t j = op.get_target(); j <= cur.end; j++) {
         if (j == 0) continue;
         if (!frozen[j - cur.start]) distance_vector[j] += op.get_inc_amnt();
       }
 
-    if (op.get_type() == Postfix && op.get_target() != 0)
-      frozen[op.get_target() - cur.start] = true;
+      if (op.get_target() != 0)
+        frozen[op.get_target() - cur.start] = true;
+    }
 
     if (op.get_full_amnt() != 0) {
       for (uint64_t j = cur.start; j < cur.end + 1; j++)
