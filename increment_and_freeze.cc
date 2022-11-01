@@ -204,8 +204,8 @@ void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, 
 }
 
 void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& distance_vector, ProjSequence cur) {
-  bool frozen[kIafBaseCase];
-  std::fill(frozen, frozen+kIafBaseCase, false);
+  size_t local_distances[kIafBaseCase];
+  std::fill(local_distances, local_distances+kIafBaseCase, 0);
 
   for (uint64_t i = 0; i < cur.len; i++) {
     Op &op = cur.op_seq[i];
@@ -215,21 +215,21 @@ void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& distance_vector, Pr
 
     if (op.get_type() == Prefix) {
       for (uint64_t j = cur.start; j <= op.get_target(); j++)
-        if (!frozen[j - cur.start]) distance_vector[j] += op.get_inc_amnt();
+        local_distances[j - cur.start] += op.get_inc_amnt();
     }
     else if (op.get_type() == Postfix) {
       for (uint64_t j = op.get_target(); j <= cur.end; j++) {
         if (j == 0) continue;
-        if (!frozen[j - cur.start]) distance_vector[j] += op.get_inc_amnt();
+        local_distances[j - cur.start] += op.get_inc_amnt();
       }
 
       if (op.get_target() != 0)
-        frozen[op.get_target() - cur.start] = true;
+        distance_vector[op.get_target()] = local_distances[op.get_target() - cur.start];
     }
 
     if (op.get_full_amnt() != 0) {
       for (uint64_t j = cur.start; j < cur.end + 1; j++)
-        if (!frozen[j - cur.start]) distance_vector[j] += op.get_full_amnt();
+        local_distances[j - cur.start] += op.get_full_amnt();
     }
   }
 }
