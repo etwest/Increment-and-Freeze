@@ -44,7 +44,6 @@ class Op {
   };
   
   OpType type() const { return (OpType)(_target >> 31); };
-  void make_null() { _target = 0; }
   void set_type(const OpType& t) {
     _target &= tmask;
     _target |= ((int)t << 31);
@@ -89,8 +88,8 @@ class Op {
     return os;
   }
 
-  void add_full(Op& oth) {
-    full_amnt += oth.full_amnt;
+  void add_full(size_t oth_full_amnt) {
+    full_amnt += oth_full_amnt;
   }
 
   // return if this operation has no impact
@@ -104,9 +103,19 @@ class Op {
     return !affects(proj_start) && !affects(proj_end);
   }
 
+  // returns if this operation will cross from right to left
+  bool move_to_scratch(uint64_t proj_start) {
+    return target() < proj_start && type() == Postfix;
+  }
+
+  // returns if this operation is the leftmost op on right side
+  bool boundary_op(uint64_t proj_start) {
+    return target() < proj_start && type() == Prefix;
+  }
 
   OpType get_type() const {return type();}
   bool is_null() const { return _target == 0; }
+  void make_null() { _target = 0; }
   uint64_t get_target() {return target();}
   uint64_t get_inc_amnt()  {return inc_amnt;}
   int64_t get_full_amnt()  {return full_amnt;}
@@ -115,12 +124,10 @@ class Op {
 // A sequence of operators defined by a projection
 class ProjSequence {
  public:
-  size_t len;
-  std::vector<Op>::iterator op_seq;
-  std::vector<Op>::iterator scratch;
-  // Pointers to valid end position in the vector
-  size_t num_ops;
-  // The numerical range this sequence projects
+  std::vector<Op>::iterator op_seq; // iterator to beginning of operations sequence
+  size_t num_ops;                   // number of operations in this projection
+
+  // Request sequence range
   uint64_t start;
   uint64_t end;
 
@@ -128,7 +135,7 @@ class ProjSequence {
   ProjSequence(uint64_t start, uint64_t end) : start(start), end(end) {};
 
   // Init a projection with bounds and iterators
-  ProjSequence(uint64_t start, uint64_t end, std::vector<Op>::iterator op_seq, std::vector<Op>::iterator scratch, size_t num_ops, size_t len) : len(len), op_seq(op_seq), scratch(scratch), num_ops(num_ops), start(start), end(end) {};
+  ProjSequence(uint64_t start, uint64_t end, std::vector<Op>::iterator op_seq, size_t num_ops) : op_seq(op_seq), num_ops(num_ops), start(start), end(end) {};
   
   void partition(ProjSequence& left, ProjSequence& right) {
     // std::cout << "Performing partition upon projected sequence" << std::endl;
@@ -174,119 +181,115 @@ class ProjSequence {
     assert(start == left.start);
     assert(end == right.end);
 
-    size_t pos = 0;
-    size_t left_bound = 0;
-    size_t right_bound = 0;
+    std::vector<Op> scratch_stack;
 
-    //There's two things to keep track of here:
-    // The upper bound on needed memory (left_bound, right_bound)
-    // and how much memory we *actually* need right now.
+    // Where we merge operations that remain on the right side
+    size_t merge_into_idx = num_ops - 1;
 
+    // loop through all the operations on the right side
+    size_t cur_idx;
+    for (cur_idx = num_ops - 1; cur_idx >= 0; cur_idx--) {
+      Op& op = op_seq[cur_idx];
 
-    // We have to do first left than right. Otherwise we can't know the splitting point in memory
-    // (Without 3+ passes)
-    for (size_t i = 0; i < num_ops; i++) {
-      Op& op = op_seq[i];
-      pos = project_op(op, left.start, left.end, pos);
+      if (op.boundary_op(right.start)) {
+        // we merge this op with the next left op (also need to add inc amount to full)
+        Op& prev_op = op_seq[cur_idx-1];
+        prev_op.add_full(op.get_full_amnt() + op.get_inc_amnt());
+
+        // AND merge this op with merge_into_idx
+        // if merge_into_idx == cur_idx then
+        //   then leave a null op here with our full inc amount
+        if (merge_into_idx == cur_idx)
+          op.make_null();
+        else {
+          assert(op_seq[merge_into_idx].is_null());
+          op_seq[merge_into_idx].add_full(op.get_full_amnt());
+        }
+        
+        // done processing
+        break;
+      }
+
+      if (op.move_to_scratch(right.start)) {
+        scratch_stack.push_back(op); // place a copy of this op in scratch_stack
+        op.make_null(); // make this op null
+      }
+      else {
+        if (merge_into_idx != cur_idx) {
+          // merge current op into merge idx op
+          size_t full = op_seq[merge_into_idx].get_full_amnt();
+          op.add_full(full);
+          op_seq[merge_into_idx] = op;
+          op = Op(); // set where op used to be to a no_impact() operation
+          assert(op.no_impact());
+        }
+        merge_into_idx--;
+      }
     }
-    left.num_ops = pos;
-    size_t minleft = left.end-left.start+1;
-    left_bound = 2*minleft;
-    assert(left_bound <= len);
-    assert(pos <= left_bound);
 
-    // std::cout << "number operations in left = " << pos << std::endl;
-    // std::cout << "left bound = " << left_bound << std::endl;
-
-    // Now we 'clean up' any additional waste in scratch
-    for (size_t i = pos; i < left_bound; i++) {
-      scratch[i] = Op();
+    // The right side cares about the full amount in the merge_into_idx
+    // merge_into_idx belongs to right partition
+    assert(merge_into_idx - cur_idx >= scratch_stack.size());
+    for (auto it = scratch_stack.end() - 1; it >= scratch_stack.begin(); it--) {
+      Op& op = op_seq[cur_idx++];
+      op = *it;
     }
-
-    // for the sake of simplicity
-    scratch += left_bound;
-    pos = 0;
-    for (size_t i = 0; i < num_ops; i++) {
-      Op& op = op_seq[i];
-      pos = project_op(op, right.start, right.end, pos);
-    } 
-    right.num_ops = pos;
-
-    // std::cout << "number operations in right = " << pos << std::endl;
-
-    size_t minright = right.end-right.start+1;
-    right_bound = 2*minright;
-    // std::cout << "Right bound = " << right_bound << std::endl;
-    assert(left_bound + right_bound <= len);
-    assert(pos <= left_bound + right_bound);
-
-    // Now we 'clean up' any additional waste in scratch
-    for (size_t i = pos; i < right_bound; i++) {
-      scratch[i] = Op();
-    }
-    scratch -=left_bound;
 
     // This fails if there isn't enough memory allocated
     // It either means we did something wrong, or our memory
     // bound is incorrect.
 
-    // At this point, scratch contains the end results + no garbage.
-    // op_seq contains old work/ garbage
-    std::swap(op_seq, scratch);
-
     //Now op_seq and scratch are properly named. We assign them to left and right.
-    left.op_seq = op_seq;
-    left.scratch = scratch;
-    left.len = left_bound;
+    left.op_seq  = op_seq;
+    left.num_ops = cur_idx;
 
-    right.op_seq = op_seq + left_bound;
-    right.scratch = scratch + left_bound;
-    right.len = right_bound;
+    right.op_seq = op_seq + merge_into_idx;
+    right.num_ops = num_ops - merge_into_idx;
     //std::cout /*<< total*/ << "(" << len << ") " << " -> " << left.len << ", " << right.len << std::endl;
   }
 
 
   // We project and merge here. 
-  size_t project_op(Op& new_op, size_t start, size_t end, size_t pos) {
-    Op proj_op = Op(new_op, start, end);
+  // size_t project_op(Op& new_op, size_t start, size_t end, size_t pos) {
+  //   Op proj_op = Op(new_op, start, end);
 
-    if (proj_op.no_impact()) return pos;
-    assert(proj_op.is_null() || new_op.is_null() || new_op.get_full_amnt() + new_op.get_inc_amnt() == proj_op.get_full_amnt() + proj_op.get_inc_amnt());
+  //   if (proj_op.no_impact()) return pos;
+  //   assert(proj_op.is_null() || new_op.is_null() || new_op.get_full_amnt() + new_op.get_inc_amnt() == proj_op.get_full_amnt() + proj_op.get_inc_amnt());
 
-    // The first element is always replaced
-    if (pos == 0) {
-      scratch[0] = std::move(proj_op);
-      return 1;
-    }
+  //   // The first element is always replaced
+  //   if (pos == 0) {
+  //     scratch[0] = std::move(proj_op);
+  //     return 1;
+  //   }
 
-    // The previous element may be replacable if it is Null
-    // Unless we are a kill/Suffix, then we have an explicit barrier here.
-    if (pos > 0 && scratch[pos-1].is_null() && proj_op.get_type() != Postfix) {
-      proj_op.add_full(scratch[pos-1]);
-      scratch[pos-1] = std::move(proj_op);
-      return pos;
-    }
+  //   // The previous element may be replacable if it is Null
+  //   // Unless we are a kill/Suffix, then we have an explicit barrier here.
+  //   if (pos > 0 && scratch[pos-1].is_null() && proj_op.get_type() != Postfix) {
+  //     proj_op.add_full(scratch[pos-1]);
+  //     scratch[pos-1] = std::move(proj_op);
+  //     return pos;
+  //   }
 
-    // If we are null (a full increment), we do not need to take up space
-    if (pos > 0 && proj_op.is_null()) {
-      scratch[pos-1].add_full(proj_op);
-      return pos;
-    }
+  //   // If we are null (a full increment), we do not need to take up space
+  //   if (pos > 0 && proj_op.is_null()) {
+  //     scratch[pos-1].add_full(proj_op);
+  //     return pos;
+  //   }
 
-    /*Op& last_op = scratch[pos - 1];
-    // If either is not passive, then we cannot merge. We must add it.
-    if (!proj_op.is_passive(start, end) || !last_op.is_passive(start, end)) {
-    scratch[pos] = std::move(proj_op);
-    return pos+1;
-    }*/
+  //   /*Op& last_op = scratch[pos - 1];
+  //   // If either is not passive, then we cannot merge. We must add it.
+  //   if (!proj_op.is_passive(start, end) || !last_op.is_passive(start, end)) {
+  //   scratch[pos] = std::move(proj_op);
+  //   return pos+1;
+  //   }*/
 
-    // merge with the last op in sequence
-    //scratch[pos-1] += proj_op;
+  //   // merge with the last op in sequence
+  //   //scratch[pos-1] += proj_op;
 
-    //Neither is mergable.
-    scratch[pos] = std::move(proj_op);
-    return pos+1;
-  }
+  //   //Neither is mergable.
+  //   scratch[pos] = std::move(proj_op);
+  //   return pos+1;
+  // }
 };
 
 // Implements the IncrementAndFreezeInPlace algorithm

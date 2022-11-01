@@ -74,13 +74,14 @@ std::vector<uint64_t> IncrementAndFreeze::get_distance_vector() {
   operations.resize(2*requests.size()); // TODO: We can probably calculate this exactly with some output from prevnext
 
   // Note: 0 index vs 1 index
+  size_t op_idx = 0;
   for (uint64_t i = 1; i <= requests.size(); i++) {
     if (prev(i) > 0) {
-      operations[2*i - 2] = Op(i-1, -1); // Prefix  i-1, +1, Full -1        
-      operations[2*i - 1] = Op(prev(i)); // Postfix prev(i), +1, Full 0
+      operations[op_idx++] = Op(i-1, -1); // Prefix  i-1, +1, Full -1        
+      operations[op_idx++] = Op(prev(i)); // Postfix prev(i), +1, Full 0
     }
     else { // can't freeze 0
-      operations[2*i -2] = Op(i-1, 0);   // Prefix  i-1, +1, Full 0
+      operations[op_idx++] = Op(i-1, 0);   // Prefix  i-1, +1, Full 0
     }
   }
 
@@ -92,7 +93,7 @@ std::vector<uint64_t> IncrementAndFreeze::get_distance_vector() {
   memory_usage = sizeof(Op) * 2 * operations.size();
 
   // begin the recursive process
-  ProjSequence init_seq(1, requests.size(), operations.begin(), scratch.begin(), operations.size(), operations.size());
+  ProjSequence init_seq(1, requests.size(), operations.begin(), operations.size());
 
   // We want to spin up a bunch of threads, but only start with 1.
   // More will be added in by do_projections.
@@ -151,7 +152,7 @@ void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
   size_t max_index = chunk_input.chunk_requests[chunk_input.chunk_requests.size() - 1].second;
 
   // begin the recursive process
-  ProjSequence init_seq(1, max_index, operations.begin(), scratch.begin(), operations.size(), operations.size());
+  ProjSequence init_seq(1, max_index, operations.begin(), operations.size());
 
   // We want to spin up a bunch of threads, but only start with 1.
   // More will be added in by do_projections.
@@ -174,13 +175,13 @@ void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, 
   if (cur.num_ops == 0)
     return;
   if (cur.start == cur.end) {
-    if (cur.len > 0 && cur.op_seq[0].get_type() != Postfix) {
+    if (cur.num_ops > 0 && cur.op_seq[0].get_type() != Postfix) {
       distance_vector[cur.start] = cur.op_seq[0].get_full_amnt();
-      if (cur.len > 1 && cur.op_seq[1].get_type() == Postfix) {
+      if (cur.num_ops > 1 && cur.op_seq[1].get_type() == Postfix) {
         distance_vector[cur.start] += cur.op_seq[1].get_inc_amnt();
       }
     }
-    else if (cur.len > 0)
+    else if (cur.num_ops > 0)
       distance_vector[cur.start] = cur.op_seq[1].get_inc_amnt();
     else
       distance_vector[cur.start] = 0;
