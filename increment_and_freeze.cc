@@ -210,21 +210,23 @@ void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& distance_vector, Pr
   for (uint64_t i = 0; i < cur.len; i++) {
     Op &op = cur.op_seq[i];
 
-    // can skip any nulls that are not first
-    if (op.get_type() == Null && i != 0) continue;
-
-    if (op.get_type() == Prefix) {
-      for (uint64_t j = cur.start; j <= op.get_target(); j++)
-        local_distances[j - cur.start] += op.get_inc_amnt();
+    if (op.get_type() == Null) {
+      if (i != 0) continue; // can skip any nulls that are not first
     }
-    else if (op.get_type() == Postfix) {
-      for (uint64_t j = op.get_target(); j <= cur.end; j++) {
-        if (j == 0) continue;
-        local_distances[j - cur.start] += op.get_inc_amnt();
+    else {
+      if (op.get_type() == Prefix) {
+        for (uint64_t j = cur.start; j <= op.get_target(); j++)
+          local_distances[j - cur.start] += op.get_inc_amnt();
       }
+      else { // Postfix
+        for (uint64_t j = op.get_target(); j <= cur.end; j++) {
+          if (j == 0) continue;
+          local_distances[j - cur.start] += op.get_inc_amnt();
+        }
 
-      if (op.get_target() != 0)
-        distance_vector[op.get_target()] = local_distances[op.get_target() - cur.start];
+        if (op.get_target() != 0)
+          distance_vector[op.get_target()] = local_distances[op.get_target() - cur.start];
+      }
     }
 
     if (op.get_full_amnt() != 0) {
