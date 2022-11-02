@@ -85,6 +85,8 @@ std::vector<uint64_t> IncrementAndFreeze::get_distance_vector() {
     }
   }
 
+  operations.resize(op_idx);
+
   // create scratch space
   scratch.clear();
   scratch.resize(operations.size());
@@ -137,14 +139,15 @@ void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
 
   STARTTIME(living_populate);
   // Note: 0 index vs 1 index
+  size_t op_idx = 0;
   for (uint64_t i = living_size; i < chunk_input.chunk_requests.size(); i++) {
     auto[request_id, request_index] = chunk_input.chunk_requests[i];
     if (prev(request_index) > 0) {
-      operations[2*i]     = Op(request_index-1, -1); // Prefix  req-1, +1, Full -1        
-      operations[2*i + 1] = Op(prev(request_index)); // Postfix prev(req), +1, Full 0
+      operations[op_idx++] = Op(request_index-1, -1); // Prefix  req-1, +1, Full -1        
+      operations[op_idx++] = Op(prev(request_index)); // Postfix prev(req), +1, Full 0
     }
     else { // can't freeze 0
-      operations[2*i] = Op(request_index-1, 0);      // Prefix  req-1, +1, Full 0
+      operations[op_idx++] = Op(request_index-1, 0);  // Prefix  req-1, +1, Full 0
     }
   }
   STOPTIME(living_populate);
@@ -175,16 +178,17 @@ void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, 
   if (cur.num_ops == 0)
     return;
   if (cur.start == cur.end) {
-    if (cur.num_ops > 0 && cur.op_seq[0].get_type() != Postfix) {
-      distance_vector[cur.start] = cur.op_seq[0].get_full_amnt();
-      if (cur.num_ops > 1 && cur.op_seq[1].get_type() == Postfix) {
-        distance_vector[cur.start] += cur.op_seq[1].get_inc_amnt();
+    for (size_t i = 0; i < cur.num_ops; i++) {
+      const Op op = cur.op_seq[i];
+      if (op.is_null()) distance_vector[cur.start] += op.get_full_amnt();
+      else if (op.get_type() == Prefix) {
+        distance_vector[cur.start] += op.get_full_amnt() + op.get_inc_amnt();
+      }
+      else { // Postfix
+        distance_vector[cur.start] += op.get_inc_amnt();
+        break;
       }
     }
-    else if (cur.num_ops > 0)
-      distance_vector[cur.start] = cur.op_seq[1].get_inc_amnt();
-    else
-      distance_vector[cur.start] = 0;
   }
   else {
     uint64_t dist = cur.end - cur.start;
@@ -235,42 +239,42 @@ std::vector<uint64_t> IncrementAndFreeze::get_success_function() {
 }
 
 // Create a new Operation by projecting another
-Op::Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end) {
-  _target = oth_op._target;
-  full_amnt = oth_op.full_amnt;
-  if (is_null()) return;
+// Op::Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end) {
+//   _target = oth_op._target;
+//   full_amnt = oth_op.full_amnt;
+//   if (is_null()) return;
 
-  switch(oth_op.type()) {
-    case Prefix: //we affect before target
-      if (proj_start > target())
-      {
-        make_null();
-      }
-      else if (proj_end <= target()) //full inc case
-      {
-        make_null();
-        full_amnt += oth_op.inc_amnt;
-      }
-      else // prefix case
-      {
-        set_type(Prefix);
-      }
-      return;
-    case Postfix: //we affect after target
-      if (proj_end < target())
-      {
-        make_null();
-      }
-      else if (proj_start > target()) //full inc case
-      { // We can't collapse if the target is in the range-- we still need the kill information
-        make_null();
-        full_amnt += oth_op.inc_amnt;
-      }
-      else // Postfix case
-      {
-        set_type(Postfix);
-      }
-      return;
-    default: assert(false); return;
-  }
-}
+//   switch(oth_op.type()) {
+//     case Prefix: //we affect before target
+//       if (proj_start > target())
+//       {
+//         make_null();
+//       }
+//       else if (proj_end <= target()) //full inc case
+//       {
+//         make_null();
+//         full_amnt += oth_op.inc_amnt;
+//       }
+//       else // prefix case
+//       {
+//         set_type(Prefix);
+//       }
+//       return;
+//     case Postfix: //we affect after target
+//       if (proj_end < target())
+//       {
+//         make_null();
+//       }
+//       else if (proj_start > target()) //full inc case
+//       { // We can't collapse if the target is in the range-- we still need the kill information
+//         make_null();
+//         full_amnt += oth_op.inc_amnt;
+//       }
+//       else // Postfix case
+//       {
+//         set_type(Postfix);
+//       }
+//       return;
+//     default: assert(false); return;
+//   }
+// }
