@@ -164,10 +164,11 @@ class ProjSequence {
     std::vector<Op> scratch_stack;
 
     // Where we merge operations that remain on the right side
-    size_t merge_into_idx = num_ops - 1;
+    // use ints for this and cur_idx because underflow is good and tells us things
+    int merge_into_idx = num_ops - 1;
 
     // loop through all the operations on the right side
-    size_t cur_idx;
+    int cur_idx;
     size_t full_incr_to_left = 0; // amount of full increments to left created by prefix with target in right
     for (cur_idx = num_ops - 1; cur_idx >= 0; cur_idx--) {
       Op& op = op_seq[cur_idx];
@@ -191,9 +192,10 @@ class ProjSequence {
         }
         
         // done processing
+        --cur_idx;
         break;
       }
-
+      
       if (op.move_to_scratch(right.start)) {
         scratch_stack.push_back(op);    // copy this op into scratch_stack
         scratch_stack[scratch_stack.size() - 1].add_full(full_incr_to_left);
@@ -221,7 +223,8 @@ class ProjSequence {
           op = Op(); // set where op used to be to a no_impact() operation
           assert(op.no_impact());
         }
-        merge_into_idx--;
+        // if moved operation is not null then we need to decr merge_into_idx
+        if (!op_seq[merge_into_idx].is_null()) merge_into_idx--;
       }
 
       // Print out operations
@@ -232,7 +235,7 @@ class ProjSequence {
       //   std::cout << op_seq[i] << " ";
       // std::cout << std::endl << std::endl;
 
-      // // print out scratch stack
+      // print out scratch stack
       // std::cout << "Scratch_stack: " << std::endl;
       // for (auto op : scratch_stack)
       //   std::cout << op << " ";
@@ -247,25 +250,26 @@ class ProjSequence {
     //   std::cout << op_seq[i] << " ";
     // std::cout << std::endl << std::endl;
 
-    // // print out scratch stack
+    // print out scratch stack
     // std::cout << "Scratch_stack: " << std::endl;
     // for (auto op : scratch_stack)
     //   std::cout << op << " ";
     // std::cout << std::endl << std::endl;
 
-    // update last op on left with the full increment from the right
-    op_seq[cur_idx - 1].add_full(full_incr_to_left);
-
-    // The right side cares about the full amount in the merge_into_idx
-    // merge_into_idx belongs to right partition
-    assert(merge_into_idx - cur_idx >= scratch_stack.size());
-    if (scratch_stack.size() > 0) {
-      for (int i = scratch_stack.size() - 1; i >= 0; i--)
-        op_seq[cur_idx++] = scratch_stack[i];
+    
+    if (cur_idx >= 0) {
+      // update last op on left with the full increment from the right
+      op_seq[cur_idx].add_full(full_incr_to_left);
     }
     
+    // merge_into_idx belongs to right partition
+    // [cur_idx+1, merge_into_idx) belongs to left partition (where scratch_stack goes)
+    assert(merge_into_idx - cur_idx - 1 >= (int) scratch_stack.size());
+    if (scratch_stack.size() > 0) {
+      for (int i = scratch_stack.size() - 1; i >= 0; i--)
+        op_seq[++cur_idx] = scratch_stack[i];
+    }
 
-    // std::cout << "adding stack space done!" << std::endl;
 
     // This fails if there isn't enough memory allocated
     // It either means we did something wrong, or our memory
@@ -273,7 +277,7 @@ class ProjSequence {
 
     //Now op_seq and scratch are properly named. We assign them to left and right.
     left.op_seq  = op_seq;
-    left.num_ops = cur_idx;
+    left.num_ops = cur_idx + 1;
 
     right.op_seq = op_seq + merge_into_idx;
     right.num_ops = num_ops - merge_into_idx;
@@ -316,11 +320,9 @@ class IncrementAndFreeze: public CacheSim {
   void calculate_prevnext(std::vector<req_index_pair> &req,
                           std::vector<req_index_pair> *living_req=nullptr);
 
-  /* Vector of operations used in ProjSequence to store memory
-   * operations and scratch are constantly swapped to allow to a pseudo-in place partition
+  /* Vector of operations used in ProjSequence to store memory operations
    */
   std::vector<Op> operations;
-  std::vector<Op> scratch;
 
   /* Returns the distance vector calculated from prevnext.
    * Precondition: prevnext must be properly populated.

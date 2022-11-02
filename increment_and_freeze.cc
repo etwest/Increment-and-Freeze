@@ -87,12 +87,8 @@ std::vector<uint64_t> IncrementAndFreeze::get_distance_vector() {
 
   operations.resize(op_idx);
 
-  // create scratch space
-  scratch.clear();
-  scratch.resize(operations.size());
-
   // update memory usage of IncrementAndFreeze
-  memory_usage = sizeof(Op) * 2 * operations.size();
+  memory_usage = sizeof(Op) * operations.size();
 
   // begin the recursive process
   ProjSequence init_seq(1, requests.size(), operations.begin(), operations.size());
@@ -110,8 +106,6 @@ std::vector<uint64_t> IncrementAndFreeze::get_distance_vector() {
 void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
   STARTTIME(getdepthvector);
 
-  size_t living_size = chunk_input.output.living_requests.size();
-
   IAKOutput &ret = chunk_input.output;
   ret.living_requests.clear();
   calculate_prevnext(chunk_input.chunk_requests, &(ret.living_requests));
@@ -126,13 +120,8 @@ void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
   // Every subrange increment can expand into at most 2 non-passive ops
   size_t arr_size = 2 * (chunk_input.chunk_requests.size());
 
-  // update memory usage of IncrementAndFreeze
-  memory_usage = sizeof(Op) * 2 * arr_size;
-
   operations.clear();
   operations.resize(arr_size); // MEMORY_ALLOC
-  scratch.clear();
-  scratch.resize(arr_size); // MEMORY_ALLOC
 
   // Null requests to give space for indices where living requests reside
   STOPTIME(memory_allocs);
@@ -140,17 +129,20 @@ void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
   STARTTIME(living_populate);
   // Note: 0 index vs 1 index
   size_t op_idx = 0;
-  for (uint64_t i = living_size; i < chunk_input.chunk_requests.size(); i++) {
-    auto[request_id, request_index] = chunk_input.chunk_requests[i];
-    if (prev(request_index) > 0) {
-      operations[op_idx++] = Op(request_index-1, -1); // Prefix  req-1, +1, Full -1        
-      operations[op_idx++] = Op(prev(request_index)); // Postfix prev(req), +1, Full 0
+  for (uint64_t i = 1; i <= chunk_input.chunk_requests.size(); i++) {
+    if (prev(i) > 0) {
+      operations[op_idx++] = Op(i-1, -1); // Prefix  i-1, +1, Full -1        
+      operations[op_idx++] = Op(prev(i)); // Postfix prev(i), +1, Full 0
     }
     else { // can't freeze 0
-      operations[op_idx++] = Op(request_index-1, 0);  // Prefix  req-1, +1, Full 0
+      operations[op_idx++] = Op(i-1, 0);  // Prefix  i-1, +1, Full 0
     }
   }
+  operations.resize(op_idx);
   STOPTIME(living_populate);
+
+  // update memory usage of IncrementAndFreeze
+  memory_usage = sizeof(Op) * operations.size();
 
   size_t max_index = chunk_input.chunk_requests[chunk_input.chunk_requests.size() - 1].second;
 

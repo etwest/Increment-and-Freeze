@@ -12,7 +12,7 @@ using SuccessVector = CacheSim::SuccessVector;
 
 // Very simple validation of success function
 TEST_P(CacheSimUnitTests, SimpleTest) {
-  std::unique_ptr<CacheSim> sim = new_simulator(GetParam());
+  std::unique_ptr<CacheSim> sim = new_simulator(GetParam(), 8);
 
   // add a few updates
   sim->memory_access(1);
@@ -30,13 +30,11 @@ TEST_P(CacheSimUnitTests, SimpleTest) {
       EXPECT_EQ(svec[i], 2); // assert rest only get 2 hits
     }
   }
-  std::cout << "Test done!" << std::endl;
 }
 
 // Validate the success function returned by the CacheSim
 TEST_P(CacheSimUnitTests, ValidateSuccess) {
-  std::cout << "Beginning test!" << std::endl;
-  std::unique_ptr<CacheSim> sim = new_simulator(GetParam());
+  std::unique_ptr<CacheSim> sim = new_simulator(GetParam(), 8);
 
   // add a few updates
   size_t repeats = 20;
@@ -57,11 +55,8 @@ TEST_P(CacheSimUnitTests, ValidateSuccess) {
     sim->memory_access(5);
   }
 
-  std::cout << "Done adding memory accesses!" << std::endl;
-
   // get success function
   SuccessVector svec = sim->get_success_function();
-  std::cout << "Got success vector" << std::endl;
   EXPECT_GE(svec.size(), 7); // unique ids + 1
   if (svec.size() >= 7) {
     EXPECT_EQ(svec[1], 0);
@@ -74,13 +69,12 @@ TEST_P(CacheSimUnitTests, ValidateSuccess) {
       EXPECT_EQ(svec[i], 12 * repeats - 6); // assert rest are same
     }
   }
-  std::cout << "Test done!" << std::endl;
 }
 
 // Validate the success function returned by the CacheSim
 // when multiple calls are made to get_success_function
 TEST_P(CacheSimUnitTests, MultipleSuccessCalls) {
-  std::unique_ptr<CacheSim> sim = new_simulator(GetParam());
+  std::unique_ptr<CacheSim> sim = new_simulator(GetParam(), 8);
 
   // add a few updates
   size_t loops        = 3;
@@ -118,5 +112,4 @@ TEST_P(CacheSimUnitTests, MultipleSuccessCalls) {
       }
     }
   }
-  std::cout << "Test done!" << std::endl;
 }

@@ -44,9 +44,8 @@ void IAKWrapper::process_requests() {
   // std::cout << "New requests " << chunk_input.chunk_requests.size() << std::endl;
   // std::cout << "CHUNK:" << std::endl;
   // for (auto item : chunk_input.chunk_requests)
-  //   std::cout << item.first << "," << item.second << std::endl;
-  
-  size_t prev_living_size = chunk_input.output.living_requests.size();
+  //   std::cout << item.second << ":" << item.first << " ";
+  // std::cout << std::endl;
 
   // auto start = std::chrono::high_resolution_clock::now();
   iak_alg.get_depth_vector(chunk_input);
@@ -62,11 +61,6 @@ void IAKWrapper::process_requests() {
   // print_result(result);
 
   distance_histogram.resize(1 + std::min(result.living_requests.size(), max_living_req));
-
-  // update depth_vector based upon living requests input to current chunk
-  for (size_t i = 1; i < prev_living_size; i++) {
-    result.depth_vector[i] += prev_living_size - i;
-  }
   
   // Do not add living requests to distance histogram
   // 2-pointer walk through the depth vector and living requests
