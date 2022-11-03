@@ -170,15 +170,19 @@ void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, 
   if (cur.num_ops == 0)
     return;
   if (cur.start == cur.end) {
-    for (size_t i = 0; i < cur.num_ops; i++) {
-      const Op op = cur.op_seq[i];
-      if (op.is_null()) distance_vector[cur.start] += op.get_full_amnt();
-      else if (op.get_type() == Prefix) {
-        distance_vector[cur.start] += op.get_full_amnt() + op.get_inc_amnt();
-      }
-      else { // Postfix
-        distance_vector[cur.start] += op.get_inc_amnt();
-        break;
+    bool frozen = false;
+    for (size_t i = 0; i < cur.num_ops && !frozen; i++) {
+      const Op& op = cur.op_seq[i];
+      switch (op.get_type()) {
+        case Postfix:
+          distance_vector[cur.start] += op.get_inc_amnt();
+          frozen = true;
+          break;
+        case Prefix:
+          distance_vector[cur.start] += op.get_inc_amnt();
+        case Null:
+          distance_vector[cur.start] += op.get_full_amnt();
+          break;
       }
     }
   }
@@ -229,44 +233,3 @@ std::vector<uint64_t> IncrementAndFreeze::get_success_function() {
   STOPTIME(get_success_fnc);
   return success;
 }
-
-// Create a new Operation by projecting another
-// Op::Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end) {
-//   _target = oth_op._target;
-//   full_amnt = oth_op.full_amnt;
-//   if (is_null()) return;
-
-//   switch(oth_op.type()) {
-//     case Prefix: //we affect before target
-//       if (proj_start > target())
-//       {
-//         make_null();
-//       }
-//       else if (proj_end <= target()) //full inc case
-//       {
-//         make_null();
-//         full_amnt += oth_op.inc_amnt;
-//       }
-//       else // prefix case
-//       {
-//         set_type(Prefix);
-//       }
-//       return;
-//     case Postfix: //we affect after target
-//       if (proj_end < target())
-//       {
-//         make_null();
-//       }
-//       else if (proj_start > target()) //full inc case
-//       { // We can't collapse if the target is in the range-- we still need the kill information
-//         make_null();
-//         full_amnt += oth_op.inc_amnt;
-//       }
-//       else // Postfix case
-//       {
-//         set_type(Postfix);
-//       }
-//       return;
-//     default: assert(false); return;
-//   }
-// }

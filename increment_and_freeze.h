@@ -22,17 +22,16 @@ struct IAKInput {
 };
 
 // Operation types and be Prefix, Postfix, or Null
-// OpType is used to encode Prefix and Postfix
+// Prefix and Postfix are encoded by a single bit at the beginning of _target
 // Null is encoded by an entirely zero _target variable
-enum OpType {Prefix=0, Postfix=1};
+enum OpType {Prefix=0, Postfix=1, Null=2};
 
-// A single operation, such as increment or kill
+// An IAF operation
 class Op {
  private:
-  //OpType type = Null;     // Do we increment or kill?
-  uint32_t _target = 0; // kill target
-  static constexpr uint32_t inc_amnt = 1;      // subrange Increment amount
-  int32_t full_amnt = 0;      // fullrange Increment amount
+  uint32_t _target = 0;                   // Boundary of operation
+  static constexpr uint32_t inc_amnt = 1; // subrange Increment amount
+  int32_t full_amnt = 0;                  // fullrange Increment amount
 
   static constexpr uint32_t tmask = 0x7FFFFFFF;
   static constexpr uint32_t ntmask = ~tmask;
@@ -42,9 +41,7 @@ class Op {
     _target &= ntmask;
     _target |= new_target;
   };
-  
-  OpType type() const { return (OpType)(_target >> 31); };
-  void set_type(const OpType& t) {
+  inline void set_type(const OpType& t) {
     _target &= tmask;
     _target |= ((int)t << 31);
   };
@@ -59,76 +56,48 @@ class Op {
   // Uninitialized. Used to parallelize making a vector of this without push_back
   Op() : _target(0) {};
 
-  // create a new Op by projecting another one
-  // Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end);
-
-  // This enforces correct merging of operators
-  // Can only be done on equal subrange
-  /*Op& operator+=(Op& oth) {
-    assert(oth.type == Subrange);
-    assert(type == Subrange);
-    assert(start == oth.start);
-    assert(end == oth.end);
-
-    inc_amnt += oth.inc_amnt;
-    full_amnt += oth.full_amnt;
-    return *this;
-    }*/
-  bool affects(size_t victum) const {
-    return (type() == Prefix && victum <= target()) || (type() == Postfix && victum >= target());
-  }
-
   friend std::ostream& operator<<(std::ostream& os, const Op& op) {
-    if (op.is_null())
-      os << "N:" << "+" << op.full_amnt;
-    else if (op.get_type() == Prefix)
-      os << "Pr:0-" << op.target() << ".+" << op.full_amnt;
-    else
-      os << "Po:" << op.target() << "-Inf" << ".+" << op.full_amnt;
+    switch (op.get_type()) {
+      case Prefix:  os << "Po:" << op.target() << "-Inf" << ".+" << op.full_amnt; break;
+      case Postfix: os << "Pr:0-" << op.target() << ".+" << op.full_amnt; break;
+      case Null:    os << "N:" << "+" << op.full_amnt; break;
+      default: std::cerr << "ERROR: Unrecognized op.get_type()" << std::endl; break;
+    }
     return os;
   }
 
-  void make_null() { _target = 0; }
-
-  void add_full(size_t oth_full_amnt) {
-    full_amnt += oth_full_amnt;
-  }
-
-  // return if this operation has no impact
-  bool no_impact() const {
-    return (get_full_amnt() == 0 && is_null());
-  }
-
-  // is this operation passive in the projection defined by
-  // proj_start and proj_end
-  bool is_passive(uint64_t proj_start, uint64_t proj_end) const {
-    return !affects(proj_start) && !affects(proj_end);
-  }
+  inline void make_null() { _target = 0; }
+  inline void add_full(size_t oth_full_amnt) { full_amnt += oth_full_amnt; }
 
   // returns if this operation will cross from right to left
-  bool move_to_scratch(uint64_t proj_start) const {
-    return target() < proj_start && type() == Postfix;
+  inline bool move_to_scratch(uint64_t proj_start) const {
+    return target() < proj_start && get_type() == Postfix;
   }
 
-  // returns if this operation is the leftmost op on right side
-  bool boundary_op(uint64_t proj_start) const {
-    return target() < proj_start && type() == Prefix && !is_null();
+  // returns if this operation is the boundary prefix op
+  // boundary operations target the end of the left partition and are Prefixes
+  inline bool is_boundary_op(uint64_t left_end) const {
+    return target() == left_end && get_type() == Prefix;
   }
 
-  size_t get_full_incr_to_left(uint64_t proj_start) const {
-    if (type() == Prefix && target() >= proj_start)
+  inline size_t get_full_incr_to_left(uint64_t right_start) const {
+    // if a Prefix and target is in right then both full and inc affect
+    // left side as a full
+    if (get_type() == Prefix && target() >= right_start)
       return get_inc_amnt() + get_full_amnt();
-    else if (type() == Postfix) {
-      return get_full_amnt();
-    }
-    return 0;
+
+    // otherwise only full amount counts
+    return get_full_amnt();
   }
 
-  OpType get_type() const       { return type(); }
-  bool is_null() const          { return _target == 0; }
-  uint64_t get_target() const   { return target(); }
-  uint64_t get_inc_amnt() const { return inc_amnt; }
-  int64_t get_full_amnt() const { return full_amnt; }
+  inline OpType get_type() const {
+    if (is_null()) return Null;
+    else return (OpType)(_target >> 31);
+  }
+  inline bool is_null() const          { return _target == 0; }
+  inline uint64_t get_target() const   { return target(); }
+  inline uint64_t get_inc_amnt() const { return inc_amnt; }
+  inline int64_t get_full_amnt() const { return full_amnt; }
 };
 
 // A sequence of operators defined by a projection
@@ -149,11 +118,9 @@ class ProjSequence {
   
   void partition(ProjSequence& left, ProjSequence& right) {
     // std::cout << "Performing partition upon projected sequence" << std::endl;
-    // std::cout << "num_ops = " << num_ops << std::endl;
-    // std::cout << "left.start  = " << left.start << std::endl;
-    // std::cout << "left.end    = " << left.end << std::endl;
-    // std::cout << "right.start = " << right.start << std::endl;
-    // std::cout << "right.end   = " << right.end << std::endl;
+    // std::cout << *this << std::endl;
+    // std::cout << "Partitioning into: " << left.start << "-" << left.end << ", ";
+    // std::cout << right.start << "-" << right.end << std::endl;
 
     assert(left.start <= left.end);
     assert(left.end+1 == right.start);
@@ -173,7 +140,7 @@ class ProjSequence {
     for (cur_idx = num_ops - 1; cur_idx >= 0; cur_idx--) {
       Op& op = op_seq[cur_idx];
 
-      if (op.boundary_op(right.start)) {
+      if (op.is_boundary_op(left.end)) {
         // we merge this op with the next left op (also need to add inc amount to full)
         Op& prev_op = op_seq[cur_idx-1];
         prev_op.add_full(op.get_full_amnt() + op.get_inc_amnt());
@@ -220,37 +187,30 @@ class ProjSequence {
           size_t full = op_seq[merge_into_idx].get_full_amnt();
           op.add_full(full);
           op_seq[merge_into_idx] = op;
-          op = Op(); // set where op used to be to a no_impact() operation
-          assert(op.no_impact());
+          op = Op(); // set where op used to be to a no_impact operation
         }
         // if moved operation is not null then we need to decr merge_into_idx
         if (!op_seq[merge_into_idx].is_null()) merge_into_idx--;
       }
 
-      // Print out operations
+      // // Print out operations
       // std::cout << "cur_idx = " << cur_idx - 1 << " merge_into_idx = " << merge_into_idx << std::endl;
       // std::cout << "full_incr_to_left = " << full_incr_to_left << std::endl;
-      // std::cout << "Operations: " << std::endl;
-      // for (size_t i = 0; i < num_ops; i++)
-      //   std::cout << op_seq[i] << " ";
-      // std::cout << std::endl << std::endl;
+      // std::cout << *this << std::endl;
 
-      // print out scratch stack
+      // // print out scratch stack
       // std::cout << "Scratch_stack: " << std::endl;
       // for (auto op : scratch_stack)
       //   std::cout << op << " ";
       // std::cout << std::endl << std::endl;
     }
 
-    // Print out operations
+    // // Print out operations
     // std::cout << "Done processing projection" << std::endl;
     // std::cout << "cur_idx = " << cur_idx << " merge_into_idx = " << merge_into_idx << std::endl;
-    // std::cout << "Operations: " << std::endl;
-    // for (size_t i = 0; i < num_ops; i++)
-    //   std::cout << op_seq[i] << " ";
-    // std::cout << std::endl << std::endl;
+    // std::cout << *this << std::endl;
 
-    // print out scratch stack
+    // // print out scratch stack
     // std::cout << "Scratch_stack: " << std::endl;
     // for (auto op : scratch_stack)
     //   std::cout << op << " ";
@@ -284,18 +244,18 @@ class ProjSequence {
     //std::cout /*<< total*/ << "(" << len << ") " << " -> " << left.len << ", " << right.len << std::endl;
   
     // Print out final projection
-    // std::cout << "Done merging in scratch" << std::endl;
-    // std::cout << "left.num_ops = " << left.num_ops << std::endl;
-    // std::cout << "Left operations: " << std::endl;
-    // for (size_t i = 0; i < left.num_ops; i++)
-    //   std::cout << left.op_seq[i] << " ";
-    // std::cout << std::endl;
+    // std::cout << "Final Result: " << std::endl;
+    // std::cout << "LEFT:  " << left << std::endl;
+    // std::cout << "RIGHT: " << right << std::endl << std::endl;
+  }
 
-    // std::cout << "right.num_ops = " << right.num_ops << std::endl;
-    // std::cout << "Right operations: " << std::endl;
-    // for (size_t i = 0; i < right.num_ops; i++)
-    //   std::cout << right.op_seq[i] << " ";
-    // std::cout << std::endl << std::endl;
+  friend std::ostream& operator<<(std::ostream& os, const ProjSequence& seq) {
+    os << "start = " << seq.start << " end = " << seq.end << std::endl;
+    os << "num_ops = " << seq.num_ops << std::endl;
+    os << "Operations: ";
+    for (size_t i = 0; i < seq.num_ops; i++)
+      os << seq.op_seq[i] << " ";
+    return os;
   }
 };
 
