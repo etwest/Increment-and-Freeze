@@ -9,11 +9,7 @@
 #include <fstream>
 
 #include "absl/time/clock.h"
-#include "cache_sim.h"
-#include "iak_wrapper.h"
-#include "increment_and_freeze.h"
-#include "ost_cache_sim.h"
-#include "container_cache_sim.h"
+#include "sim_factory.h"
 #include "params.h"
 
 struct SimResult {
@@ -44,21 +40,13 @@ struct SimResult {
   }
 };
 
-// An enum describing the different CacheSims
-enum CacheSimType {
-  OS_TREE,
-  OS_SET,
-  IAK,
-  CHUNK_IAK,
-};
-
 // Runs a random sequence of page requests that follow a working set
 // distribution.  A majority of accesses are made to a somewhat small working
 // set while the rest are made randomly to a much larger amount of memory.
 //  * seed:    The seed to the random number generator.
 //  * print:   If true print out the results of the simulation.
 //  * returns: The success function and time it took to compute.
-SimResult working_set_simulator(CacheSim *sim, uint32_t seed, bool print = false) {
+SimResult working_set_simulator(CacheSim &sim, uint32_t seed, bool print = false) {
   std::mt19937 rand(seed);  // create random number generator
   auto start = absl::Now();
   for (uint64_t i = 0; i < kAccesses; i++) {
@@ -73,18 +61,18 @@ SimResult working_set_simulator(CacheSim *sim, uint32_t seed, bool print = false
       addr = (addr % leftover_size) + working_size;
 
     // access the address
-    sim->memory_access(addr);
+    sim.memory_access(addr);
   }
-  CacheSim::SuccessVector succ = sim->get_success_function();
+  CacheSim::SuccessVector succ = sim.get_success_function();
   auto duration = absl::Now() - start;
   if (print) {
     std::cout << "Success function: " << std::endl;
-    sim->print_success_function();
+    sim.print_success_function();
   }
   return {succ, duration};
 }
 
-SimResult uniform_simulator(CacheSim *sim, uint32_t seed, bool print = false) {
+SimResult uniform_simulator(CacheSim &sim, uint32_t seed, bool print = false) {
   std::mt19937 rand(seed); // create random number generator
   auto start = absl::Now();
   for (uint64_t i = 0; i < kAccesses; i++) {
@@ -92,28 +80,28 @@ SimResult uniform_simulator(CacheSim *sim, uint32_t seed, bool print = false) {
     uint64_t addr = rand() % kIdUniverseSize;
 
     // access the address
-    sim->memory_access(addr);
+    sim.memory_access(addr);
   }
-  CacheSim::SuccessVector succ = sim->get_success_function();
+  CacheSim::SuccessVector succ = sim.get_success_function();
   auto duration = absl::Now() - start;
   if (print) {
     std::cout << "Success function: " << std::endl;
-    sim->print_success_function();
+    sim.print_success_function();
   }
   return {succ, duration};
 }
 
-SimResult simulate_on_seq(CacheSim *sim, std::vector<uint64_t> seq, bool print = false) {
+SimResult simulate_on_seq(CacheSim &sim, std::vector<uint64_t> seq, bool print = false) {
   auto start = absl::Now();
   for (uint64_t i = 0; i < seq.size(); i++) {
     // access the address
-    sim->memory_access(seq[i]);
+    sim.memory_access(seq[i]);
   }
-  CacheSim::SuccessVector succ = sim->get_success_function();
+  CacheSim::SuccessVector succ = sim.get_success_function();
   auto duration = absl::Now() - start;
   if (print) {
     std::cout << "Success function: " << std::endl;
-    sim->print_success_function();
+    sim.print_success_function();
   }
   return {succ, duration};
 }
@@ -154,39 +142,9 @@ std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
   return seq_vec;
 }
 
-CacheSim *new_simulator(CacheSimType sim_enum, size_t minimum_chunk=65536, size_t memory_limit=0) {
-  CacheSim *sim;
-
-  switch(sim_enum) {
-    case OS_TREE:
-      sim = new OSTCacheSim();
-      break;
-    case OS_SET:
-      sim = new ContainerCacheSim();
-      break;
-    case IAK:
-      sim = new IncrementAndFreeze();
-      break;
-    case CHUNK_IAK:
-      if(memory_limit != 0)
-        sim = new IAKWrapper(minimum_chunk, memory_limit);
-      else
-        sim = new IAKWrapper(minimum_chunk);
-      break;
-    default:
-      std::cerr << "ERROR: Unrecognized sim_enum!" << std::endl;
-      exit(EXIT_FAILURE);
-  }
-
-  return sim;
-}
-
 // Run all workloads and record results
-SimResult run_workloads(CacheSimType sim_enum, size_t minimum_chunk=65536, size_t memory_limit=0) {
-  CacheSim *sim;
-  SimResult first_result;
-  SimResult result;
-
+void run_workloads(CacheSimType sim_enum, size_t minimum_chunk=65536, size_t memory_limit=0) {
+  std::unique_ptr<CacheSim> sim;
 
   // Print header
   switch(sim_enum) {
@@ -210,53 +168,39 @@ SimResult run_workloads(CacheSimType sim_enum, size_t minimum_chunk=65536, size_
   }
 
   // uniform accesses simulation
-  sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
-  first_result = uniform_simulator(sim, kSeed);
-  std::cout << "\tUniform Set Latency = " << first_result.latency << " sec" << std::endl;
-  std::cout << "\tMemory Usage = " << sim->get_memory_usage() << std::endl;
-  delete sim;
+  {
+    sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
+    SimResult result = uniform_simulator(*sim, kSeed);
+    std::cout << "\tUniform Set Latency = " << result.latency << " sec" << std::endl;
+    std::cout << "\tMemory Usage = " << sim->get_memory_usage() << std::endl;
+  }
+  
 
-  // // working set simulation
-  // sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
-  // result = working_set_simulator(sim, kSeed);
-  // std::cout << "\tWorking Set Latency = " << result.latency << " sec" << std::endl;
-  // std::cout << "\tMemory Usage = " << sim->get_memory_usage() << std::endl;
-
-  // delete sim;
+  // working set simulation
+  // {
+  //   sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
+  //   SimResult result = working_set_simulator(*sim, kSeed);
+  //   std::cout << "\tWorking Set Latency = " << result.latency << " sec" << std::endl;
+  //   std::cout << "\tMemory Usage = " << sim->get_memory_usage() << std::endl;
+  // }
 
   // test with different Zipfian parameters
-  std::vector<double> zipf_exps{0.1, 0.25, 0.5, 0.75, 1, 1.5, 2.0, 2.5, 3.0};
+  std::vector<double> zipf_exps{0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1, 1.2, 1.4};
   for (double exp : zipf_exps) {
     sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
     std::vector<uint64_t> zipf_seq = generate_zipf(kSeed, exp);
-    result = simulate_on_seq(sim, zipf_seq);
+    SimResult result = simulate_on_seq(*sim, zipf_seq);
     std::cout << "\tZipfian, alpha=" << exp << " Latency = "
               << result.latency << " sec" << std::endl;
               std::cout << "\tMemory Usage = " << sim->get_memory_usage() << std::endl;
-    delete sim;
   }
-  return first_result;
 }
 
-int main(int argc, char **argv) {
-  // bool verify = false;
-  if (argc == 2 && std::string(argv[1]) == "--verify") {
-    std::cout << "Comparing and verifying results!" << std::endl;
-    // verify = true;
-  }
-
-  SimResult os_res  = run_workloads(OS_TREE);
-  SimResult con_res = run_workloads(OS_SET);
-  SimResult iak_res = run_workloads(IAK);
-  SimResult chk_res = run_workloads(CHUNK_IAK);
+int main() {
+  run_workloads(OS_TREE);
+  run_workloads(OS_SET);
+  run_workloads(IAK);
+  run_workloads(CHUNK_IAK);
   if (kMemoryLimit < kIdUniverseSize)
-    SimResult chk_lim_res = run_workloads(CHUNK_IAK, 65536, kMemoryLimit);
-
-  // if (verify) {
-  //   std::cout << "OSTree and IAK are: ";
-  //   std::cout << (os_res == iak_res ? "equivalent" : "ERROR: different") << std::endl;
-
-  //   std::cout << "OSTree and CHUNK_IAK are: ";
-  //   std::cout << (os_res == chk_res ? "equivalent" : "ERROR: different") << std::endl;
-  // }
+    run_workloads(CHUNK_IAK, 65536, kMemoryLimit);
 }

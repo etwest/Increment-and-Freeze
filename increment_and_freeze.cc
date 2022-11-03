@@ -210,25 +210,29 @@ void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& distance_vector, Pr
   for (uint64_t i = 0; i < cur.len; i++) {
     Op &op = cur.op_seq[i];
 
-    if (op.get_type() == Null) {
-      if (i != 0) continue; // can skip any nulls that are not first
-    }
-    else {
-      if (op.get_type() == Prefix) {
-        for (uint64_t j = cur.start; j <= op.get_target(); j++)
+    switch(op.get_type()) {
+      case Prefix:
+        for (uint64_t j = cur.start; j <= op.get_target(); j++) {
           local_distances[j - cur.start] += op.get_inc_amnt();
-      }
-      else { // Postfix
+        }
+        break;
+      case Postfix:
         for (uint64_t j = op.get_target(); j <= cur.end; j++) {
           if (j == 0) continue;
           local_distances[j - cur.start] += op.get_inc_amnt();
         }
 
+        // Freeze target
         if (op.get_target() != 0)
           distance_vector[op.get_target()] = local_distances[op.get_target() - cur.start];
-      }
+        break;
+      default: // Null
+        assert(op.get_type() == Null);
+        if (i != 0) continue; // skip to next iteration of for loop
+        break;
     }
 
+    // Add full amount
     if (op.get_full_amnt() != 0) {
       for (uint64_t j = cur.start; j < cur.end + 1; j++)
         local_distances[j - cur.start] += op.get_full_amnt();
