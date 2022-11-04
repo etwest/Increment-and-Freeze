@@ -204,6 +204,7 @@ void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, 
 }
 
 void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& distance_vector, ProjSequence cur) {
+  int32_t full_amnt = 0;
   size_t local_distances[kIafBaseCase];
   std::fill(local_distances, local_distances+kIafBaseCase, 0);
 
@@ -212,31 +213,24 @@ void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& distance_vector, Pr
 
     switch(op.get_type()) {
       case Prefix:
-        for (uint64_t j = cur.start; j <= op.get_target(); j++) {
+        for (uint64_t j = cur.start; j <= op.get_target(); j++)
           local_distances[j - cur.start] += op.get_inc_amnt();
-        }
+
         break;
       case Postfix:
-        for (uint64_t j = op.get_target(); j <= cur.end; j++) {
-          if (j == 0) continue;
+        for (uint64_t j = std::max(op.get_target(), cur.start); j <= cur.end; j++)
           local_distances[j - cur.start] += op.get_inc_amnt();
-        }
 
         // Freeze target
         if (op.get_target() != 0)
-          distance_vector[op.get_target()] = local_distances[op.get_target() - cur.start];
+          distance_vector[op.get_target()] = local_distances[op.get_target() - cur.start] + full_amnt;
         break;
       default: // Null
-        assert(op.get_type() == Null);
-        if (i != 0) continue; // skip to next iteration of for loop
         break;
     }
 
     // Add full amount
-    if (op.get_full_amnt() != 0) {
-      for (uint64_t j = cur.start; j < cur.end + 1; j++)
-        local_distances[j - cur.start] += op.get_full_amnt();
-    }
+    full_amnt += op.get_full_amnt();
   }
 }
 
