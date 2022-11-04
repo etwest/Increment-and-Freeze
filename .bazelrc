@@ -23,4 +23,6 @@ build:debug --linkopt -fsanitize=undefined
 build:debug --linkopt -fsanitize=leak
 build:debug --copt -O1
 
+build:fast --copt -DNDEBUG
+
 build:perftest --copt -DDEBUG_PERF

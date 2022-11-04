@@ -35,7 +35,6 @@ class Op {
 
   static constexpr uint32_t tmask = 0x7FFFFFFF;
   static constexpr uint32_t ntmask = ~tmask;
-  uint32_t target() const {return _target & tmask;};
   void set_target(const uint32_t& new_target) {
     assert(new_target == (new_target & tmask));
     _target &= ntmask;
@@ -58,8 +57,8 @@ class Op {
 
   friend std::ostream& operator<<(std::ostream& os, const Op& op) {
     switch (op.get_type()) {
-      case Prefix:  os << "Po:" << op.target() << "-Inf" << ".+" << op.full_amnt; break;
-      case Postfix: os << "Pr:0-" << op.target() << ".+" << op.full_amnt; break;
+      case Prefix:  os << "Po:" << op.get_target() << "-Inf" << ".+" << op.full_amnt; break;
+      case Postfix: os << "Pr:0-" << op.get_target() << ".+" << op.full_amnt; break;
       case Null:    os << "N:" << "+" << op.full_amnt; break;
       default: std::cerr << "ERROR: Unrecognized op.get_type()" << std::endl; break;
     }
@@ -71,19 +70,19 @@ class Op {
 
   // returns if this operation will cross from right to left
   inline bool move_to_scratch(uint64_t proj_start) const {
-    return target() < proj_start && get_type() == Postfix;
+    return get_target() < proj_start && get_type() == Postfix;
   }
 
   // returns if this operation is the boundary prefix op
   // boundary operations target the end of the left partition and are Prefixes
   inline bool is_boundary_op(uint64_t left_end) const {
-    return target() == left_end && get_type() == Prefix;
+    return get_target() == left_end && get_type() == Prefix;
   }
 
   inline size_t get_full_incr_to_left(uint64_t right_start) const {
     // if a Prefix and target is in right then both full and inc affect
     // left side as a full
-    if (get_type() == Prefix && target() >= right_start)
+    if (get_type() == Prefix && get_target() >= right_start)
       return get_inc_amnt() + get_full_amnt();
 
     // otherwise only full amount counts
@@ -95,7 +94,7 @@ class Op {
     else return (OpType)(_target >> 31);
   }
   inline bool is_null() const          { return _target == 0; }
-  inline uint64_t get_target() const   { return target(); }
+  inline uint64_t get_target() const   { return _target & tmask; }
   inline uint64_t get_inc_amnt() const { return inc_amnt; }
   inline int64_t get_full_amnt() const { return full_amnt; }
 };
@@ -127,6 +126,7 @@ class ProjSequence {
     assert(right.start <= right.end);
     assert(start == left.start);
     assert(end == right.end);
+    assert(op_seq[0].is_null());
 
     std::vector<Op> scratch_stack;
 
@@ -139,6 +139,8 @@ class ProjSequence {
     size_t full_incr_to_left = 0; // amount of full increments to left created by prefix with target in right
     for (cur_idx = num_ops - 1; cur_idx >= 0; cur_idx--) {
       Op& op = op_seq[cur_idx];
+
+      assert(op.get_type() != Prefix || op.get_target() >= left.end);
 
       if (op.is_boundary_op(left.end)) {
         // we merge this op with the next left op (also need to add inc amount to full)
@@ -204,6 +206,7 @@ class ProjSequence {
       //   std::cout << op << " ";
       // std::cout << std::endl << std::endl;
     }
+    assert(cur_idx >= 0);
 
     // // Print out operations
     // std::cout << "Done processing projection" << std::endl;
@@ -216,11 +219,8 @@ class ProjSequence {
     //   std::cout << op << " ";
     // std::cout << std::endl << std::endl;
 
-    
-    if (cur_idx >= 0) {
-      // update last op on left with the full increment from the right
-      op_seq[cur_idx].add_full(full_incr_to_left);
-    }
+    // update last op on left with the full increment from the right
+    op_seq[cur_idx].add_full(full_incr_to_left);
     
     // merge_into_idx belongs to right partition
     // [cur_idx+1, merge_into_idx) belongs to left partition (where scratch_stack goes)
