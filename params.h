@@ -9,12 +9,15 @@ constexpr uint64_t kSeed = 298234433;   // seed for the randomness
 
 // general workload parameters
 constexpr uint64_t kAccesses       = 100'000'000; // the number of memory accesses
-constexpr uint64_t kIdUniverseSize = 5'000'000;  // the total number of unique ids
-constexpr uint64_t kMemoryLimit    = 1'000'000;    // memory limit -- depth vector size
+constexpr uint64_t kIdUniverseSize = 5'000'000;   // the total number of unique ids
+constexpr uint64_t kMemoryLimit    = 1'000'000;   // memory limit -- depth vector size
+
+// IncrementAndFreeze parameters
+constexpr size_t kIafBaseCase      = 8;           // Base case size for IAF algorithm
 
 // params for the representative workload
 constexpr uint64_t kWorkingSet = 50'000; // number of commonly accessed addresses
-constexpr double kLocality     = .95;  // with what probability to we access a common address
+constexpr double kLocality     = .95;    // with what probability to we access a common address
 
 // error checking
 static_assert(kWorkingSet <= kIdUniverseSize);

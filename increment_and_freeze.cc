@@ -163,28 +163,10 @@ void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
 //recursively (and in parallel) perform all the projections
 void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, ProjSequence cur) {
   // base case
-  // start == end -> d_i [operations]
-  // operations = [Inc, Freeze], [Freeze, Inc]
-  // if Freeze, Inc, then distance = 0 -> sequence = [... p_x, p_x ...]
-  // No need to lock here-- this can only occur in exactly one thread
-  if (cur.num_ops == 0)
+  // brute force algorithm to solve problems of size <= kIafBaseCase
+  if (cur.end - cur.start < kIafBaseCase) {
+    do_base_case(distance_vector, cur);
     return;
-  if (cur.start == cur.end) {
-    bool frozen = false;
-    for (size_t i = 0; i < cur.num_ops && !frozen; i++) {
-      const Op& op = cur.op_seq[i];
-      switch (op.get_type()) {
-        case Postfix:
-          distance_vector[cur.start] += op.get_inc_amnt();
-          frozen = true;
-          break;
-        case Prefix:
-          distance_vector[cur.start] += op.get_inc_amnt();
-        case Null:
-          distance_vector[cur.start] += op.get_full_amnt();
-          break;
-      }
-    }
   }
   else {
     uint64_t dist = cur.end - cur.start;
@@ -200,6 +182,37 @@ void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, 
     do_projections(distance_vector, std::move(fst_half));
 
     do_projections(distance_vector, std::move(snd_half));
+  }
+}
+
+void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& distance_vector, ProjSequence cur) {
+  int32_t full_amnt = 0;
+  size_t local_distances[kIafBaseCase];
+  std::fill(local_distances, local_distances+kIafBaseCase, 0);
+
+  for (uint64_t i = 0; i < cur.num_ops; i++) {
+    Op &op = cur.op_seq[i];
+
+    switch(op.get_type()) {
+      case Prefix:
+        for (uint64_t j = cur.start; j <= op.get_target(); j++)
+          local_distances[j - cur.start] += op.get_inc_amnt();
+
+        break;
+      case Postfix:
+        for (uint64_t j = std::max(op.get_target(), cur.start); j <= cur.end; j++)
+          local_distances[j - cur.start] += op.get_inc_amnt();
+
+        // Freeze target
+        if (op.get_target() != 0)
+          distance_vector[op.get_target()] = local_distances[op.get_target() - cur.start] + full_amnt;
+        break;
+      default: // Null
+        break;
+    }
+
+    // Add full amount
+    full_amnt += op.get_full_amnt();
   }
 }
 
