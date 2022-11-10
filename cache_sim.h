@@ -6,6 +6,9 @@
 
 #include "absl/time/clock.h"
 
+#include <sys/resource.h> //for rusage
+
+
 #ifdef DEBUG_PERF
 inline uint8_t _depth = 0;
 #define STARTTIME(X) auto X = absl::Now(); _depth++;
@@ -17,6 +20,14 @@ inline uint8_t _depth = 0;
 #define STARTTIME(X) 
 #define STOPTIME(X)  
 #endif //DEBUG_PERF
+
+
+inline uint64_t get_max_mem_used()
+{
+  struct rusage data;
+  getrusage(RUSAGE_SELF, &data);
+  return data.ru_maxrss;
+}
 
 class CacheSim {
  protected:
@@ -42,7 +53,7 @@ class CacheSim {
     for (size_t page = 1; page < func.size(); page++)
       std::cout << page << ": " << func[page] << std::endl;
   }
-  size_t get_memory_usage() { return memory_usage; }
+  size_t get_memory_usage() { return get_max_mem_used() / 1024; }
 };
 
 #endif  // ONLINE_CACHE_SIMULATOR_INCLUDE_CACHE_SIM_H_
