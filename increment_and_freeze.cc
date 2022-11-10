@@ -13,11 +13,10 @@ void IncrementAndFreeze::memory_access(uint32_t addr) {
 size_t IncrementAndFreeze::populate_operations(
     std::vector<request> &reqs, std::vector<request> *living_req) {
 
-  STARTTIME(sort_and_copy);
-  // requestcopy -> sort by request id and then by access_number
-  std::vector<request> requestcopy = reqs; // MEMORY_ALLOC (operator= for vector)
-  std::sort(requestcopy.begin(), requestcopy.end());
-  STOPTIME(sort_and_copy);
+  STARTTIME(sort);
+  // sort requests by request id and then by access_number
+  std::sort(reqs.begin(), reqs.end());
+  STOPTIME(sort);
 
   // Size of operations array is bounded by 2*reqs
   operations.clear();
@@ -29,9 +28,9 @@ size_t IncrementAndFreeze::populate_operations(
   {
     std::vector<request> living_req_priv;
 #pragma omp for nowait // nowait removes the barrier, so the critical copying can happen ASAP
-    for (uint64_t i = 0; i < requestcopy.size(); i++) {
-      auto [addr, access_num] = requestcopy[i];
-      auto [last_addr, last_access_num] = i == 0 ? request(0, 0): requestcopy[i-1];
+    for (uint64_t i = 0; i < reqs.size(); i++) {
+      auto [addr, access_num] = reqs[i];
+      auto [last_addr, last_access_num] = i == 0 ? request(0, 0): reqs[i-1];
 
       // Using last, check if previous sorted access is the same
       if (last_access_num > 0 && addr == last_addr) {
@@ -47,7 +46,7 @@ size_t IncrementAndFreeze::populate_operations(
 
         // The previous request survives this chunk so add to living
         if (living_req != nullptr && i > 0) {
-          living_req_priv.push_back(requestcopy[i-1]);
+          living_req_priv.push_back(reqs[i-1]);
         }
       }
     }
@@ -74,8 +73,8 @@ size_t IncrementAndFreeze::populate_operations(
   if (living_req == nullptr)
     return unique_ids;
 
-  // very last item in requestcopy is an edge case manually add here
-  living_req->push_back(requestcopy[requestcopy.size()-1]);
+  // very last item in reqs is an edge case. Manually add here
+  living_req->push_back(reqs[reqs.size()-1]);
 
   // sort by access number
   STARTTIME(sort_new_living);
