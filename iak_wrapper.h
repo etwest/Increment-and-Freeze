@@ -12,10 +12,7 @@
 class IAKWrapper : public CacheSim {
   using tuple = std::pair<uint64_t, uint64_t>;
   private:
-    // Vector of stack distances
-    std::vector<size_t> distance_histogram;
-
-    // Input to current chunk
+    // Struct that holds hits vector, living requests, and chunk requests to process
     IAKInput chunk_input;
 
     IncrementAndFreeze iak_alg;
@@ -24,7 +21,7 @@ class IAKWrapper : public CacheSim {
     size_t max_living_req;
 
     constexpr static size_t max_u_mult = 4; // chunk <= max_u_mult * u
-    constexpr static size_t min_u_mult = 3;  // chunk > min_u_mult * u
+    constexpr static size_t min_u_mult = 3; // chunk > min_u_mult * u
 
     // Function to update value of u given a living requests size
     inline void update_u(size_t num_living) {

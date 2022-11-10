@@ -13,7 +13,7 @@
 
 struct IAKOutput {
   std::vector<std::pair<size_t, size_t>> living_requests;
-  std::vector<size_t> depth_vector;
+  std::vector<size_t> hits_vector;
 };
 
 struct IAKInput {
@@ -57,8 +57,8 @@ class Op {
 
   friend std::ostream& operator<<(std::ostream& os, const Op& op) {
     switch (op.get_type()) {
-      case Prefix:  os << "Po:" << op.get_target() << "-Inf" << ".+" << op.full_amnt; break;
-      case Postfix: os << "Pr:0-" << op.get_target() << ".+" << op.full_amnt; break;
+      case Prefix: os << "Pr:0-" << op.get_target() << ".+" << op.full_amnt; break;
+      case Postfix:  os << "Po:" << op.get_target() << "-Inf" << ".+" << op.full_amnt; break;
       case Null:    os << "N:" << "+" << op.full_amnt; break;
       default: std::cerr << "ERROR: Unrecognized op.get_type()" << std::endl; break;
     }
@@ -267,29 +267,17 @@ class IncrementAndFreeze: public CacheSim {
   // A vector of all requests
   std::vector<req_index_pair> requests;
 
-  /* A vector of tuples for previous and next
-   * Previous defines the last instance of a page
-   * next defines the next instance of a page
-   */
-  std::vector<size_t> prev_arr;
+  // Vector of operations used in ProjSequence to store memory operations
+  std::vector<Op> operations;
 
   /* This converts the requests into the previous and next vectors
    * Requests is copied, not modified.
    * Precondition: requests must be properly populated.
+   * Returns: number of unique ids in requests
    */
-  void calculate_prevnext(std::vector<req_index_pair> &req,
-                          std::vector<req_index_pair> *living_req=nullptr);
+  size_t populate_operations(std::vector<req_index_pair> &req,
+                          std::vector<req_index_pair> *living_req);
 
-  /* Vector of operations used in ProjSequence to store memory operations
-   */
-  std::vector<Op> operations;
-
-  /* Returns the distance vector calculated from prevnext.
-   * Precondition: prevnext must be properly populated.
-   */
-  //std::vector<uint64_t> get_distance_vector();
-  // Shortcut to access prev in prevnext.
-  uint64_t& prev(uint64_t i) {return prev_arr[i];}
   /* Helper dunction to get_distance_vector.
    * Recursively (and in parallel) populates the distance vector if the
    * projection is small enough, or calls itself with smaller projections otherwise.
@@ -299,9 +287,17 @@ class IncrementAndFreeze: public CacheSim {
   /*
    * Helper function for solving a projected sequence using the brute force algorithm
    * This takes time O(n^2) but requires no recursion or other overheads. Thus, we can
-   * use it to solve larger base cases then a projection of size 1.
+   * use it to solve larger ProjSequences.
    */
   void do_base_case(std::vector<uint64_t>& distance_vector, ProjSequence seq);
+
+  /*
+   * Update a hits vector with the stack depths of the memory requests found in reqs
+   * reqs:        vector of memory requests to update the hits vector with
+   * hits_vector: A hits vector indicates the number of requests that required a given memory amount
+   */
+  void update_hits_vector(std::vector<req_index_pair>& reqs, std::vector<uint64_t>& hits_vector,
+                          std::vector<req_index_pair> *living_req=nullptr);
  public:
   // Logs a memory access to simulate. The order this function is called in matters.
   void memory_access(uint64_t addr);
@@ -312,14 +308,13 @@ class IncrementAndFreeze: public CacheSim {
   std::vector<uint64_t> get_success_function();
 
   /*
-   * Process a chunk of requests using the living requests from the previous chunk
-   * Return the new living requests and the depth_vector
+   * Process a chunk of requests (called by IAF_Wrapper)
+   * Return the new living requests and the success function
    */
-  void get_depth_vector(IAKInput &chunk_input);
+  void process_chunk(IAKInput &chunk_input);
 
   IncrementAndFreeze() = default;
   ~IncrementAndFreeze() = default;
-  std::vector<uint64_t> get_distance_vector();
 };
 
 #endif  // ONLINE_CACHE_SIMULATOR_INCREMENT_AND_FREEZE_H_

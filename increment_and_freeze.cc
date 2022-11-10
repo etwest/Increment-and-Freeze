@@ -10,21 +10,22 @@ void IncrementAndFreeze::memory_access(uint64_t addr) {
   requests.push_back({addr, access_number++});
 }
 
-void IncrementAndFreeze::calculate_prevnext(
-    std::vector<req_index_pair> &req, std::vector<req_index_pair> *living_req) {
+size_t IncrementAndFreeze::populate_operations(
+    std::vector<req_index_pair> &reqs, std::vector<req_index_pair> *living_req) {
 
-  // put all requests of the same addr next to each other
-  // then order those by access_number
-  std::vector<req_index_pair> requestcopy = req; // MEMORY_ALLOC (operator= for vector)
-
-  STARTTIME(sort);
+  STARTTIME(sort_and_copy);
+  // requestcopy -> sort by request id and then by access_number
+  std::vector<req_index_pair> requestcopy = reqs; // MEMORY_ALLOC (operator= for vector)
   std::sort(requestcopy.begin(), requestcopy.end());
-  STOPTIME(sort);
+  STOPTIME(sort_and_copy);
 
-  prev_arr.resize(requestcopy.size() + 1); // good memory allocation, persists between calls and based on size of requests arr
+  // Size of operations array is bounded by 2*reqs
+  operations.clear();
+  operations.resize(2*reqs.size());
+  size_t unique_ids = 0;
 
-  STARTTIME(prevnext);
-#pragma omp parallel
+  STARTTIME(populate_ops);
+#pragma omp parallel reduction(+:unique_ids)
   {
     std::vector<req_index_pair> living_req_priv;
 #pragma omp for nowait // nowait removes the barrier, so the critical copying can happen ASAP
@@ -34,10 +35,18 @@ void IncrementAndFreeze::calculate_prevnext(
 
       // Using last, check if previous sorted access is the same
       if (last_access_num > 0 && addr == last_addr) {
-        prev(access_num) = last_access_num;  // Point access to previous
-      } else {
-        prev(access_num) = 0;  // last is different so prev = 0
-        if (living_req != nullptr && i > 0) { // add last to living requests
+        // prev is same id as us so create Prefix and Postfix
+        operations[2*access_num-2] = Op(access_num-1, -1); // Prefix  i-1, +1, Full -1
+        operations[2*access_num-1] = Op(last_access_num);  // Postfix prev(i), +1, Full 0
+      }
+      else {
+        // previous access is different. This is therefore first access to this id
+        // so only create Prefix.
+        operations[2*access_num-2] = Op(access_num-1, 0); // Prefix  i-1, +1, Full 0
+        ++unique_ids;
+
+        // The previous request survives this chunk so add to living
+        if (living_req != nullptr && i > 0) {
           living_req_priv.push_back(requestcopy[i-1]);
         }
       }
@@ -50,122 +59,61 @@ void IncrementAndFreeze::calculate_prevnext(
           std::make_move_iterator(living_req_priv.end()));
     }
   }
-  STOPTIME(prevnext);
+  // Compact operations vector
+  size_t place_idx = 1;
+  for (size_t cur_idx = 1; cur_idx < operations.size(); cur_idx++) {
+    if (!operations[cur_idx].is_null()) {
+      operations[place_idx] = operations[cur_idx];
+      place_idx++;
+    }
+  }
+  operations.resize(place_idx); // shrink down to remove nulls at end
+  memory_usage = sizeof(Op) * operations.size(); // update memory usage of IncrementAndFreeze
+  STOPTIME(populate_ops);
 
   if (living_req == nullptr)
-    return;
+    return unique_ids;
 
-  // very last item in requestcopy is an edge case
-  // manually add here
+  // very last item in requestcopy is an edge case manually add here
   living_req->push_back(requestcopy[requestcopy.size()-1]);
 
   // sort by access number
-  STARTTIME(sort_living);
-  std::sort(living_req->begin(), living_req->end(), [](auto &left, auto &right){return left.second < right.second; });
-  STOPTIME(sort_living);
+  STARTTIME(sort_new_living);
+  std::sort(living_req->begin(), living_req->end(), [](auto &l, auto &r){return l.second < r.second; });
+  STOPTIME(sort_new_living);
+  return unique_ids;
 }
 
-std::vector<uint64_t> IncrementAndFreeze::get_distance_vector() {
-  STARTTIME(getdistancevector);
-  std::vector<uint64_t> distance_vector(requests.size()+1);
+// 'Main' function of IAF. Used to update a hits vector given a vector of requests
+void IncrementAndFreeze::update_hits_vector(std::vector<req_index_pair>& reqs,
+  std::vector<uint64_t>& hits_vector, std::vector<req_index_pair> *living_req) {
+  STARTTIME(update_hits_vector);
+  size_t unique_ids = populate_operations(reqs, living_req);
 
-  // Size of operations array is bounded
-  operations.clear();
-  operations.resize(2*requests.size()); // TODO: We can probably calculate this exactly with some output from prevnext
-
-  // Note: 0 index vs 1 index
-  size_t op_idx = 0;
-  for (uint64_t i = 1; i <= requests.size(); i++) {
-    if (prev(i) > 0) {
-      operations[op_idx++] = Op(i-1, -1); // Prefix  i-1, +1, Full -1        
-      operations[op_idx++] = Op(prev(i)); // Postfix prev(i), +1, Full 0
-    }
-    else { // can't freeze 0
-      operations[op_idx++] = Op(i-1, 0);   // Prefix  i-1, +1, Full 0
-    }
-  }
-
-  operations.resize(op_idx);
-
-  // update memory usage of IncrementAndFreeze
-  memory_usage = sizeof(Op) * operations.size();
+  // Make sure hits_vector has enough space
+  if (hits_vector.size() < unique_ids + 1)
+    hits_vector.resize(unique_ids + 1);
 
   // begin the recursive process
-  ProjSequence init_seq(1, requests.size(), operations.begin(), operations.size());
-
-  // We want to spin up a bunch of threads, but only start with 1.
-  // More will be added in by do_projections.
-#pragma omp parallel
-#pragma omp single
-  do_projections(distance_vector, std::move(init_seq));
-
-  STOPTIME(getdistancevector);
-  return distance_vector;
-}
-
-void IncrementAndFreeze::get_depth_vector(IAKInput &chunk_input) {
-  STARTTIME(getdepthvector);
-
-  IAKOutput &ret = chunk_input.output;
-  ret.living_requests.clear();
-  calculate_prevnext(chunk_input.chunk_requests, &(ret.living_requests));
-
-  STARTTIME(memory_allocs);
-  ret.depth_vector.clear();
-  ret.depth_vector.resize(chunk_input.chunk_requests.size() + 1); // MEMORY_ALLOC (resize)
-
-  // Generate the list of operations
-  // Here, we init enough space for all operations.
-  // Every kill is either a kill or not
-  // Every subrange increment can expand into at most 2 non-passive ops
-  size_t arr_size = 2 * (chunk_input.chunk_requests.size());
-
-  operations.clear();
-  operations.resize(arr_size); // MEMORY_ALLOC
-
-  // Null requests to give space for indices where living requests reside
-  STOPTIME(memory_allocs);
-
-  STARTTIME(living_populate);
-  // Note: 0 index vs 1 index
-  size_t op_idx = 0;
-  for (uint64_t i = 1; i <= chunk_input.chunk_requests.size(); i++) {
-    if (prev(i) > 0) {
-      operations[op_idx++] = Op(i-1, -1); // Prefix  i-1, +1, Full -1        
-      operations[op_idx++] = Op(prev(i)); // Postfix prev(i), +1, Full 0
-    }
-    else { // can't freeze 0
-      operations[op_idx++] = Op(i-1, 0);  // Prefix  i-1, +1, Full 0
-    }
-  }
-  operations.resize(op_idx);
-  STOPTIME(living_populate);
-
-  // update memory usage of IncrementAndFreeze
-  memory_usage = sizeof(Op) * operations.size();
-
-  size_t max_index = chunk_input.chunk_requests[chunk_input.chunk_requests.size() - 1].second;
-
-  // begin the recursive process
-  ProjSequence init_seq(1, max_index, operations.begin(), operations.size());
+  ProjSequence init_seq(1, reqs.size(), operations.begin(), operations.size());
 
   // We want to spin up a bunch of threads, but only start with 1.
   // More will be added in by do_projections.
   STARTTIME(projections);
 #pragma omp parallel
 #pragma omp single
-  do_projections(ret.depth_vector, std::move(init_seq));
+  do_projections(hits_vector, std::move(init_seq));
 
   STOPTIME(projections);
-  STOPTIME(getdepthvector);
+  STOPTIME(update_hits_vector);
 }
 
 //recursively (and in parallel) perform all the projections
-void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, ProjSequence cur) {
+void IncrementAndFreeze::do_projections(std::vector<uint64_t>& hits_vector, ProjSequence cur) {
   // base case
   // brute force algorithm to solve problems of size <= kIafBaseCase
   if (cur.end - cur.start < kIafBaseCase) {
-    do_base_case(distance_vector, cur);
+    do_base_case(hits_vector, cur);
     return;
   }
   else {
@@ -178,14 +126,14 @@ void IncrementAndFreeze::do_projections(std::vector<uint64_t>& distance_vector, 
 
     cur.partition(fst_half, snd_half);
 
-#pragma omp task shared(distance_vector) mergeable final(dist <= 1024) 
-    do_projections(distance_vector, std::move(fst_half));
+#pragma omp task shared(hits_vector) mergeable final(dist <= 1024)
+    do_projections(hits_vector, std::move(fst_half));
 
-    do_projections(distance_vector, std::move(snd_half));
+    do_projections(hits_vector, std::move(snd_half));
   }
 }
 
-void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& distance_vector, ProjSequence cur) {
+void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& hits_vector, ProjSequence cur) {
   int32_t full_amnt = 0;
   size_t local_distances[kIafBaseCase];
   std::fill(local_distances, local_distances+kIafBaseCase, 0);
@@ -203,9 +151,11 @@ void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& distance_vector, Pr
         for (uint64_t j = std::max(op.get_target(), cur.start); j <= cur.end; j++)
           local_distances[j - cur.start] += op.get_inc_amnt();
 
-        // Freeze target
-        if (op.get_target() != 0)
-          distance_vector[op.get_target()] = local_distances[op.get_target() - cur.start] + full_amnt;
+        // Freeze target by incrementing hits_vector[stack_depth]
+        if (op.get_target() != 0) {
+#pragma omp atomic update
+          hits_vector[local_distances[op.get_target() - cur.start] + full_amnt]++;
+        }
         break;
       default: // Null
         break;
@@ -218,25 +168,13 @@ void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& distance_vector, Pr
 
 std::vector<uint64_t> IncrementAndFreeze::get_success_function() {
   STARTTIME(get_success_fnc);
-  calculate_prevnext(requests);
-  auto distances = get_distance_vector();
 
-  STARTTIME(converting_distances_to_succ);
-  // a point representation of successes
-  std::vector<uint64_t> success(distances.size());
-#pragma omp parallel for //reduction(vec_uint64_t_plus : success)
-  for (uint64_t i = 0; i < distances.size() - 1; i++) {
-    // std::cout << distances[i + 1] << " ";
-    if (prev(i + 1) == 0) continue;
-    auto index = distances[prev(i+1)];
-#pragma omp atomic update
-    success[index]++;
-  }
-  // std::cout << std::endl;
-  STOPTIME(converting_distances_to_succ);
+  // hits[x] tells us the number of requests that are hits for all memory sizes >= x
+  std::vector<uint64_t> success;
+  update_hits_vector(requests, success);
 
   STARTTIME(sequential_prefix_sum);
-  // integrate
+  // integrate to convert to success function
   uint64_t running_count = 0;
   for (uint64_t i = 1; i < success.size(); i++) {
     running_count += success[i];
@@ -245,4 +183,10 @@ std::vector<uint64_t> IncrementAndFreeze::get_success_function() {
   STOPTIME(sequential_prefix_sum);
   STOPTIME(get_success_fnc);
   return success;
+}
+
+void IncrementAndFreeze::process_chunk(IAKInput &chunk_input) {
+  chunk_input.output.living_requests.clear();
+  update_hits_vector(chunk_input.chunk_requests, chunk_input.output.hits_vector,
+                     &chunk_input.output.living_requests);
 }

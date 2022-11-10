@@ -171,7 +171,7 @@ void run_workloads(CacheSimType sim_enum, size_t minimum_chunk=65536, size_t mem
   {
     sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
     SimResult result = uniform_simulator(*sim, kSeed);
-    std::cout << "\tUniform Set Latency = " << result.latency << " sec" << std::endl;
+    std::cout << "\tUniform Set Latency = " << result.latency << std::endl;
     std::cout << "\tMemory Usage = " << sim->get_memory_usage() << std::endl;
   }
   
@@ -180,18 +180,18 @@ void run_workloads(CacheSimType sim_enum, size_t minimum_chunk=65536, size_t mem
   // {
   //   sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
   //   SimResult result = working_set_simulator(*sim, kSeed);
-  //   std::cout << "\tWorking Set Latency = " << result.latency << " sec" << std::endl;
+  //   std::cout << "\tWorking Set Latency = " << result.latency << std::endl;
   //   std::cout << "\tMemory Usage = " << sim->get_memory_usage() << std::endl;
   // }
 
   // test with different Zipfian parameters
-  std::vector<double> zipf_exps{0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1, 1.2, 1.4};
+  std::vector<double> zipf_exps{0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1, 1.2};
   for (double exp : zipf_exps) {
     sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
     std::vector<uint64_t> zipf_seq = generate_zipf(kSeed, exp);
     SimResult result = simulate_on_seq(*sim, zipf_seq);
     std::cout << "\tZipfian, alpha=" << exp << " Latency = "
-              << result.latency << " sec" << std::endl;
+              << result.latency << std::endl;
               std::cout << "\tMemory Usage = " << sim->get_memory_usage() << std::endl;
   }
 }

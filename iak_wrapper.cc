@@ -30,9 +30,9 @@ void print_result(::IAKOutput result) {
     std::cout << living.first << "," << living.second << " ";
   std::cout << std::endl;
 
-  std::cout << "depth vector: " << result.depth_vector.size() << std::endl;
-  for (size_t i = 0; i < result.depth_vector.size() - 1; i++)
-    std::cout << result.depth_vector[i+1] << " ";
+  std::cout << "depth vector: " << result.hits_vector.size() << std::endl;
+  for (size_t i = 0; i < result.hits_vector.size() - 1; i++)
+    std::cout << result.hits_vector[i+1] << " ";
   std::cout << std::endl;
 }
 
@@ -41,14 +41,15 @@ void IAKWrapper::process_requests() {
   // std::cout << std::endl;
   // std::cout << "Processing chunk" << std::endl;
   // std::cout << "Living requests " << chunk_input.output.living_requests.size() << std::endl;
-  // std::cout << "New requests " << chunk_input.chunk_requests.size() << std::endl;
+  // std::cout << "New Requests " << chunk_input.chunk_requests.size() - chunk_input.output.living_requests.size() << std::endl;
   // std::cout << "CHUNK:" << std::endl;
   // for (auto item : chunk_input.chunk_requests)
   //   std::cout << item.second << ":" << item.first << " ";
   // std::cout << std::endl;
 
   // auto start = std::chrono::high_resolution_clock::now();
-  iak_alg.get_depth_vector(chunk_input);
+
+  iak_alg.process_chunk(chunk_input);
 
   // update maximum memory usage
   if (iak_alg.get_memory_usage() > memory_usage)
@@ -60,26 +61,7 @@ void IAKWrapper::process_requests() {
   IAKOutput& result = chunk_input.output;
   // print_result(result);
 
-  distance_histogram.resize(1 + std::min(result.living_requests.size(), max_living_req));
-  
-  // Do not add living requests to distance histogram
-  // 2-pointer walk through the depth vector and living requests
-  // add to distance_histogram if access number not in living requests
-  STARTTIME(two_pointer_walk);
-  size_t living_idx = 0;
-  for (size_t i = 1; i < result.depth_vector.size(); i++) {
-    size_t depth = result.depth_vector[i]; // stack depth of request i
-
-    // If we still have living requests to process and the current request is not a living request
-    if (living_idx >= result.living_requests.size() || i != result.living_requests[living_idx].second) {
-      if (depth < distance_histogram.size()) // don't update with depth out of bounds
-        distance_histogram[depth]++;
-    }
-    // If current is a living request, increment living request pointer
-    else if (living_idx < result.living_requests.size())
-      ++living_idx;
-  }
-  STOPTIME(two_pointer_walk);
+  result.hits_vector.resize(1 + std::min(result.living_requests.size(), max_living_req));
 
   // Resize the living requests if necessary to fit within max_living_req
   if (result.living_requests.size() > max_living_req) {
@@ -94,9 +76,9 @@ void IAKWrapper::process_requests() {
     living_req.second = ++num_living;
 
   chunk_input.chunk_requests.clear();
-  // std::cout << "Size of depth vector = " << result.depth_vector.size() << std::endl;
+  // std::cout << "Size of hits vector = " << result.hits_vector.size() << std::endl;
   // std::cout << "Number of living requests = " << living.size() << std::endl;
-  // std::cout << "First index of distance histogram = " << distance_histogram[1] << std::endl;
+  // std::cout << "First index of distance histogram = " << chunk_input.output.hits_vector[1] << std::endl;
 
   // prepare for next iteration
   update_u(chunk_input.output.living_requests.size());
@@ -114,9 +96,9 @@ std::vector<size_t> IAKWrapper::get_success_function() {
 
   // TODO: parallel prefix sum for integrating
   uint64_t running_count = 0;
-  std::vector<size_t> success_func(distance_histogram.size());
-  for (uint64_t i = 1; i < distance_histogram.size(); i++) {
-    running_count += distance_histogram[i];
+  std::vector<size_t> success_func(chunk_input.output.hits_vector.size());
+  for (uint64_t i = 1; i < chunk_input.output.hits_vector.size(); i++) {
+    running_count += chunk_input.output.hits_vector[i];
     success_func[i] = running_count;
   }
 
