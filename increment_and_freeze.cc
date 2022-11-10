@@ -127,7 +127,7 @@ void IncrementAndFreeze::do_projections(SuccessVector& hits_vector, ProjSequence
 
     cur.partition(fst_half, snd_half);
 
-#pragma omp task shared(hits_vector) mergeable final(dist <= 1024)
+#pragma omp task shared(hits_vector) mergeable final(dist <= 8192)
     do_projections(hits_vector, std::move(fst_half));
 
     do_projections(hits_vector, std::move(snd_half));
