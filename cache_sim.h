@@ -20,10 +20,10 @@ inline uint8_t _depth = 0;
 
 class CacheSim {
  protected:
-  uint64_t access_number = 1;  // simulated timestamp
-  size_t memory_usage = 0; // memory usage of the cache sim
+  uint64_t access_number = 1; // simulated timestamp
+  size_t memory_usage = 0;    // memory usage of the cache sim
  public:
-  using SuccessVector = std::vector<uint64_t>;
+  using SuccessVector = std::vector<uint32_t>;
 
   CacheSim() = default;
   virtual ~CacheSim() = default;
@@ -32,14 +32,14 @@ class CacheSim {
    * addr:    the id to access 
    * returns  nothing
    */
-  virtual void memory_access(uint64_t addr) = 0;
+  virtual void memory_access(uint32_t addr) = 0;
 
   virtual SuccessVector get_success_function() = 0;
 
   void print_success_function() {
     // TODO: This is too verbose for real data.
-    std::vector<uint64_t> func = get_success_function();
-    for (uint64_t page = 1; page < func.size(); page++)
+    SuccessVector func = get_success_function();
+    for (size_t page = 1; page < func.size(); page++)
       std::cout << page << ": " << func[page] << std::endl;
   }
   size_t get_memory_usage() { return memory_usage; }

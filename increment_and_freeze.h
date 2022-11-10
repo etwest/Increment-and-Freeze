@@ -10,17 +10,6 @@
 
 #include "cache_sim.h"  // for CacheSim
 
-
-struct IAKOutput {
-  std::vector<std::pair<size_t, size_t>> living_requests;
-  std::vector<size_t> hits_vector;
-};
-
-struct IAKInput {
-  IAKOutput output;                                      // output of the previous chunk
-  std::vector<std::pair<size_t, size_t>> chunk_requests; // living requests and fresh requests
-};
-
 // Operation types and be Prefix, Postfix, or Null
 // Prefix and Postfix are encoded by a single bit at the beginning of _target
 // Null is encoded by an entirely zero _target variable
@@ -262,10 +251,31 @@ class ProjSequence {
 // Implements the IncrementAndFreezeInPlace algorithm
 class IncrementAndFreeze: public CacheSim {
  public:
-  using req_index_pair = std::pair<uint64_t, uint64_t>;
+  struct request {
+    uint32_t addr;
+    uint32_t access_number;
+
+    inline bool operator< (request oth) const {
+      return addr < oth.addr || (addr == oth.addr && access_number < oth.access_number);
+    }
+
+    request() = default;
+    request(uint32_t a, uint32_t n) : addr(a), access_number(n) {}
+  };
+  static_assert(sizeof(request) == sizeof(uint64_t));
+
+  struct ChunkOutput {
+    std::vector<request> living_requests;
+    std::vector<uint32_t> hits_vector;
+  };
+
+  struct ChunkInput {
+    ChunkOutput output;            // where to place chunk result
+    std::vector<request> requests; // living requests and fresh requests
+  };
  private:
   // A vector of all requests
-  std::vector<req_index_pair> requests;
+  std::vector<request> requests;
 
   // Vector of operations used in ProjSequence to store memory operations
   std::vector<Op> operations;
@@ -275,43 +285,43 @@ class IncrementAndFreeze: public CacheSim {
    * Precondition: requests must be properly populated.
    * Returns: number of unique ids in requests
    */
-  size_t populate_operations(std::vector<req_index_pair> &req,
-                          std::vector<req_index_pair> *living_req);
+  size_t populate_operations(std::vector<request> &req,
+                          std::vector<request> *living_req);
 
-  /* Helper dunction to get_distance_vector.
+  /* Helper function for update_hits_vector
    * Recursively (and in parallel) populates the distance vector if the
    * projection is small enough, or calls itself with smaller projections otherwise.
    */
-  void do_projections(std::vector<uint64_t>& distance_vector, ProjSequence seq);
+  void do_projections(std::vector<uint32_t>& distance_vector, ProjSequence seq);
  
   /*
    * Helper function for solving a projected sequence using the brute force algorithm
    * This takes time O(n^2) but requires no recursion or other overheads. Thus, we can
    * use it to solve larger ProjSequences.
    */
-  void do_base_case(std::vector<uint64_t>& distance_vector, ProjSequence seq);
+  void do_base_case(std::vector<uint32_t>& distance_vector, ProjSequence seq);
 
   /*
    * Update a hits vector with the stack depths of the memory requests found in reqs
    * reqs:        vector of memory requests to update the hits vector with
    * hits_vector: A hits vector indicates the number of requests that required a given memory amount
    */
-  void update_hits_vector(std::vector<req_index_pair>& reqs, std::vector<uint64_t>& hits_vector,
-                          std::vector<req_index_pair> *living_req=nullptr);
+  void update_hits_vector(std::vector<request>& reqs, std::vector<uint32_t>& hits_vector,
+                          std::vector<request> *living_req=nullptr);
  public:
   // Logs a memory access to simulate. The order this function is called in matters.
-  void memory_access(uint64_t addr);
+  void memory_access(uint32_t addr);
   /* Returns the success function.
    * Does *a lot* of work.
    * When calling print_success_function, the answer is re-computed.
    */
-  std::vector<uint64_t> get_success_function();
+  SuccessVector get_success_function();
 
   /*
    * Process a chunk of requests (called by IAF_Wrapper)
    * Return the new living requests and the success function
    */
-  void process_chunk(IAKInput &chunk_input);
+  void process_chunk(ChunkInput &input);
 
   IncrementAndFreeze() = default;
   ~IncrementAndFreeze() = default;

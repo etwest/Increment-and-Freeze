@@ -6,16 +6,16 @@
 
 #include "params.h"
 
-void IncrementAndFreeze::memory_access(uint64_t addr) {
-  requests.push_back({addr, access_number++});
+void IncrementAndFreeze::memory_access(uint32_t addr) {
+  requests.push_back({addr, (uint32_t) requests.size() + 1});
 }
 
 size_t IncrementAndFreeze::populate_operations(
-    std::vector<req_index_pair> &reqs, std::vector<req_index_pair> *living_req) {
+    std::vector<request> &reqs, std::vector<request> *living_req) {
 
   STARTTIME(sort_and_copy);
   // requestcopy -> sort by request id and then by access_number
-  std::vector<req_index_pair> requestcopy = reqs; // MEMORY_ALLOC (operator= for vector)
+  std::vector<request> requestcopy = reqs; // MEMORY_ALLOC (operator= for vector)
   std::sort(requestcopy.begin(), requestcopy.end());
   STOPTIME(sort_and_copy);
 
@@ -27,11 +27,11 @@ size_t IncrementAndFreeze::populate_operations(
   STARTTIME(populate_ops);
 #pragma omp parallel reduction(+:unique_ids)
   {
-    std::vector<req_index_pair> living_req_priv;
+    std::vector<request> living_req_priv;
 #pragma omp for nowait // nowait removes the barrier, so the critical copying can happen ASAP
     for (uint64_t i = 0; i < requestcopy.size(); i++) {
       auto [addr, access_num] = requestcopy[i];
-      auto [last_addr, last_access_num] = i == 0 ? req_index_pair(0, 0): requestcopy[i-1];
+      auto [last_addr, last_access_num] = i == 0 ? request(0, 0): requestcopy[i-1];
 
       // Using last, check if previous sorted access is the same
       if (last_access_num > 0 && addr == last_addr) {
@@ -79,14 +79,16 @@ size_t IncrementAndFreeze::populate_operations(
 
   // sort by access number
   STARTTIME(sort_new_living);
-  std::sort(living_req->begin(), living_req->end(), [](auto &l, auto &r){return l.second < r.second; });
+  std::sort(living_req->begin(), living_req->end(), [](auto &left, auto &right) {
+    return left.access_number < right.access_number;
+  });
   STOPTIME(sort_new_living);
   return unique_ids;
 }
 
 // 'Main' function of IAF. Used to update a hits vector given a vector of requests
-void IncrementAndFreeze::update_hits_vector(std::vector<req_index_pair>& reqs,
-  std::vector<uint64_t>& hits_vector, std::vector<req_index_pair> *living_req) {
+void IncrementAndFreeze::update_hits_vector(std::vector<request>& reqs,
+  SuccessVector& hits_vector, std::vector<request> *living_req) {
   STARTTIME(update_hits_vector);
   size_t unique_ids = populate_operations(reqs, living_req);
 
@@ -109,7 +111,7 @@ void IncrementAndFreeze::update_hits_vector(std::vector<req_index_pair>& reqs,
 }
 
 //recursively (and in parallel) perform all the projections
-void IncrementAndFreeze::do_projections(std::vector<uint64_t>& hits_vector, ProjSequence cur) {
+void IncrementAndFreeze::do_projections(SuccessVector& hits_vector, ProjSequence cur) {
   // base case
   // brute force algorithm to solve problems of size <= kIafBaseCase
   if (cur.end - cur.start < kIafBaseCase) {
@@ -133,7 +135,7 @@ void IncrementAndFreeze::do_projections(std::vector<uint64_t>& hits_vector, Proj
   }
 }
 
-void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& hits_vector, ProjSequence cur) {
+void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence cur) {
   int32_t full_amnt = 0;
   size_t local_distances[kIafBaseCase];
   std::fill(local_distances, local_distances+kIafBaseCase, 0);
@@ -166,11 +168,11 @@ void IncrementAndFreeze::do_base_case(std::vector<uint64_t>& hits_vector, ProjSe
   }
 }
 
-std::vector<uint64_t> IncrementAndFreeze::get_success_function() {
+CacheSim::SuccessVector IncrementAndFreeze::get_success_function() {
   STARTTIME(get_success_fnc);
 
   // hits[x] tells us the number of requests that are hits for all memory sizes >= x
-  std::vector<uint64_t> success;
+  SuccessVector success;
   update_hits_vector(requests, success);
 
   STARTTIME(sequential_prefix_sum);
@@ -185,8 +187,7 @@ std::vector<uint64_t> IncrementAndFreeze::get_success_function() {
   return success;
 }
 
-void IncrementAndFreeze::process_chunk(IAKInput &chunk_input) {
-  chunk_input.output.living_requests.clear();
-  update_hits_vector(chunk_input.chunk_requests, chunk_input.output.hits_vector,
-                     &chunk_input.output.living_requests);
+void IncrementAndFreeze::process_chunk(ChunkInput &input) {
+  input.output.living_requests.clear();
+  update_hits_vector(input.requests, input.output.hits_vector, &input.output.living_requests);
 }

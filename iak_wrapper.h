@@ -10,10 +10,11 @@
 #include "increment_and_freeze.h"
 
 class IAKWrapper : public CacheSim {
-  using tuple = std::pair<uint64_t, uint64_t>;
   private:
+    using ChunkInput = IncrementAndFreeze::ChunkInput;
+    using ChunkOutput = IncrementAndFreeze::ChunkOutput;
     // Struct that holds hits vector, living requests, and chunk requests to process
-    IAKInput chunk_input;
+    ChunkInput chunk_input;
 
     IncrementAndFreeze iak_alg;
 
@@ -33,12 +34,12 @@ class IAKWrapper : public CacheSim {
 
   public:
     // Logs a memory access to simulate. The order this function is called in matters.
-    void memory_access(uint64_t addr);
+    void memory_access(uint32_t addr);
     
     /* Returns the success function after processing requests in the current chunk.
      * Does some work, up to u log u depending on the number of unprocessed requests.
      */
-    std::vector<size_t> get_success_function();
+    SuccessVector get_success_function();
 
     inline size_t get_u() { return cur_u; };
     inline size_t get_mem_limit() { return max_living_req; };

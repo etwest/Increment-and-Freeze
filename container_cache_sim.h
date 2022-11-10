@@ -31,7 +31,7 @@ class ContainerCacheSim : public CacheSim {
    * virtual_addr:   the virtual address to access
    * returns         nothing
    */
-  void memory_access(uint64_t addr);
+  void memory_access(uint32_t addr);
 
   /*
    * Moves a page with a given timestamp to the front of the queue
@@ -47,7 +47,7 @@ class ContainerCacheSim : public CacheSim {
    * page faults with every memory size from 1 to MEM_SIZE
    * returns   the success function in a vector
    */
-  std::vector<uint64_t> get_success_function();
+  SuccessVector get_success_function();
 };
 
 #endif  // ONLINE_CACHE_SIMULATOR_CONTAINER_CACHE_SIM_H_

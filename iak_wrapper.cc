@@ -11,10 +11,10 @@
 #include "increment_and_freeze.h"
 #include "params.h"
 
-void IAKWrapper::memory_access(uint64_t addr) {
-  chunk_input.chunk_requests.push_back({addr, chunk_input.chunk_requests.size() + 1});
+void IAKWrapper::memory_access(uint32_t addr) {
+  chunk_input.requests.push_back({addr, (uint32_t) chunk_input.requests.size() + 1});
 
-  if (chunk_input.chunk_requests.size() >= get_u()) {
+  if (chunk_input.requests.size() >= get_u()) {
     // std::cout << "requests chunk array:" << std::endl;
     // for (auto req : requests) {
     //   std::cout << req.first << "," << req.second << std::endl;
@@ -24,13 +24,13 @@ void IAKWrapper::memory_access(uint64_t addr) {
   }
 }
 
-void print_result(::IAKOutput result) {
+void print_result(IncrementAndFreeze::ChunkOutput& result) {
   std::cout << "living requests" << std::endl;
   for (auto living: result.living_requests)
-    std::cout << living.first << "," << living.second << " ";
+    std::cout << living.addr << "," << living.access_number << " ";
   std::cout << std::endl;
 
-  std::cout << "depth vector: " << result.hits_vector.size() << std::endl;
+  std::cout << "hits vector: " << result.hits_vector.size() << std::endl;
   for (size_t i = 0; i < result.hits_vector.size() - 1; i++)
     std::cout << result.hits_vector[i+1] << " ";
   std::cout << std::endl;
@@ -58,7 +58,7 @@ void IAKWrapper::process_requests() {
   // auto depth_time =  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
   // std::cout << "GET DEPTH TIME: " << depth_time << std::endl;
 
-  IAKOutput& result = chunk_input.output;
+  ChunkOutput& result = chunk_input.output;
   // print_result(result);
 
   result.hits_vector.resize(1 + std::min(result.living_requests.size(), max_living_req));
@@ -73,30 +73,30 @@ void IAKWrapper::process_requests() {
   // Fix the index of the living requests so they count up from 1
   size_t num_living = 0;
   for (auto &living_req : result.living_requests)
-    living_req.second = ++num_living;
+    living_req.access_number = ++num_living;
 
-  chunk_input.chunk_requests.clear();
+  chunk_input.requests.clear();
   // std::cout << "Size of hits vector = " << result.hits_vector.size() << std::endl;
   // std::cout << "Number of living requests = " << living.size() << std::endl;
   // std::cout << "First index of distance histogram = " << chunk_input.output.hits_vector[1] << std::endl;
 
   // prepare for next iteration
   update_u(chunk_input.output.living_requests.size());
-  chunk_input.chunk_requests.reserve(get_u());
-  chunk_input.chunk_requests.insert(chunk_input.chunk_requests.end(), result.living_requests.begin(), result.living_requests.end());
+  chunk_input.requests.reserve(get_u());
+  chunk_input.requests.insert(chunk_input.requests.end(), result.living_requests.begin(), result.living_requests.end());
   STOPTIME(proc_req);
 }
 
-std::vector<size_t> IAKWrapper::get_success_function() {
+CacheSim::SuccessVector IAKWrapper::get_success_function() {
   // Ensure all requests processed
-  if (chunk_input.chunk_requests.size() - chunk_input.output.living_requests.size() > 0) {
-    // std::cout << "Processing chunk of size " << chunk_input.chunk_requests.size() << " before get_success_function()." << std::endl;
+  if (chunk_input.requests.size() - chunk_input.output.living_requests.size() > 0) {
+    // std::cout << "Processing chunk of size " << chunk_input.requests.size() << " before get_success_function()." << std::endl;
     process_requests();
   }
 
   // TODO: parallel prefix sum for integrating
   uint64_t running_count = 0;
-  std::vector<size_t> success_func(chunk_input.output.hits_vector.size());
+  CacheSim::SuccessVector success_func(chunk_input.output.hits_vector.size());
   for (uint64_t i = 1; i < chunk_input.output.hits_vector.size(); i++) {
     running_count += chunk_input.output.hits_vector[i];
     success_func[i] = running_count;
