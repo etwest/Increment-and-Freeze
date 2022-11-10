@@ -13,7 +13,7 @@ constexpr uint64_t kIdUniverseSize = 5'000'000;   // the total number of unique 
 constexpr uint64_t kMemoryLimit    = 1'000'000;   // memory limit -- depth vector size
 
 // IncrementAndFreeze parameters
-constexpr size_t kIafBaseCase      = 8;           // Base case size for IAF algorithm
+constexpr size_t kIafBaseCase      = 256;         // Base case size for IAF algorithm
 
 // params for the representative workload
 constexpr uint64_t kWorkingSet = 50'000; // number of commonly accessed addresses
