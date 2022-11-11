@@ -10,13 +10,11 @@
 #include "increment_and_freeze.h"
 
 class IAKWrapper : public CacheSim {
-  using tuple = std::pair<uint64_t, uint64_t>;
   private:
-    // Vector of stack distances
-    std::vector<size_t> distance_histogram;
-
-    // Input to current chunk
-    IAKInput chunk_input;
+    using ChunkInput = IncrementAndFreeze::ChunkInput;
+    using ChunkOutput = IncrementAndFreeze::ChunkOutput;
+    // Struct that holds hits vector, living requests, and chunk requests to process
+    ChunkInput chunk_input;
 
     IncrementAndFreeze iak_alg;
 
@@ -24,7 +22,7 @@ class IAKWrapper : public CacheSim {
     size_t max_living_req;
 
     constexpr static size_t max_u_mult = 4; // chunk <= max_u_mult * u
-    constexpr static size_t min_u_mult = 3;  // chunk > min_u_mult * u
+    constexpr static size_t min_u_mult = 3; // chunk > min_u_mult * u
 
     // Function to update value of u given a living requests size
     inline void update_u(size_t num_living) {
@@ -36,12 +34,12 @@ class IAKWrapper : public CacheSim {
 
   public:
     // Logs a memory access to simulate. The order this function is called in matters.
-    void memory_access(uint64_t addr);
+    void memory_access(uint32_t addr);
     
     /* Returns the success function after processing requests in the current chunk.
      * Does some work, up to u log u depending on the number of unprocessed requests.
      */
-    std::vector<size_t> get_success_function();
+    SuccessVector get_success_function();
 
     inline size_t get_u() { return cur_u; };
     inline size_t get_mem_limit() { return max_living_req; };

@@ -10,42 +10,31 @@
 
 #include "cache_sim.h"  // for CacheSim
 
+// Operation types and be Prefix, Postfix, or Null
+// Prefix and Postfix are encoded by a single bit at the beginning of _target
+// Null is encoded by an entirely zero _target variable
+enum OpType {Prefix=0, Postfix=1, Null=2};
 
-struct IAKOutput {
-  std::vector<std::pair<size_t, size_t>> living_requests;
-  std::vector<size_t> depth_vector;
-};
-
-struct IAKInput {
-  IAKOutput output;                                      // output of the previous chunk
-  std::vector<std::pair<size_t, size_t>> chunk_requests; // living requests and fresh requests
-};
-
-enum OpType {Null=0, Prefix=1, Postfix=2};
-
-// A single operation, such as increment or kill
+// An IAF operation
 class Op {
  private:
-  //OpType type = Null;     // Do we increment or kill?
-  uint32_t _target = 0; // kill target
-  static constexpr uint32_t inc_amnt = 1;      // subrange Increment amount
-  int32_t full_amnt = 0;      // fullrange Increment amount
+  uint32_t _target = 0;                   // Boundary of operation
+  static constexpr uint32_t inc_amnt = 1; // subrange Increment amount
+  int32_t full_amnt = 0;                  // fullrange Increment amount
 
-  static constexpr uint32_t tmask = 0x3FFFFFFF;
+  static constexpr uint32_t tmask = 0x7FFFFFFF;
   static constexpr uint32_t ntmask = ~tmask;
-  uint32_t target() const {return _target & tmask;};
-  void set_target(const uint32_t& new_target) {_target &= ntmask; assert(new_target == (new_target & tmask)); _target |= new_target;};
-  OpType type() const
-  {
-    return (OpType)(_target >> 30);
+  void set_target(const uint32_t& new_target) {
+    assert(new_target == (new_target & tmask));
+    _target &= ntmask;
+    _target |= new_target;
   };
-  void set_type(const OpType& t)
-  {
+  inline void set_type(const OpType& t) {
     _target &= tmask;
-    _target |= ((int)t << 30);
+    _target |= ((int)t << 31);
   };
  public:
-  // create an Prefix
+  // create an Prefix (if target is 0 -> becomes a Null op)
   Op(uint64_t target, int64_t full_amnt)
       : full_amnt(full_amnt){set_type(Prefix); set_target(target);};
 
@@ -53,73 +42,59 @@ class Op {
   Op(uint64_t target){set_type(Postfix); set_target(target);};
 
   // Uninitialized. Used to parallelize making a vector of this without push_back
-  Op(){ set_type(Null);};
-
-  // create a new Op by projecting another one
-  Op(const Op& oth_op, uint64_t proj_start, uint64_t proj_end);
-
-  // This enforces correct merging of operators
-  // Can only be done on equal subrange
-  /*Op& operator+=(Op& oth) {
-    assert(oth.type == Subrange);
-    assert(type == Subrange);
-    assert(start == oth.start);
-    assert(end == oth.end);
-
-    inc_amnt += oth.inc_amnt;
-    full_amnt += oth.full_amnt;
-    return *this;
-    }*/
-  bool affects(size_t victum) {
-    return (type() == Prefix && victum <= target()) || (type() == Postfix && victum >= target());
-  }
+  Op() : _target(0) {};
 
   friend std::ostream& operator<<(std::ostream& os, const Op& op) {
-    switch(op.type()) {
-      case Null:
-        os << "Null" << ". + " << op.full_amnt;
-        break;
-      case Prefix:
-        os << "0-" << op.target() << ". + " << op.full_amnt;
-        break;
-      case Postfix:
-        os << op.target() << "-Inf" << ". + " << op.full_amnt;
-        break;
-
+    switch (op.get_type()) {
+      case Prefix: os << "Pr:0-" << op.get_target() << ".+" << op.full_amnt; break;
+      case Postfix:  os << "Po:" << op.get_target() << "-Inf" << ".+" << op.full_amnt; break;
+      case Null:    os << "N:" << "+" << op.full_amnt; break;
+      default: std::cerr << "ERROR: Unrecognized op.get_type()" << std::endl; break;
     }
     return os;
   }
 
-  void add_full(Op& oth) {
-    full_amnt += oth.full_amnt;
+  inline void make_null() { _target = 0; }
+  inline void add_full(size_t oth_full_amnt) { full_amnt += oth_full_amnt; }
+
+  // returns if this operation will cross from right to left
+  inline bool move_to_scratch(uint64_t proj_start) const {
+    return get_target() < proj_start && get_type() == Postfix;
   }
 
-  bool isNull() {
-    return (get_full_amnt() == 0 && get_type() == Null);
+  // returns if this operation is the boundary prefix op
+  // boundary operations target the end of the left partition and are Prefixes
+  inline bool is_boundary_op(uint64_t left_end) const {
+    return get_target() == left_end && get_type() == Prefix;
   }
 
-  // is this operation passive in the projection defined by
-  // proj_start and proj_end
-  bool is_passive(uint64_t proj_start, uint64_t proj_end) {
-    return !affects(proj_start) && !affects(proj_end);
+  inline size_t get_full_incr_to_left(uint64_t right_start) const {
+    // if a Prefix and target is in right then both full and inc affect
+    // left side as a full
+    if (get_type() == Prefix && get_target() >= right_start)
+      return get_inc_amnt() + get_full_amnt();
+
+    // otherwise only full amount counts
+    return get_full_amnt();
   }
 
-
-  OpType get_type() {return type();}
-  uint64_t get_target() {return target();}
-  uint64_t get_inc_amnt()  {return inc_amnt;}
-  int64_t get_full_amnt()  {return full_amnt;}
+  inline OpType get_type() const {
+    if (is_null()) return Null;
+    else return (OpType)(_target >> 31);
+  }
+  inline bool is_null() const          { return _target == 0; }
+  inline uint64_t get_target() const   { return _target & tmask; }
+  inline uint64_t get_inc_amnt() const { return inc_amnt; }
+  inline int64_t get_full_amnt() const { return full_amnt; }
 };
 
 // A sequence of operators defined by a projection
 class ProjSequence {
  public:
-  size_t len;
-  std::vector<Op>::iterator op_seq;
-  std::vector<Op>::iterator scratch;
-  // Pointers to valid end position in the vector
-  size_t num_ops;
-  // The numerical range this sequence projects
+  std::vector<Op>::iterator op_seq; // iterator to beginning of operations sequence
+  size_t num_ops;                   // number of operations in this projection
+
+  // Request sequence range
   uint64_t start;
   uint64_t end;
 
@@ -127,226 +102,229 @@ class ProjSequence {
   ProjSequence(uint64_t start, uint64_t end) : start(start), end(end) {};
 
   // Init a projection with bounds and iterators
-  ProjSequence(uint64_t start, uint64_t end, std::vector<Op>::iterator op_seq, std::vector<Op>::iterator scratch, size_t num_ops, size_t len) : len(len), op_seq(op_seq), scratch(scratch), num_ops(num_ops), start(start), end(end) {};
+  ProjSequence(uint64_t start, uint64_t end, std::vector<Op>::iterator op_seq, size_t num_ops) : op_seq(op_seq), num_ops(num_ops), start(start), end(end) {};
   
   void partition(ProjSequence& left, ProjSequence& right) {
     // std::cout << "Performing partition upon projected sequence" << std::endl;
-    // std::cout << "num_ops = " << num_ops << std::endl;
-    // std::cout << "len = " << len << std::endl;
-    // std::cout << "start = " << start << std::endl;
-    // std::cout << "end = " << end << std::endl;
-
-    // Debugging code to print out everything that affects a spot in the distance function
-    //size_t target = 1;
-    //for (size_t target = start; target <= end; target++)
-    /*if (start <= target && target <= end)
-      {
-      int32_t sum = 0;
-      std::cout << start << ", " << end << " @ " << target << std::endl;
-      for (size_t i = 0; i < num_ops; i++)
-      {
-      //total += op_seq[i].score(start, end);
-      if (op_seq[i].affects(target))
-      {
-      std::cout << op_seq[i] << std::endl;
-      sum += op_seq[i].get_inc_amnt();
-      sum += op_seq[i].get_full_amnt();
-      std::cout << "sum: " << sum << std::endl;
-      }
-      else if (op_seq[i].get_full_amnt() != 0)
-      {
-      std::cout << op_seq[i] << std::endl;
-      sum += op_seq[i].get_full_amnt();
-      std::cout << "sum: " << sum << std::endl;
-
-      }
-      if (op_seq[i].get_type() == Postfix && op_seq[i].get_target() == target)
-      std::cout << "KILL SUM: " << sum-1 << std::endl;
-      }
-      //total += end-start+1;
-      std::cout << "SUM: " << sum << std::endl;
-      } */
+    // std::cout << *this << std::endl;
+    // std::cout << "Partitioning into: " << left.start << "-" << left.end << ", ";
+    // std::cout << right.start << "-" << right.end << std::endl;
 
     assert(left.start <= left.end);
     assert(left.end+1 == right.start);
     assert(right.start <= right.end);
     assert(start == left.start);
     assert(end == right.end);
+    assert(op_seq[0].is_null());
 
-    size_t pos = 0;
-    size_t left_bound = 0;
-    size_t right_bound = 0;
+    std::vector<Op> scratch_stack;
 
-    //There's two things to keep track of here:
-    // The upper bound on needed memory (left_bound, right_bound)
-    // and how much memory we *actually* need right now.
+    // Where we merge operations that remain on the right side
+    // use ints for this and cur_idx because underflow is good and tells us things
+    int merge_into_idx = num_ops - 1;
 
+    // loop through all the operations on the right side
+    int cur_idx;
+    size_t full_incr_to_left = 0; // amount of full increments to left created by prefix with target in right
+    for (cur_idx = num_ops - 1; cur_idx >= 0; cur_idx--) {
+      Op& op = op_seq[cur_idx];
 
-    // We have to do first left than right. Otherwise we can't know the splitting point in memory
-    // (Without 3+ passes)
-    for (size_t i = 0; i < num_ops; i++) {
-      Op& op = op_seq[i];
-      pos = project_op(op, left.start, left.end, pos);
+      assert(op.get_type() != Prefix || op.get_target() >= left.end);
+
+      if (op.is_boundary_op(left.end)) {
+        // we merge this op with the next left op (also need to add inc amount to full)
+        Op& prev_op = op_seq[cur_idx-1];
+        prev_op.add_full(op.get_full_amnt() + op.get_inc_amnt());
+
+        // AND merge this op with merge_into_idx
+        // if merge_into_idx == cur_idx then
+        //   then leave a null op here with our full inc amount
+        if (merge_into_idx == cur_idx)
+          op.make_null();
+        else {
+          assert(op_seq[merge_into_idx].is_null());
+          op_seq[merge_into_idx].add_full(op.get_full_amnt());
+
+          // make this boundary_op have no_impact
+          op = Op();
+        }
+        
+        // done processing
+        --cur_idx;
+        break;
+      }
+      
+      if (op.move_to_scratch(right.start)) {
+        scratch_stack.push_back(op);    // copy this op into scratch_stack
+        scratch_stack[scratch_stack.size() - 1].add_full(full_incr_to_left);
+        full_incr_to_left = 0;
+
+        if (cur_idx != merge_into_idx) {
+          // merge this operation with merge_into_idx and make this op no impact
+          op_seq[merge_into_idx].add_full(op.get_full_amnt() + op.get_inc_amnt());
+          op = Op();
+        } else {
+          // make this operation null and add incr amount to full
+          op.make_null();
+          op.add_full(op.get_inc_amnt());
+        }
+      }
+      else {
+        // we don't move this op to left but does it affect the full incr of the left
+        full_incr_to_left += op.get_full_incr_to_left(right.start);
+
+        if (merge_into_idx != cur_idx) {
+          // merge current op into merge idx op
+          size_t full = op_seq[merge_into_idx].get_full_amnt();
+          op.add_full(full);
+          op_seq[merge_into_idx] = op;
+          op = Op(); // set where op used to be to a no_impact operation
+        }
+        // if moved operation is not null then we need to decr merge_into_idx
+        if (!op_seq[merge_into_idx].is_null()) merge_into_idx--;
+      }
+
+      // // Print out operations
+      // std::cout << "cur_idx = " << cur_idx - 1 << " merge_into_idx = " << merge_into_idx << std::endl;
+      // std::cout << "full_incr_to_left = " << full_incr_to_left << std::endl;
+      // std::cout << *this << std::endl;
+
+      // // print out scratch stack
+      // std::cout << "Scratch_stack: " << std::endl;
+      // for (auto op : scratch_stack)
+      //   std::cout << op << " ";
+      // std::cout << std::endl << std::endl;
     }
-    left.num_ops = pos;
-    size_t minleft = left.end-left.start+1;
-    left_bound = 2*minleft;
-    assert(left_bound <= len);
-    assert(pos <= left_bound);
+    assert(cur_idx >= 0);
 
-    // std::cout << "number operations in left = " << pos << std::endl;
-    // std::cout << "left bound = " << left_bound << std::endl;
+    // // Print out operations
+    // std::cout << "Done processing projection" << std::endl;
+    // std::cout << "cur_idx = " << cur_idx << " merge_into_idx = " << merge_into_idx << std::endl;
+    // std::cout << *this << std::endl;
 
-    // Now we 'clean up' any additional waste in scratch
-    for (size_t i = pos; i < left_bound; i++) {
-      scratch[i] = Op();
+    // // print out scratch stack
+    // std::cout << "Scratch_stack: " << std::endl;
+    // for (auto op : scratch_stack)
+    //   std::cout << op << " ";
+    // std::cout << std::endl << std::endl;
+
+    // update last op on left with the full increment from the right
+    op_seq[cur_idx].add_full(full_incr_to_left);
+    
+    // merge_into_idx belongs to right partition
+    // [cur_idx+1, merge_into_idx) belongs to left partition (where scratch_stack goes)
+    assert(merge_into_idx - cur_idx - 1 >= (int) scratch_stack.size());
+    if (scratch_stack.size() > 0) {
+      for (int i = scratch_stack.size() - 1; i >= 0; i--)
+        op_seq[++cur_idx] = scratch_stack[i];
     }
 
-    // for the sake of simplicity
-    scratch += left_bound;
-    pos = 0;
-    for (size_t i = 0; i < num_ops; i++) {
-      Op& op = op_seq[i];
-      pos = project_op(op, right.start, right.end, pos);
-    } 
-    right.num_ops = pos;
-
-    // std::cout << "number operations in right = " << pos << std::endl;
-
-    size_t minright = right.end-right.start+1;
-    right_bound = 2*minright;
-    // std::cout << "Right bound = " << right_bound << std::endl;
-    assert(left_bound + right_bound <= len);
-    assert(pos <= left_bound + right_bound);
-
-    // Now we 'clean up' any additional waste in scratch
-    for (size_t i = pos; i < right_bound; i++) {
-      scratch[i] = Op();
-    }
-    scratch -=left_bound;
 
     // This fails if there isn't enough memory allocated
     // It either means we did something wrong, or our memory
     // bound is incorrect.
 
-    // At this point, scratch contains the end results + no garbage.
-    // op_seq contains old work/ garbage
-    std::swap(op_seq, scratch);
-
     //Now op_seq and scratch are properly named. We assign them to left and right.
-    left.op_seq = op_seq;
-    left.scratch = scratch;
-    left.len = left_bound;
+    left.op_seq  = op_seq;
+    left.num_ops = cur_idx + 1;
 
-    right.op_seq = op_seq + left_bound;
-    right.scratch = scratch + left_bound;
-    right.len = right_bound;
+    right.op_seq = op_seq + merge_into_idx;
+    right.num_ops = num_ops - merge_into_idx;
     //std::cout /*<< total*/ << "(" << len << ") " << " -> " << left.len << ", " << right.len << std::endl;
+  
+    // Print out final projection
+    // std::cout << "Final Result: " << std::endl;
+    // std::cout << "LEFT:  " << left << std::endl;
+    // std::cout << "RIGHT: " << right << std::endl << std::endl;
   }
 
-
-  // We project and merge here. 
-      size_t project_op(Op& new_op, size_t start, size_t end, size_t pos) {
-    Op proj_op = Op(new_op, start, end);
-
-    if (proj_op.isNull()) return pos;
-    assert(proj_op.get_type() == Null || new_op.get_type() == Null || new_op.get_full_amnt() + new_op.get_inc_amnt() == proj_op.get_full_amnt() + proj_op.get_inc_amnt());
-
-    // The first element is always replaced
-    if (pos == 0)
-    {
-      scratch[0] = std::move(proj_op);
-      return 1;
-    }
-
-    // The previous element may be replacable if it is Null
-    // Unless we are a kill/Suffix, then we have an explicit barrier here.
-    if (pos > 0 && scratch[pos-1].get_type() == Null && proj_op.get_type() != Postfix)
-    {
-      proj_op.add_full(scratch[pos-1]);
-      scratch[pos-1] = std::move(proj_op);
-      return pos;
-    }
-
-    // If we are null (a full increment), we do not need to take up space
-    if (pos > 0 && proj_op.get_type() == Null)
-    {
-      scratch[pos-1].add_full(proj_op);
-      return pos;
-    }
-
-    /*Op& last_op = scratch[pos - 1];
-    // If either is not passive, then we cannot merge. We must add it.
-    if (!proj_op.is_passive(start, end) || !last_op.is_passive(start, end)) {
-    scratch[pos] = std::move(proj_op);
-    return pos+1;
-    }*/
-
-    // merge with the last op in sequence
-    //scratch[pos-1] += proj_op;
-
-    //Neither is mergable.
-    scratch[pos] = std::move(proj_op);
-    return pos+1;
+  friend std::ostream& operator<<(std::ostream& os, const ProjSequence& seq) {
+    os << "start = " << seq.start << " end = " << seq.end << std::endl;
+    os << "num_ops = " << seq.num_ops << std::endl;
+    os << "Operations: ";
+    for (size_t i = 0; i < seq.num_ops; i++)
+      os << seq.op_seq[i] << " ";
+    return os;
   }
 };
 
 // Implements the IncrementAndFreezeInPlace algorithm
 class IncrementAndFreeze: public CacheSim {
  public:
-  using req_index_pair = std::pair<uint64_t, uint64_t>;
+  struct request {
+    uint32_t addr;
+    uint32_t access_number;
+
+    inline bool operator< (request oth) const {
+      return addr < oth.addr || (addr == oth.addr && access_number < oth.access_number);
+    }
+
+    request() = default;
+    request(uint32_t a, uint32_t n) : addr(a), access_number(n) {}
+  };
+  static_assert(sizeof(request) == sizeof(uint64_t));
+
+  struct ChunkOutput {
+    std::vector<request> living_requests;
+    std::vector<uint32_t> hits_vector;
+  };
+
+  struct ChunkInput {
+    ChunkOutput output;            // where to place chunk result
+    std::vector<request> requests; // living requests and fresh requests
+  };
  private:
   // A vector of all requests
-  std::vector<req_index_pair> requests;
+  std::vector<request> requests;
 
-  /* A vector of tuples for previous and next
-   * Previous defines the last instance of a page
-   * next defines the next instance of a page
-   */
-  std::vector<size_t> prev_arr;
+  // Vector of operations used in ProjSequence to store memory operations
+  std::vector<Op> operations;
 
   /* This converts the requests into the previous and next vectors
    * Requests is copied, not modified.
    * Precondition: requests must be properly populated.
+   * Returns: number of unique ids in requests
    */
-  void calculate_prevnext(std::vector<req_index_pair> &req,
-                          std::vector<req_index_pair> *living_req=nullptr);
+  size_t populate_operations(std::vector<request> &req,
+                          std::vector<request> *living_req);
 
-  /* Vector of operations used in ProjSequence to store memory
-   * operations and scratch are constantly swapped to allow to a pseudo-in place partition
-   */
-  std::vector<Op> operations;
-  std::vector<Op> scratch;
-
-  /* Returns the distance vector calculated from prevnext.
-   * Precondition: prevnext must be properly populated.
-   */
-  //std::vector<uint64_t> get_distance_vector();
-  // Shortcut to access prev in prevnext.
-  uint64_t& prev(uint64_t i) {return prev_arr[i];}
-  /* Helper dunction to get_distance_vector.
+  /* Helper function for update_hits_vector
    * Recursively (and in parallel) populates the distance vector if the
    * projection is small enough, or calls itself with smaller projections otherwise.
    */
-  void do_projections(std::vector<uint64_t>& distance_vector, ProjSequence seq);
+  void do_projections(std::vector<uint32_t>& distance_vector, ProjSequence seq);
+ 
+  /*
+   * Helper function for solving a projected sequence using the brute force algorithm
+   * This takes time O(n^2) but requires no recursion or other overheads. Thus, we can
+   * use it to solve larger ProjSequences.
+   */
+  void do_base_case(std::vector<uint32_t>& distance_vector, ProjSequence seq);
+
+  /*
+   * Update a hits vector with the stack depths of the memory requests found in reqs
+   * reqs:        vector of memory requests to update the hits vector with
+   * hits_vector: A hits vector indicates the number of requests that required a given memory amount
+   */
+  void update_hits_vector(std::vector<request>& reqs, std::vector<uint32_t>& hits_vector,
+                          std::vector<request> *living_req=nullptr);
  public:
   // Logs a memory access to simulate. The order this function is called in matters.
-  void memory_access(uint64_t addr);
+  void memory_access(uint32_t addr);
   /* Returns the success function.
    * Does *a lot* of work.
    * When calling print_success_function, the answer is re-computed.
    */
-  std::vector<uint64_t> get_success_function();
+  SuccessVector get_success_function();
 
   /*
-   * Process a chunk of requests using the living requests from the previous chunk
-   * Return the new living requests and the depth_vector
+   * Process a chunk of requests (called by IAF_Wrapper)
+   * Return the new living requests and the success function
    */
-  void get_depth_vector(IAKInput &chunk_input);
+  void process_chunk(ChunkInput &input);
 
   IncrementAndFreeze() = default;
   ~IncrementAndFreeze() = default;
-  std::vector<uint64_t> get_distance_vector();
 };
 
 #endif  // ONLINE_CACHE_SIMULATOR_INCREMENT_AND_FREEZE_H_

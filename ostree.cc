@@ -32,9 +32,7 @@ void OSTree::insert(Uptr &ost, uint64_t newts, uint64_t newval) {
 }
 
 void OSTree::validate() const {
-  size_t left_weight = get_weight(left);
-  size_t right_weight = get_weight(right);
-  assert(weight == 1 + left_weight + right_weight);
+  assert(weight == 1 + get_weight(left) + get_weight(right));
   if (left) {
     assert(left->ts > ts);
   }
