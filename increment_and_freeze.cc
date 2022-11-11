@@ -118,19 +118,33 @@ void IncrementAndFreeze::do_projections(SuccessVector& hits_vector, ProjSequence
     return;
   }
   else {
-    uint64_t dist = cur.end - cur.start;
-    uint64_t mid = (dist) / 2 + cur.start;
+    std::array<std::vector<Op>, branching_factor-1> partition_scratch_spaces;
+    for (auto& scratch : partition_scratch_spaces)
+      scratch.emplace_back(); // Create an empty null op in each scratch_space
 
-    // generate projected sequence for first half
-    ProjSequence fst_half(cur.start, mid);
-    ProjSequence snd_half(mid + 1, cur.end);
+    uint64_t dist = cur.end - cur.start + 1;
 
-    cur.partition(fst_half, snd_half);
+    // This biased toward making right side projects larger which is good
+    // because they shrink while left gets bigger
+    uint64_t split_amount = (dist + branching_factor - 1) / branching_factor;
 
-#pragma omp task shared(hits_vector) mergeable final(dist <= 8192)
-    do_projections(hits_vector, std::move(fst_half));
+    // split off a portion of the projected sequence
+    ProjSequence remaining_sequence;
+    for (size_t i = branching_factor - 1; i > 0; i--) {
+      // split off rightmost portion of current sequence
+      ProjSequence split_sequence(cur.end - split_amount + 1, cur.end);
+      remaining_sequence = std::move(ProjSequence(cur.start, cur.end - split_amount));
+      
+      cur.partition(remaining_sequence, split_sequence, i, partition_scratch_spaces);
+      cur = std::move(remaining_sequence);
 
-    do_projections(hits_vector, std::move(snd_half));
+      // create a task to process split off sequence
+// #pragma omp task shared(hits_vector) mergeable final(dist <= 8192)
+      do_projections(hits_vector, std::move(split_sequence));
+    }
+
+    // process remaining projected sequence
+    do_projections(hits_vector, std::move(cur));
   }
 }
 

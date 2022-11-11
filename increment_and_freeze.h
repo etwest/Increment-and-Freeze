@@ -15,6 +15,8 @@
 // Null is encoded by an entirely zero _target variable
 enum OpType {Prefix=0, Postfix=1, Null=2};
 
+static constexpr size_t branching_factor = 4;
+
 // An IAF operation
 class Op {
  private:
@@ -103,8 +105,9 @@ class ProjSequence {
 
   // Init a projection with bounds and iterators
   ProjSequence(uint64_t start, uint64_t end, std::vector<Op>::iterator op_seq, size_t num_ops) : op_seq(op_seq), num_ops(num_ops), start(start), end(end) {};
-  
-  void partition(ProjSequence& left, ProjSequence& right) {
+
+  void partition(ProjSequence& left, ProjSequence& right, size_t split_off_idx, size_t div_factor, size_t orig_length,
+                 std::array<std::vector<Op>, branching_factor-1>& partition_scratch_spaces) {
     // std::cout << "Performing partition upon projected sequence" << std::endl;
     // std::cout << *this << std::endl;
     // std::cout << "Partitioning into: " << left.start << "-" << left.end << ", ";
@@ -117,15 +120,12 @@ class ProjSequence {
     assert(end == right.end);
     assert(op_seq[0].is_null());
 
-    std::vector<Op> scratch_stack;
-
     // Where we merge operations that remain on the right side
     // use ints for this and cur_idx because underflow is good and tells us things
     int merge_into_idx = num_ops - 1;
 
     // loop through all the operations on the right side
     int cur_idx;
-    size_t full_incr_to_left = 0; // amount of full increments to left created by prefix with target in right
     for (cur_idx = num_ops - 1; cur_idx >= 0; cur_idx--) {
       Op& op = op_seq[cur_idx];
 
@@ -153,12 +153,31 @@ class ProjSequence {
         --cur_idx;
         break;
       }
-      
-      if (op.move_to_scratch(right.start)) {
-        scratch_stack.push_back(op);    // copy this op into scratch_stack
-        scratch_stack[scratch_stack.size() - 1].add_full(full_incr_to_left);
-        full_incr_to_left = 0;
 
+      if (op.move_to_scratch(right.start)) {
+        // TODO: Into which scratch space does this go!
+        // NOTE: When a Postfix moves many partitions over its increment and full affect
+        // the partitions between its destination and current
+
+        size_t op_total = op.get_full_amnt() + op.get_inc_amnt();
+
+        // 1. Identify the partition this Postfix is targeting (inverting the parition map)
+        size_t partition_target = (braching_factor-1) - (orig_length - op.target()) / div_factor;
+        assert(partition_target < split_off_idx);
+
+        // 2. Place this Postfix in the appropriate scratch space
+        std:vector<Op>& scratch_stack = partition_scratch_spaces[partition_target];
+        assert(scratch_stack.back().is_null());
+        op.add_full(scratch_stack.back().get_full_amnt());
+        scratch_stack.back() = op;
+        scratch_stack.emplace_back();
+
+        // 3. For each scratch space in [placement, last) add full+inc to operation at end of that scratch_space
+        for (size_t i = partition_target+1; i < split_off_idx; i++) {
+          partition_scratch_spaces[i].back().add_full(op_total);
+        }
+
+        // 4. Make the moved to scratch operation Null
         if (cur_idx != merge_into_idx) {
           // merge this operation with merge_into_idx and make this op no impact
           op_seq[merge_into_idx].add_full(op.get_full_amnt() + op.get_inc_amnt());
@@ -171,7 +190,8 @@ class ProjSequence {
       }
       else {
         // we don't move this op to left but does it affect the full incr of the left
-        full_incr_to_left += op.get_full_incr_to_left(right.start);
+        for (size_t i = 0; i < split_off_idx; i++)  
+          partition_scratch_spaces[i].back().add_full(op.get_full_incr_to_left(right.start));
 
         if (merge_into_idx != cur_idx) {
           // merge current op into merge idx op
@@ -208,8 +228,13 @@ class ProjSequence {
     //   std::cout << op << " ";
     // std::cout << std::endl << std::endl;
 
-    // update last op on left with the full increment from the right
-    op_seq[cur_idx].add_full(full_incr_to_left);
+    // Merge in scratch_stack for relevant partition
+    // add full with the null at the end of the scratch stack
+    // then iterate from back to add the Postfixes
+    std::vector<Op>& scratch_stack = partition_scratch_spaces[split_off_idx - 1];
+    assert(scratch_stack.size() > 0 && scratch_stack.back().is_null());
+    op_seq[cur_idx].add_full(scratch_stack.back.get_full_amnt());
+    scratch_stack.pop_back();
     
     // merge_into_idx belongs to right partition
     // [cur_idx+1, merge_into_idx) belongs to left partition (where scratch_stack goes)
@@ -218,6 +243,8 @@ class ProjSequence {
       for (int i = scratch_stack.size() - 1; i >= 0; i--)
         op_seq[++cur_idx] = scratch_stack[i];
     }
+
+    scratch_stack.clear();
 
 
     // This fails if there isn't enough memory allocated
