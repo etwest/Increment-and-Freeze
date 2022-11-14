@@ -162,7 +162,7 @@ class ProjSequence {
         size_t op_total = op.get_full_amnt() + op.get_inc_amnt();
 
         // 1. Identify the partition this Postfix is targeting (inverting the parition map)
-        size_t partition_target = (braching_factor-1) - (orig_length - op.target()) / div_factor;
+        size_t partition_target = (branching_factor-1) - (orig_length - op.get_target()) / div_factor;
         assert(partition_target < split_off_idx);
 
         // 2. Place this Postfix in the appropriate scratch space
