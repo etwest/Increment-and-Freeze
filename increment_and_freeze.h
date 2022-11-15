@@ -238,10 +238,21 @@ class ProjSequence {
     assert(scratch_stack.size() > 0 && scratch_stack.back().is_null());
     op_seq[cur_idx].add_full(scratch_stack.back().get_full_amnt());
     scratch_stack.pop_back();
+
+    std::cout << "Scratch_stack at placement: " << std::endl;
+    for (auto op : scratch_stack)
+      std::cout << op << " ";
+    std::cout << std::endl;
+    std::cout << "OPS to overwrite: " << std::endl;
+    auto ptr = &op_seq[cur_idx+1];
+    for (int i = scratch_stack.size() - 1; i >= 0; i--)
+      std::cout << *(ptr++) << " <- " << scratch_stack[i];
+    std::cout << std::endl;
     
     // merge_into_idx belongs to right partition
     // [cur_idx+1, merge_into_idx) belongs to left partition (where scratch_stack goes)
     assert(merge_into_idx - cur_idx - 1 >= (int) scratch_stack.size());
+    op_seq[++cur_idx] = scratch_stack[i];
     if (scratch_stack.size() > 0) {
       for (int i = scratch_stack.size() - 1; i >= 0; i--)
         op_seq[++cur_idx] = scratch_stack[i];
