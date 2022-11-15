@@ -118,15 +118,15 @@ void IncrementAndFreeze::do_projections(SuccessVector& hits_vector, ProjSequence
     return;
   }
   else {
-    std::array<std::vector<Op>, branching_factor-1> partition_scratch_spaces;
-    for (auto& scratch : partition_scratch_spaces)
-      scratch.emplace_back(); // Create an empty null op in each scratch_space
-
     uint64_t dist = cur.end - cur.start + 1;
 
     // This biased toward making right side projects larger which is good
     // because they shrink while left gets bigger
     uint64_t split_amount = (dist + branching_factor - 1) / branching_factor;
+
+    PartitionState state(split_amount, dist, cur.num_ops);
+    for (auto& scratch : state.scratch_spaces)
+      scratch.emplace_back(); // Create an empty null op in each scratch_space
 
     // split off a portion of the projected sequence
     ProjSequence remaining_sequence(0,0);
@@ -135,7 +135,7 @@ void IncrementAndFreeze::do_projections(SuccessVector& hits_vector, ProjSequence
       ProjSequence split_sequence(cur.end - split_amount + 1, cur.end);
       remaining_sequence = std::move(ProjSequence(cur.start, cur.end - split_amount));
       
-      cur.partition(remaining_sequence, split_sequence, i, split_amount, dist, partition_scratch_spaces);
+      cur.partition(remaining_sequence, split_sequence, i, state);
       cur = std::move(remaining_sequence);
 
       // create a task to process split off sequence

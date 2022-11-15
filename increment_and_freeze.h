@@ -90,6 +90,18 @@ class Op {
   inline int64_t get_full_amnt() const { return full_amnt; }
 };
 
+
+typedef struct PartitionState {
+  const size_t div_factor;
+  const size_t orig_length;
+  PartitionState(uint64_t split, uint64_t dist, uint64_t num_ops) : div_factor(split), orig_length(dist), 
+    merge_into_idx(num_ops-1), cur_idx(merge_into_idx) {};
+
+  std::array<std::vector<Op>, branching_factor-1> scratch_spaces;
+  int merge_into_idx;
+  int cur_idx;
+} PartitionState;
+
 // A sequence of operators defined by a projection
 class ProjSequence {
  public:
@@ -99,18 +111,25 @@ class ProjSequence {
   // Request sequence range
   uint64_t start;
   uint64_t end;
-
+  
   // Initialize an empty projection with bounds (to be filled in by partition)
   ProjSequence(uint64_t start, uint64_t end) : start(start), end(end) {};
 
   // Init a projection with bounds and iterators
   ProjSequence(uint64_t start, uint64_t end, std::vector<Op>::iterator op_seq, size_t num_ops) : op_seq(op_seq), num_ops(num_ops), start(start), end(end) {};
 
-  void partition(ProjSequence& left, ProjSequence& right, size_t split_off_idx, size_t div_factor, size_t orig_length,
-                 std::array<std::vector<Op>, branching_factor-1>& partition_scratch_spaces) {
+  void partition(ProjSequence& left, ProjSequence& right, size_t split_off_idx, PartitionState& state) {
+
+    const size_t& div_factor = state.div_factor;
+    const size_t& orig_length = state.orig_length;
+    auto& partition_scratch_spaces= state.scratch_spaces;
+    int& merge_into_idx = state.merge_into_idx;
+    int& cur_idx = state.cur_idx;
+    
+
     std::cout << "Performing partition upon projected sequence" << std::endl;
     std::cout << *this << std::endl;
-    std::cout << "Partitioning into: " << left.start << "-" << left.end << ", ";
+    std::cout << "Partitioning into: " << left.start << "-" << left.end << ", " << std::endl;;
     std::cout << right.start << "-" << right.end << std::endl;
     std::cout << std::endl;
 
@@ -123,11 +142,9 @@ class ProjSequence {
 
     // Where we merge operations that remain on the right side
     // use ints for this and cur_idx because underflow is good and tells us things
-    int merge_into_idx = num_ops - 1;
-
+    
     // loop through all the operations on the right side
-    int cur_idx;
-    for (cur_idx = num_ops - 1; cur_idx >= 0; cur_idx--) {
+    for (; cur_idx >= 0; cur_idx--) {
       Op& op = op_seq[cur_idx];
       
       assert(op.get_type() != Prefix || op.get_target() >= left.end);
@@ -136,7 +153,7 @@ class ProjSequence {
         std::cout << cur_idx << " is a BOUNDARY OP" << std::endl;
         // we merge this op with the next left op (also need to add inc amount to full)
         // The previous OP is the end of the scratch space
-        Op& prev_op = partition_scratch_spaces[split_off_idx-1].front();
+        Op& prev_op = op_seq[cur_idx-1];
         prev_op.add_full(op.get_full_amnt() + op.get_inc_amnt());
 
         // AND merge this op with merge_into_idx
@@ -164,7 +181,7 @@ class ProjSequence {
         // the partitions between its destination and current
 
         // 1. Identify the partition this Postfix is targeting (inverting the parition map)
-        size_t partition_target = (branching_factor-1) - (orig_length - (op.get_target() - (start-1))) / div_factor;
+        size_t partition_target = (branching_factor-1) - (orig_length - (op.get_target() - (start-1))) / div_factor; //TODO off by 1?
         std::cout << "target in " << partition_target << " / " << split_off_idx << std::endl;
         assert(partition_target < split_off_idx);
 
@@ -263,9 +280,10 @@ class ProjSequence {
     // bound is incorrect.
     // [cur_idx+1, merge_into_idx) belongs to left partition (where scratch_stack goes)
     assert(merge_into_idx - cur_idx - 1 >= (int) scratch_stack.size());
+    auto tmp_cur_idx = cur_idx;
     if (scratch_stack.size() > 0) {
       for (int i = scratch_stack.size() - 1; i >= 0; i--)
-        op_seq[++cur_idx] = scratch_stack[i];
+        op_seq[++tmp_cur_idx] = scratch_stack[i];
     }
 
     scratch_stack.clear();
