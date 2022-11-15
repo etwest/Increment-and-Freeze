@@ -112,6 +112,7 @@ class ProjSequence {
     std::cout << *this << std::endl;
     std::cout << "Partitioning into: " << left.start << "-" << left.end << ", ";
     std::cout << right.start << "-" << right.end << std::endl;
+    std::cout << std::endl;
 
     assert(left.start <= left.end);
     assert(left.end+1 == right.start);
@@ -215,6 +216,7 @@ class ProjSequence {
           std::cout << op << " ";
         std::cout << std::endl;
       }
+      std::cout << std::endl;
     }
     assert(cur_idx >= 0);
 
@@ -230,6 +232,7 @@ class ProjSequence {
         std::cout << op << " ";
       std::cout << std::endl;
     }
+    std::cout << std::endl;
 
     // Merge in scratch_stack for relevant partition
     // add full with the null at the end of the scratch stack
@@ -250,9 +253,11 @@ class ProjSequence {
     std::cout << std::endl;
     
     // merge_into_idx belongs to right partition
+    // This fails if there isn't enough memory allocated
+    // It either means we did something wrong, or our memory
+    // bound is incorrect.
     // [cur_idx+1, merge_into_idx) belongs to left partition (where scratch_stack goes)
     assert(merge_into_idx - cur_idx - 1 >= (int) scratch_stack.size());
-    op_seq[++cur_idx] = scratch_stack[i];
     if (scratch_stack.size() > 0) {
       for (int i = scratch_stack.size() - 1; i >= 0; i--)
         op_seq[++cur_idx] = scratch_stack[i];
@@ -260,14 +265,23 @@ class ProjSequence {
 
     scratch_stack.clear();
 
+    // Calculate the number of Postfixes that are unresolved
+    // We need extra space on the left for these
+    int unresolved_postfixes = 0;
+    std::cout << "split_off_idx = " << split_off_idx << std::endl;
+    for (size_t i = 0; i < split_off_idx - 1; i++) {
+      std::cout << "Size of " << i << " = " << partition_scratch_spaces[i].size() << std::endl;
+      unresolved_postfixes += partition_scratch_spaces[i].size() - 1;
+    }
 
-    // This fails if there isn't enough memory allocated
-    // It either means we did something wrong, or our memory
-    // bound is incorrect.
+    // assert there will be enough space for these unresolved postfixes
+    // in the future
+    assert(merge_into_idx - unresolved_postfixes > cur_idx);
+    std::cout << "unresolved_postfixes: " << unresolved_postfixes << std::endl;
 
     //Now op_seq and scratch are properly named. We assign them to left and right.
     left.op_seq  = op_seq;
-    left.num_ops = cur_idx + 1;
+    left.num_ops = cur_idx + 1 + unresolved_postfixes;
 
     right.op_seq = op_seq + merge_into_idx;
     right.num_ops = num_ops - merge_into_idx;
