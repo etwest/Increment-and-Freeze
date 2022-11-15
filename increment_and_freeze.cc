@@ -168,8 +168,12 @@ void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence c
 
         // Freeze target by incrementing hits_vector[stack_depth]
         if (op.get_target() != 0) {
+          int hit = local_distances[op.get_target() - cur.start] + full_amnt;
+          std::cout << "Freezing " << op << " = " << hit << std::endl;
+          assert(hit > 0);
+          assert((size_t)hit < hits_vector.size());
 #pragma omp atomic update
-          hits_vector[local_distances[op.get_target() - cur.start] + full_amnt]++;
+          hits_vector[hit]++;
         }
         break;
       default: // Null

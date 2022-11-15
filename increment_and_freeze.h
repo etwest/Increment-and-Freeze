@@ -129,12 +129,14 @@ class ProjSequence {
     int cur_idx;
     for (cur_idx = num_ops - 1; cur_idx >= 0; cur_idx--) {
       Op& op = op_seq[cur_idx];
-
+      
       assert(op.get_type() != Prefix || op.get_target() >= left.end);
 
       if (op.is_boundary_op(left.end)) {
+        std::cout << cur_idx << " is a BOUNDARY OP" << std::endl;
         // we merge this op with the next left op (also need to add inc amount to full)
-        Op& prev_op = op_seq[cur_idx-1];
+        // The previous OP is the end of the scratch space
+        Op& prev_op = partition_scratch_spaces[split_off_idx-1].front();
         prev_op.add_full(op.get_full_amnt() + op.get_inc_amnt());
 
         // AND merge this op with merge_into_idx
@@ -156,37 +158,41 @@ class ProjSequence {
       }
 
       if (op.move_to_scratch(right.start)) {
+        std::cout << "MOVING " << op << " left!" << std::endl;
         // TODO: Into which scratch space does this go!
         // NOTE: When a Postfix moves many partitions over its increment and full affect
         // the partitions between its destination and current
 
-        size_t op_total = op.get_full_amnt() + op.get_inc_amnt();
-
         // 1. Identify the partition this Postfix is targeting (inverting the parition map)
-        size_t partition_target = (branching_factor-1) - (orig_length - op.get_target()) / div_factor;
+        size_t partition_target = (branching_factor-1) - (orig_length - (op.get_target() - (start-1))) / div_factor;
+        std::cout << "target in " << partition_target << " / " << split_off_idx << std::endl;
         assert(partition_target < split_off_idx);
 
         // 2. Place this Postfix in the appropriate scratch space
         std::vector<Op>& scratch_stack = partition_scratch_spaces[partition_target];
         assert(scratch_stack.back().is_null());
-        op.add_full(scratch_stack.back().get_full_amnt());
+        // No increment-- Just total amnt. Save it and overwrite.
+        size_t back_total = scratch_stack.back().get_full_amnt();
         scratch_stack.back() = op;
+        scratch_stack.back().add_full(back_total);
         scratch_stack.emplace_back();
+      
 
-        // 3. For each scratch space in [placement, last) add full+inc to operation at end of that scratch_space
+        // 3. For each scratch space in (placement, last) add full+inc to operation at end of that scratch_space
         for (size_t i = partition_target+1; i < split_off_idx; i++) {
-          partition_scratch_spaces[i].back().add_full(op_total);
+          partition_scratch_spaces[i].back().add_full(op.get_full_amnt() + op.get_inc_amnt());
         }
-
-        // 4. Make the moved to scratch operation Null
+        
+        // 4. At this point, we've projected op into [placement, last). Now let's fix the value in last (split_off_idx)
+        // Op should be unmodified at this point.
         if (cur_idx != merge_into_idx) {
           // merge this operation with merge_into_idx and make this op no impact
           op_seq[merge_into_idx].add_full(op.get_full_amnt() + op.get_inc_amnt());
           op = Op();
         } else {
           // make this operation null and add incr amount to full
-          op.make_null();
           op.add_full(op.get_inc_amnt());
+          op.make_null();
         }
       }
       else {
@@ -249,8 +255,7 @@ class ProjSequence {
     std::cout << "OPS to overwrite: " << std::endl;
     auto ptr = &op_seq[cur_idx+1];
     for (int i = scratch_stack.size() - 1; i >= 0; i--)
-      std::cout << *(ptr++) << " <- " << scratch_stack[i];
-    std::cout << std::endl;
+      std::cout << *(ptr++) << " <- " << scratch_stack[i] << std::endl;
     
     // merge_into_idx belongs to right partition
     // This fails if there isn't enough memory allocated
