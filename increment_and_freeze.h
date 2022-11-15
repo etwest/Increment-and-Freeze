@@ -270,9 +270,6 @@ class ProjSequence {
       std::cout << op << " ";
     std::cout << std::endl;
     std::cout << "OPS to overwrite: " << std::endl;
-    auto ptr = &op_seq[cur_idx+1];
-    for (int i = scratch_stack.size() - 1; i >= 0; i--)
-      std::cout << *(ptr++) << " <- " << scratch_stack[i] << std::endl;
     
     // merge_into_idx belongs to right partition
     // This fails if there isn't enough memory allocated
@@ -280,12 +277,16 @@ class ProjSequence {
     // bound is incorrect.
     // [cur_idx+1, merge_into_idx) belongs to left partition (where scratch_stack goes)
     assert(merge_into_idx - cur_idx - 1 >= (int) scratch_stack.size());
-    auto tmp_cur_idx = cur_idx;
     if (scratch_stack.size() > 0) {
-      for (int i = scratch_stack.size() - 1; i >= 0; i--)
-        op_seq[++tmp_cur_idx] = scratch_stack[i];
+      for (auto& op : scratch_stack) {
+        --merge_into_idx;
+        std::cout << op_seq[merge_into_idx] << " <- " << op << std::endl;
+        op_seq[merge_into_idx] = op;
+      }
     }
-
+    // We want to point to a null //TODO: off by one?
+    --merge_into_idx;
+    std::cout << op_seq[merge_into_idx] << std::endl;
     scratch_stack.clear();
 
     // Calculate the number of Postfixes that are unresolved
@@ -302,12 +303,16 @@ class ProjSequence {
     assert(merge_into_idx - unresolved_postfixes > cur_idx);
     std::cout << "unresolved_postfixes: " << unresolved_postfixes << std::endl;
 
-    //Now op_seq and scratch are properly named. We assign them to left and right.
+    // Partition our space between left and right
+    // TODO FIXME: We need to design this left/right based off of just merge into idx.
+    // That is, merge_into_idx is our memory pointer, and cur_idx is our processing pointer
     left.op_seq  = op_seq;
-    left.num_ops = cur_idx + 1 + unresolved_postfixes;
+    left.num_ops = merge_into_idx;
+    assert(left.op_seq[0].is_null());
 
-    right.op_seq = op_seq + merge_into_idx;
-    right.num_ops = num_ops - merge_into_idx;
+    right.op_seq = left.op_seq + left.num_ops;
+    assert(right.op_seq[0].is_null());
+    right.num_ops = num_ops - left.num_ops;
     //std::cout /*<< total*/ << "(" << len << ") " << " -> " << left.len << ", " << right.len << std::endl;
   
     // Print out final projection
