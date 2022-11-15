@@ -129,13 +129,13 @@ void IncrementAndFreeze::do_projections(SuccessVector& hits_vector, ProjSequence
     uint64_t split_amount = (dist + branching_factor - 1) / branching_factor;
 
     // split off a portion of the projected sequence
-    ProjSequence remaining_sequence;
+    ProjSequence remaining_sequence(0,0);
     for (size_t i = branching_factor - 1; i > 0; i--) {
       // split off rightmost portion of current sequence
       ProjSequence split_sequence(cur.end - split_amount + 1, cur.end);
       remaining_sequence = std::move(ProjSequence(cur.start, cur.end - split_amount));
       
-      cur.partition(remaining_sequence, split_sequence, i, partition_scratch_spaces);
+      cur.partition(remaining_sequence, split_sequence, i, split_amount, dist, partition_scratch_spaces);
       cur = std::move(remaining_sequence);
 
       // create a task to process split off sequence

@@ -108,10 +108,10 @@ class ProjSequence {
 
   void partition(ProjSequence& left, ProjSequence& right, size_t split_off_idx, size_t div_factor, size_t orig_length,
                  std::array<std::vector<Op>, branching_factor-1>& partition_scratch_spaces) {
-    // std::cout << "Performing partition upon projected sequence" << std::endl;
-    // std::cout << *this << std::endl;
-    // std::cout << "Partitioning into: " << left.start << "-" << left.end << ", ";
-    // std::cout << right.start << "-" << right.end << std::endl;
+    std::cout << "Performing partition upon projected sequence" << std::endl;
+    std::cout << *this << std::endl;
+    std::cout << "Partitioning into: " << left.start << "-" << left.end << ", ";
+    std::cout << right.start << "-" << right.end << std::endl;
 
     assert(left.start <= left.end);
     assert(left.end+1 == right.start);
@@ -166,7 +166,7 @@ class ProjSequence {
         assert(partition_target < split_off_idx);
 
         // 2. Place this Postfix in the appropriate scratch space
-        std:vector<Op>& scratch_stack = partition_scratch_spaces[partition_target];
+        std::vector<Op>& scratch_stack = partition_scratch_spaces[partition_target];
         assert(scratch_stack.back().is_null());
         op.add_full(scratch_stack.back().get_full_amnt());
         scratch_stack.back() = op;
@@ -204,36 +204,39 @@ class ProjSequence {
         if (!op_seq[merge_into_idx].is_null()) merge_into_idx--;
       }
 
-      // // Print out operations
-      // std::cout << "cur_idx = " << cur_idx - 1 << " merge_into_idx = " << merge_into_idx << std::endl;
-      // std::cout << "full_incr_to_left = " << full_incr_to_left << std::endl;
-      // std::cout << *this << std::endl;
+      // Print out operations
+      std::cout << "cur_idx = " << cur_idx - 1 << " merge_into_idx = " << merge_into_idx << std::endl;
+      std::cout << *this << std::endl;
 
-      // // print out scratch stack
-      // std::cout << "Scratch_stack: " << std::endl;
-      // for (auto op : scratch_stack)
-      //   std::cout << op << " ";
-      // std::cout << std::endl << std::endl;
+      // print out scratch stack
+      std::cout << "Scratch_stack: " << std::endl;
+      for (auto &scratch_stack : partition_scratch_spaces) {
+        for (auto op : scratch_stack)
+          std::cout << op << " ";
+        std::cout << std::endl;
+      }
     }
     assert(cur_idx >= 0);
 
-    // // Print out operations
-    // std::cout << "Done processing projection" << std::endl;
-    // std::cout << "cur_idx = " << cur_idx << " merge_into_idx = " << merge_into_idx << std::endl;
-    // std::cout << *this << std::endl;
+    // Print out operations
+    std::cout << "Done processing projection" << std::endl;
+    std::cout << "cur_idx = " << cur_idx << " merge_into_idx = " << merge_into_idx << std::endl;
+    std::cout << *this << std::endl;
 
-    // // print out scratch stack
-    // std::cout << "Scratch_stack: " << std::endl;
-    // for (auto op : scratch_stack)
-    //   std::cout << op << " ";
-    // std::cout << std::endl << std::endl;
+    // print out scratch stack
+    std::cout << "Scratch_stack: " << std::endl;
+    for (auto &scratch_stack : partition_scratch_spaces) {
+      for (auto op : scratch_stack)
+        std::cout << op << " ";
+      std::cout << std::endl;
+    }
 
     // Merge in scratch_stack for relevant partition
     // add full with the null at the end of the scratch stack
     // then iterate from back to add the Postfixes
     std::vector<Op>& scratch_stack = partition_scratch_spaces[split_off_idx - 1];
     assert(scratch_stack.size() > 0 && scratch_stack.back().is_null());
-    op_seq[cur_idx].add_full(scratch_stack.back.get_full_amnt());
+    op_seq[cur_idx].add_full(scratch_stack.back().get_full_amnt());
     scratch_stack.pop_back();
     
     // merge_into_idx belongs to right partition
@@ -260,9 +263,9 @@ class ProjSequence {
     //std::cout /*<< total*/ << "(" << len << ") " << " -> " << left.len << ", " << right.len << std::endl;
   
     // Print out final projection
-    // std::cout << "Final Result: " << std::endl;
-    // std::cout << "LEFT:  " << left << std::endl;
-    // std::cout << "RIGHT: " << right << std::endl << std::endl;
+    std::cout << "Final Result: " << std::endl;
+    std::cout << "LEFT:  " << left << std::endl;
+    std::cout << "RIGHT: " << right << std::endl << std::endl;
   }
 
   friend std::ostream& operator<<(std::ostream& os, const ProjSequence& seq) {
