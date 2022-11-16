@@ -107,6 +107,12 @@ void IncrementAndFreeze::update_hits_vector(std::vector<request>& reqs,
 
   STOPTIME(projections);
   STOPTIME(update_hits_vector);
+
+  // Print out hits vector for debugging
+  // std::cout << "Hits Vector: ";
+  // for (auto hit : hits_vector)
+  //   std::cout << hit << " ";
+  // std::cout << std::endl;
 }
 
 //recursively (and in parallel) perform all the projections
@@ -118,33 +124,46 @@ void IncrementAndFreeze::do_projections(SuccessVector& hits_vector, ProjSequence
     return;
   }
   else {
+    // std::cout << "===========================================================" << std::endl;
+    // std::cout << "============   Performing New Recursive Step   ============" << std::endl;
+    // std::cout << "===========================================================" << std::endl;
+    // std::cout << "cur.start = " << cur.start << " cur.end = " << cur.end << std::endl;
     uint64_t dist = cur.end - cur.start + 1;
+    double num_partitions = std::min(dist, branching_factor);
 
     // This biased toward making right side projects larger which is good
     // because they shrink while left gets bigger
-    uint64_t split_amount = (dist + branching_factor - 1) / branching_factor;
+    double split_amount = dist / num_partitions;
+    double fractional_end = cur.end;
+    // std::cout << "distance = " << dist << " partitions = " << num_partitions << " split_amnt = " << split_amount << std::endl;
 
-    PartitionState state(split_amount, dist, cur.num_ops);
-    for (auto& scratch : state.scratch_spaces)
-      scratch.emplace_back(); // Create an empty null op in each scratch_space
+    PartitionState state(split_amount, cur.num_ops);
+
+    // For debuggging
+    std::vector<ProjSequence> projections_to_process;
 
     // split off a portion of the projected sequence
     ProjSequence remaining_sequence(0,0);
-    for (size_t i = branching_factor - 1; i > 0; i--) {
+    for (size_t i = num_partitions - 1; i > 0; i--) {
+      fractional_end -= split_amount;
+      // std::cout << "fractional_end = " << fractional_end << std::endl;
+      assert(fractional_end >= cur.start);
+
       // split off rightmost portion of current sequence
-      ProjSequence split_sequence(cur.end - split_amount + 1, cur.end);
-      remaining_sequence = std::move(ProjSequence(cur.start, cur.end - split_amount));
-      
+      ProjSequence split_sequence(fractional_end + 1, cur.end);
+      remaining_sequence = std::move(ProjSequence(cur.start, fractional_end));
       cur.partition(remaining_sequence, split_sequence, i, state);
       cur = std::move(remaining_sequence);
 
       // create a task to process split off sequence
 // #pragma omp task shared(hits_vector) mergeable final(dist <= 8192)
-      do_projections(hits_vector, std::move(split_sequence));
+      projections_to_process.emplace_back(std::move(split_sequence));
     }
 
     // process remaining projected sequence
     do_projections(hits_vector, std::move(cur));
+    for (auto& proj : projections_to_process)
+      do_projections(hits_vector, std::move(proj));
   }
 }
 
@@ -160,8 +179,8 @@ void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence c
       case Prefix:
         for (uint64_t j = cur.start; j <= op.get_target(); j++)
           local_distances[j - cur.start] += op.get_inc_amnt();
-
         break;
+
       case Postfix:
         for (uint64_t j = std::max(op.get_target(), cur.start); j <= cur.end; j++)
           local_distances[j - cur.start] += op.get_inc_amnt();
@@ -169,13 +188,14 @@ void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence c
         // Freeze target by incrementing hits_vector[stack_depth]
         if (op.get_target() != 0) {
           int hit = local_distances[op.get_target() - cur.start] + full_amnt;
-          std::cout << "Freezing " << op << " = " << hit << std::endl;
+          // std::cout << "Freezing " << op << " = " << hit << std::endl;
           assert(hit > 0);
           assert((size_t)hit < hits_vector.size());
 #pragma omp atomic update
           hits_vector[hit]++;
         }
         break;
+
       default: // Null
         break;
     }
