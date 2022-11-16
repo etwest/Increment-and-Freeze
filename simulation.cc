@@ -199,8 +199,8 @@ void run_workloads(CacheSimType sim_enum, size_t minimum_chunk=65536, size_t mem
 int main() {
   //run_workloads(OS_TREE);
   //run_workloads(OS_SET);
-  //run_workloads(IAK);
-  //run_workloads(CHUNK_IAK);
+  run_workloads(IAK);
+  run_workloads(CHUNK_IAK);
   if (kMemoryLimit < kIdUniverseSize)
     run_workloads(CHUNK_IAK, 65536, kMemoryLimit);
 }

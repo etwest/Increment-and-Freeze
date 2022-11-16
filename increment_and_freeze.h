@@ -9,7 +9,7 @@
 #include <vector>      // for vector, vector<>::iterator
 
 #include "cache_sim.h"  // for CacheSim
-#include "params.h"     // for branching_factor
+#include "params.h"     // for kIafBranching
 
 // Operation types and be Prefix, Postfix, or Null
 // Prefix and Postfix are encoded by a single bit at the beginning of _target
@@ -92,7 +92,7 @@ class Op {
 // State that is persisted between calls to partition() at a single node in recursion tree.
 struct PartitionState {
   const double div_factor;
-  std::array<std::vector<Op>, branching_factor-1> scratch_spaces;
+  std::array<std::vector<Op>, kIafBranching-1> scratch_spaces;
   int merge_into_idx;
   int cur_idx;
   

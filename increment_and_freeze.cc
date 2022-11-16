@@ -129,7 +129,7 @@ void IncrementAndFreeze::do_projections(SuccessVector& hits_vector, ProjSequence
     // std::cout << "===========================================================" << std::endl;
     // std::cout << "cur.start = " << cur.start << " cur.end = " << cur.end << std::endl;
     uint64_t dist = cur.end - cur.start + 1;
-    double num_partitions = std::min(dist, branching_factor);
+    double num_partitions = std::min(dist, kIafBranching);
 
     // This biased toward making right side projects larger which is good
     // because they shrink while left gets bigger
@@ -138,9 +138,6 @@ void IncrementAndFreeze::do_projections(SuccessVector& hits_vector, ProjSequence
     // std::cout << "distance = " << dist << " partitions = " << num_partitions << " split_amnt = " << split_amount << std::endl;
 
     PartitionState state(split_amount, cur.num_ops);
-
-    // For debuggging
-    std::vector<ProjSequence> projections_to_process;
 
     // split off a portion of the projected sequence
     ProjSequence remaining_sequence(0,0);
@@ -156,14 +153,12 @@ void IncrementAndFreeze::do_projections(SuccessVector& hits_vector, ProjSequence
       cur = std::move(remaining_sequence);
 
       // create a task to process split off sequence
-// #pragma omp task shared(hits_vector) mergeable final(dist <= 8192)
-      projections_to_process.emplace_back(std::move(split_sequence));
+#pragma omp task shared(hits_vector) mergeable final(dist <= 8192)
+      do_projections(hits_vector, std::move(split_sequence));
     }
 
     // process remaining projected sequence
     do_projections(hits_vector, std::move(cur));
-    for (auto& proj : projections_to_process)
-      do_projections(hits_vector, std::move(proj));
   }
 }
 
