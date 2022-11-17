@@ -26,4 +26,3 @@ static_assert(kLocality >= 0 && kLocality <= 1);
 
 
 #endif  // ONLINE_CACHE_SIMULATOR_PARAMS_H_
-

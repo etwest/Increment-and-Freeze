@@ -4,7 +4,7 @@
 class CacheSimUnitTests : public testing::TestWithParam<CacheSimType> {
 
 };
-INSTANTIATE_TEST_SUITE_P(CacheSimSuite, CacheSimUnitTests, testing::Values(OS_TREE, OS_SET, IAK, CHUNK_IAK));
+INSTANTIATE_TEST_SUITE_P(CacheSimSuite, CacheSimUnitTests, testing::Values(OS_TREE, OS_SET, IAF, CHUNK_IAF));
 
 namespace {
 using SuccessVector = CacheSim::SuccessVector;
