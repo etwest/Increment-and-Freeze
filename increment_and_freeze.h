@@ -92,6 +92,7 @@ class Op {
 // State that is persisted between calls to partition() at a single node in recursion tree.
 struct PartitionState {
   const double div_factor;
+  int all_partitions_full_incr = 0;
   std::array<std::vector<Op>, kIafBranching-1> scratch_spaces;
   int merge_into_idx;
   int cur_idx;
@@ -123,6 +124,7 @@ class ProjSequence {
   void partition(ProjSequence& left, ProjSequence& right, size_t split_off_idx, PartitionState& state) {
     // pull relevant stuff out of PartitionState
     const double div_factor        = state.div_factor;
+    int& all_partitions_full_incr  = state.all_partitions_full_incr;
     auto& partition_scratch_spaces = state.scratch_spaces;
     int& merge_into_idx            = state.merge_into_idx;
     int& cur_idx                   = state.cur_idx;
@@ -152,7 +154,7 @@ class ProjSequence {
       assert(op.get_type() != Prefix || op.get_target() >= left.end);
 
       if (op.is_boundary_op(left.end)) {
-        // std::cout << cur_idx << " is a BOUNDARY OP" << std::endl;
+        // std::cout << op << " is a BOUNDARY OP" << std::endl;
         // we merge this op with the next left op (also need to add inc amount to full)
         // The previous OP is the end of the scratch space
         Op& prev_op = op_seq[cur_idx-1];
@@ -181,7 +183,6 @@ class ProjSequence {
 
         // 1. Identify the partition this Postfix is targeting (inverting the parition map)
         size_t partition_target = ceil((op.get_target() - (start-1)) / div_factor) - 1;
-        // std::cout << "target index: " << partition_target << " / " << split_off_idx-1 << std::endl;
         assert(partition_target < split_off_idx);
 
         // 2. Place this Postfix in the appropriate scratch space
@@ -190,29 +191,25 @@ class ProjSequence {
         // Merge this operation with the Null full increment in the scratch stack
         size_t back_total = scratch_stack.back().get_full_amnt();
         scratch_stack.back() = op;
-        scratch_stack.back().add_full(back_total);
-        scratch_stack.emplace_back(); // add a new empty Null to end of scratch stack
-      
+        scratch_stack.back().add_full(back_total + all_partitions_full_incr);
 
-        // 3. For each scratch space except for partition_target add full 
-        //    to operation at end of that scratch_space.
-        //    For partitions > partition_target. Also add incr amount
-        //    TODO: This is probably too expensive. There's also likely a way to optimize this so
-        //          we only have to increment 2-3 values rather than fanout.
-        for (size_t i = 0; i < split_off_idx; i++) {
-          if (i > partition_target)
-            partition_scratch_spaces[i].back().add_full(op.get_full_amnt() + op.get_inc_amnt());
-          else if (i < partition_target)
-            partition_scratch_spaces[i].back().add_full(op.get_full_amnt());
-        }
-        
-        // 4. At this point, we've projected op into [placement, last). 
+        // 3. Add to all_partitions_full_incr and add increment to applicable partitions
+        //    TODO: Use a tree-like structure for this partition_scratch_spaces +1 thing
+        all_partitions_full_incr += op.get_full_amnt();
+        for (size_t i = partition_target+1; i < split_off_idx; i++)
+          partition_scratch_spaces[i].back().add_full(1); // gets increment amount so +1
+
+        // 4. save the amount of full we've already added to target_partition in a new Null op
+        scratch_stack.emplace_back(); // add a new empty Null to end of scratch stack
+        scratch_stack.back().add_full(-1*all_partitions_full_incr);
+
+        // 5. At this point, we've projected op into [placement, last). 
         //    Now let's fix the value in last (split_off_idx).
         //    Op should be unmodified at this point.
         if (cur_idx != merge_into_idx) {
           // merge this operation with merge_into_idx and make this op no impact
           op_seq[merge_into_idx].add_full(op.get_full_amnt() + op.get_inc_amnt());
-          op = Op();
+          op = Op(); // make empty
         } else {
           // make this operation null and add incr amount to full
           op.add_full(op.get_inc_amnt());
@@ -220,9 +217,9 @@ class ProjSequence {
         }
       }
       else {
-        // we don't move this op to left but does it affect the full incr of the left
-        for (size_t i = 0; i < split_off_idx; i++)  
-          partition_scratch_spaces[i].back().add_full(op.get_full_incr_to_left(right.start));
+        // std::cout << op << " stays on right side." << std::endl;
+        // we don't move this op to left but does it affect the full incr of other partitions
+        all_partitions_full_incr += op.get_full_incr_to_left(right.start);
 
         if (merge_into_idx != cur_idx) {
           // merge current op into merge idx op
@@ -235,11 +232,12 @@ class ProjSequence {
         if (!op_seq[merge_into_idx].is_null()) merge_into_idx--;
       }
 
-      // Print out operations
+      // // Print out operations
+      // std::cout << "all_partitions_full_incr: " << all_partitions_full_incr << std::endl;
       // std::cout << "cur_idx = " << cur_idx - 1 << " merge_into_idx = " << merge_into_idx << std::endl;
       // std::cout << *this << std::endl;
 
-      // print out scratch stack
+      // // print out scratch stack
       // std::cout << "Scratch_stack: " << std::endl;
       // for (auto &scratch_stack : partition_scratch_spaces) {
       //   for (auto op : scratch_stack)
@@ -250,12 +248,13 @@ class ProjSequence {
     }
     assert(cur_idx >= 0);
 
-    // Print out operations
+    // // Print out operations
+    // std::cout << "all_partitions_full_incr: " << all_partitions_full_incr << std::endl;
     // std::cout << "Done processing projection" << std::endl;
     // std::cout << "cur_idx = " << cur_idx << " merge_into_idx = " << merge_into_idx << std::endl;
     // std::cout << *this << std::endl;
 
-    // print out scratch stack
+    // // print out scratch stack
     // std::cout << "Scratch_stack: " << std::endl;
     // for (auto &scratch_stack : partition_scratch_spaces) {
     //   for (auto op : scratch_stack)
@@ -287,10 +286,11 @@ class ProjSequence {
       // std::cout << op_seq[merge_into_idx] << " <- " << scratch_stack[i] << std::endl;
       op_seq[merge_into_idx] = scratch_stack[i];
     }
-    // The last op in the scratch_stack is a Null. Just add its full incr amount.
+    // The last op in the scratch_stack is a Null that defines the amount we should
+    // add to all_partitions_full_incr to define an additional full increment
     Op& back = scratch_stack.back();
     merge_into_idx--;
-    op_seq[merge_into_idx].add_full(back.get_full_amnt());
+    op_seq[merge_into_idx].add_full(all_partitions_full_incr + back.get_full_amnt());
     scratch_stack.clear();
 
 #ifndef NDEBUG
@@ -311,7 +311,7 @@ class ProjSequence {
 
     //std::cout /*<< total*/ << "(" << len << ") " << " -> " << left.len << ", " << right.len << std::endl;
   
-    // Print out final projection
+    // // Print out final projection
     // std::cout << "Final Result: " << std::endl;
     // std::cout << "LEFT:  " << left << std::endl;
     // std::cout << "RIGHT: " << right << std::endl << std::endl;
