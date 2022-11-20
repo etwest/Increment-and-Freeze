@@ -182,6 +182,7 @@ int main(int argc, char** argv) {
     std::cout << "Uniform" << std::endl;
     if (argc == 4) std::cerr << "WARNING: Ignoring argument " << argv[3] << std::endl;
     
+    std::cout << "Running experiment...         \r"; fflush(stdout);
     result = uniform_simulator(*sim, kSeed);
     memory_usage = sim->get_memory_usage();
   } 
@@ -192,8 +193,10 @@ int main(int argc, char** argv) {
       exit(EXIT_FAILURE);
     }
     std::cout << "Zipfian: " << std::atof(argv[3]) << std::endl;
+    std::cout << "Generating zipfian sequence...\r"; fflush(stdout);
     std::vector<uint64_t> zipf_seq = generate_zipf(kSeed, std::atof(argv[3]));
     size_t zipf_seq_mib = zipf_seq.size() * sizeof(uint64_t) / (1024*1024);
+    std::cout << "Running experiment...         \r"; fflush(stdout);
     result = simulate_on_seq(*sim, zipf_seq);
 
     assert(zipf_seq_mib < sim->get_memory_usage());
@@ -203,7 +206,7 @@ int main(int argc, char** argv) {
     std::cerr << ArgumentsString << std::endl;
     exit(EXIT_FAILURE);
   }
-
+  std::cout << "                              \r";
   std::cout << "Latency      = " << result.latency << std::endl;
   std::cout << "Memory (MiB) = " << memory_usage << std::endl;
 

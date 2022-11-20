@@ -43,7 +43,7 @@ class Op {
   Op(uint64_t target){set_type(Postfix); set_target(target);};
 
   // Uninitialized. Used to parallelize making a vector of this without push_back
-  Op() : _target(0) {};
+  Op() {};
 
   friend std::ostream& operator<<(std::ostream& os, const Op& op) {
     switch (op.get_type()) {
@@ -90,7 +90,32 @@ class Op {
 };
 
 // State that is persisted between calls to partition() at a single node in recursion tree.
-struct PartitionState {
+class PartitionState {
+ private:
+  struct incr_array_node {
+    uint32_t value = 0;
+    uint32_t key = 0;
+  };
+  std::array<incr_array_node, kIafBranching-1> incr_array = std::move(construct_tree(kIafBranching-1));
+
+  constexpr std::array<incr_array_node, kIafBranching-1> construct_tree(size_t num_items) {
+    std::array<incr_array_node, kIafBranching-1> local_incr_array;
+    helper_construct_tree(local_incr_array, num_items, 0, 0);
+    return local_incr_array;
+  }
+
+  constexpr void helper_construct_tree(std::array<incr_array_node, kIafBranching-1>& local_incr_array, size_t num_items, size_t index, size_t key_offset) {
+    if (num_items == 0) return;
+
+    size_t node_key = num_items / 2 + key_offset;
+    local_incr_array[index].key = node_key;
+    local_incr_array[index].value = 0;
+
+    helper_construct_tree(local_incr_array, num_items / 2, 2*index + 1, key_offset);
+    helper_construct_tree(local_incr_array, num_items - num_items / 2 - 1, 2*index + 2, node_key + 1);
+  }
+
+ public:
   const double div_factor;
   int all_partitions_full_incr = 0;
   std::array<std::vector<Op>, kIafBranching-1> scratch_spaces;
@@ -101,6 +126,61 @@ struct PartitionState {
    div_factor(split), merge_into_idx(num_ops-1), cur_idx(merge_into_idx) {
     for (auto& scratch : scratch_spaces)
       scratch.emplace_back(); // Create an empty null op in each scratch_space
+  }
+
+  // Debugging function for printing the incr_array
+  void print_incr_array() {
+    // print tree
+    for (auto elm : incr_array)
+      std::cout << elm.key << "," << elm.value << " ";
+    std::cout << std::endl;
+  }
+
+  // Update path to partition_target+1 to represent an increment by 1 in range
+  // [partition_target+1, kIafBranching)
+  // We represent this tree with the trick that root index = 0
+  // left child = cur*2 + 1, right child = cur*2 + 2
+  inline void upd_partition_incr(size_t partition_target) {
+    size_t incr_target = partition_target + 1;
+    if (incr_target >= kIafBranching-1) return;
+
+    size_t idx = 0;
+
+
+    while (incr_array[idx].key != incr_target) {
+      assert(idx < kIafBranching);
+      if (incr_array[idx].key < incr_target)
+        idx = 2*idx + 2; // go right
+      else {
+        // update node value and go left
+        ++incr_array[idx].value;
+        idx = 2*idx + 1;
+      }
+    }
+
+    // finally, update the value of the incr_target node
+    ++incr_array[idx].value;
+  }
+
+  // Return the sum of the increments on path to target to get their affect
+  inline size_t qry_partition_incr(size_t partition_target) {
+    if (partition_target == 0) return 0;
+    assert(partition_target < kIafBranching-1);
+    size_t sum = 0;
+    size_t idx = 0;
+    while (incr_array[idx].key != partition_target) {
+      assert(idx < kIafBranching);
+      if (incr_array[idx].key < partition_target) {
+        // add to sum and go right.
+        sum += incr_array[idx].value;
+        idx = 2*idx + 2;
+      }
+      else
+        idx = 2*idx + 1; // go left
+    }
+
+    // finally, add value of partition_target node
+    return sum + incr_array[idx].value;
   }
 };
 
@@ -185,23 +265,24 @@ class ProjSequence {
         size_t partition_target = ceil((op.get_target() - (start-1)) / div_factor) - 1;
         assert(partition_target < split_off_idx);
 
-        // 2. Place this Postfix in the appropriate scratch space
+        // 2. Place this Postfix in the appropriate scratch space.
+        //    the null at the end of the scratch_stack gives a sum of the full increments
+        //    already applied to this partition
         std::vector<Op>& scratch_stack = partition_scratch_spaces[partition_target];
         assert(scratch_stack.back().is_null());
-        // Merge this operation with the Null full increment in the scratch stack
-        size_t back_total = scratch_stack.back().get_full_amnt();
+        // query for Postfix increments that are full increments in this partition
+        size_t incrs = state.qry_partition_incr(partition_target);
+        size_t stack_full_incr_sum = scratch_stack.back().get_full_amnt();
         scratch_stack.back() = op;
-        scratch_stack.back().add_full(back_total + all_partitions_full_incr);
+        scratch_stack.back().add_full(incrs + all_partitions_full_incr - stack_full_incr_sum);
 
         // 3. Add to all_partitions_full_incr and add increment to applicable partitions
-        //    TODO: Use a tree-like structure for this partition_scratch_spaces +1 thing
         all_partitions_full_incr += op.get_full_amnt();
-        for (size_t i = partition_target+1; i < split_off_idx; i++)
-          partition_scratch_spaces[i].back().add_full(1); // gets increment amount so +1
+        state.upd_partition_incr(partition_target);
 
         // 4. save the amount of full we've already added to target_partition in a new Null op
         scratch_stack.emplace_back(); // add a new empty Null to end of scratch stack
-        scratch_stack.back().add_full(-1*all_partitions_full_incr);
+        scratch_stack.back().add_full(incrs + all_partitions_full_incr); // set the full
 
         // 5. At this point, we've projected op into [placement, last). 
         //    Now let's fix the value in last (split_off_idx).
@@ -271,9 +352,8 @@ class ProjSequence {
     assert(left.op_seq[0].is_null());
 
     right.op_seq = left.op_seq + left.num_ops;
-    assert(right.op_seq[0].is_null());
     right.num_ops = num_ops - left.num_ops;
-
+    assert(right.op_seq[0].is_null());
     
     // Merge in scratch_stack for leftmost partition scratch spaces
     // Iterate through these from front to back while walking the merge_into_idx
@@ -289,8 +369,9 @@ class ProjSequence {
     // The last op in the scratch_stack is a Null that defines the amount we should
     // add to all_partitions_full_incr to define an additional full increment
     Op& back = scratch_stack.back();
+    size_t incrs_to_end = state.qry_partition_incr(split_off_idx - 1);
     merge_into_idx--;
-    op_seq[merge_into_idx].add_full(all_partitions_full_incr + back.get_full_amnt());
+    op_seq[merge_into_idx].add_full(all_partitions_full_incr + incrs_to_end - back.get_full_amnt());
     scratch_stack.clear();
 
 #ifndef NDEBUG
@@ -308,10 +389,8 @@ class ProjSequence {
     // std::cout << "unresolved_postfixes: " << unresolved_postfixes << std::endl;
     assert(merge_into_idx - unresolved_postfixes == cur_idx);
 #endif
-
-    //std::cout /*<< total*/ << "(" << len << ") " << " -> " << left.len << ", " << right.len << std::endl;
   
-    // // Print out final projection
+    // Print out final projection
     // std::cout << "Final Result: " << std::endl;
     // std::cout << "LEFT:  " << left << std::endl;
     // std::cout << "RIGHT: " << right << std::endl << std::endl;
@@ -364,8 +443,7 @@ class IncrementAndFreeze: public CacheSim {
    * Precondition: requests must be properly populated.
    * Returns: number of unique ids in requests
    */
-  size_t populate_operations(std::vector<request> &req,
-                          std::vector<request> *living_req);
+  size_t populate_operations(std::vector<request> &req, std::vector<request> *living_req);
 
   /* Helper function for update_hits_vector
    * Recursively (and in parallel) populates the distance vector if the
