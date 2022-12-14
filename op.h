@@ -17,6 +17,7 @@
 enum OpType {Prefix=0, Postfix=1, Null=2};
 
 // An IAF operation
+// Due to design of Op, max number of requests to process at once is 2^31
 class Op {
  private:
   uint32_t _target = 0;                   // Boundary of operation

@@ -1,17 +1,17 @@
 #ifndef ONLINE_CACHE_SIMULATOR_INCREMENT_AND_FREEZE_H_
 #define ONLINE_CACHE_SIMULATOR_INCREMENT_AND_FREEZE_H_
 
-#include <cassert>     // for assert
-#include <cstddef>     // for size_t
-#include <cstdint>     // for uint64_t, uint32_t, int64_t, int32_t
-#include <iostream>    // for operator<<, basic_ostream::operator<<, basic_o...
-#include <utility>     // for pair, move, swap
-#include <vector>      // for vector, vector<>::iterator
-#include <array>       // for array
+#include <cassert>      // for assert
+#include <cstddef>      // for size_t
+#include <cstdint>      // for uint64_t, uint32_t, int64_t, int32_t
+#include <iostream>     // for operator<<, basic_ostream::operator<<, basic_o...
+#include <utility>      // for pair, move, swap
+#include <vector>       // for vector, vector<>::iterator
+#include <array>        // for array
 #include <cmath>        // for ceil
 
 #include "params.h"     // for kIafBranching
-#include "cachesim.h"
+#include "cache_sim.h"  // for CacheSim
 #include "op.h"         // for op
 #include "partition.h"  // for partitionstate
 #include "projection.h" // for ProjSequence
