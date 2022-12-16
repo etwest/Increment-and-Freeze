@@ -62,8 +62,8 @@ cc_library(
 
 cc_library(
     name = "increment_and_freeze",
-    hdrs = ["increment_and_freeze.h"],
-    srcs = ["increment_and_freeze.cc"],
+    hdrs = ["increment_and_freeze.h", "op.h", "partition.h", "projection.h"],
+    srcs = ["increment_and_freeze.cc", "projection.cc"],
     deps = [
         ":cache_sim",
         ":params",

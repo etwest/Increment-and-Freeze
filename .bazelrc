@@ -21,7 +21,7 @@ build:debug --copt -fsanitize=leak
 build:debug --linkopt -fsanitize=address
 build:debug --linkopt -fsanitize=undefined 
 build:debug --linkopt -fsanitize=leak
-build:debug --copt -O1
+build:debug --copt -O0
 
 build:fast --copt -DNDEBUG
 

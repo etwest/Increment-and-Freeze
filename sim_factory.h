@@ -10,8 +10,8 @@
 enum CacheSimType {
   OS_TREE,
   OS_SET,
-  IAK,
-  CHUNK_IAK,
+  IAF,
+  CHUNK_IAF,
 };
 
 std::unique_ptr<CacheSim> new_simulator(CacheSimType sim_enum, size_t min_chunk = 65536,
@@ -21,9 +21,9 @@ std::unique_ptr<CacheSim> new_simulator(CacheSimType sim_enum, size_t min_chunk 
       return std::make_unique<OSTCacheSim>();
     case OS_SET:
       return std::make_unique<ContainerCacheSim>();
-    case IAK:
+    case IAF:
       return std::make_unique<IncrementAndFreeze>();
-    case CHUNK_IAK:
+    case CHUNK_IAF:
       if (mem_limit != 0)
         return std::make_unique<IAKWrapper>(min_chunk, mem_limit);
       else

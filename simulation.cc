@@ -91,7 +91,7 @@ SimResult uniform_simulator(CacheSim &sim, uint32_t seed, bool print = false) {
   return {succ, duration};
 }
 
-SimResult simulate_on_seq(CacheSim &sim, std::vector<uint64_t> seq, bool print = false) {
+SimResult simulate_on_seq(CacheSim &sim, std::vector<uint64_t>& seq, bool print = false) {
   auto start = absl::Now();
   for (uint64_t i = 0; i < seq.size(); i++) {
     // access the address
@@ -122,6 +122,7 @@ std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
 
   // now push to sequence vector based upon frequency
   std::vector<uint64_t> seq_vec;
+  seq_vec.reserve(kAccesses);
   for (uint64_t i = 0; i < kIdUniverseSize; i++) {
     uint64_t num_items = round(freq_vec[i] * kAccesses);
     // zipf_hist << i << ":" << num_items << std::endl;
@@ -136,71 +137,82 @@ std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
       seq_vec.push_back(i % kIdUniverseSize);
   }
 
+  seq_vec.resize(kAccesses);
+
   // shuffle the sequence vector
   std::shuffle(seq_vec.begin(), seq_vec.end(), rand);
   // std::cout << "Zipfian sequence memory impact: " << seq_vec.size() * sizeof(uint64_t)/1024/1024 << "MiB" << std::endl;
   return seq_vec;
 }
 
-// Run all workloads and record results
-void run_workloads(CacheSimType sim_enum, size_t minimum_chunk=65536, size_t memory_limit=0) {
+constexpr char ArgumentsString[] = "Arguments: sim, workload, [zipf_alpha]\n\
+sim:        Which simulator to use. One of: 'OS_TREE', 'OS_SET', 'IAF', 'CHUNK_IAF', 'K_LIM_IAF'\n\
+workload:   Which synthetic workload to run. One of: 'uniform', 'zipfian'\n\
+zipf_alpha: If running Zipfian workload then provide the alpha value";
+
+// Run a given system and workload combination
+// print the latency of the workload and the amount of memory used
+// arguments are sim, workload, and zipfian parameter if applicable
+int main(int argc, char** argv) {
+  if (argc < 3 || argc > 4) {
+    std::cerr << "ERROR: Incorrect number of arguments!" << std::endl;
+    std::cerr << ArgumentsString << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  // parse sim argument
   std::unique_ptr<CacheSim> sim;
+  std::string sim_arg = argv[1];
+  if (sim_arg == "OS_TREE")        sim = new_simulator(OS_TREE);
+  else if (sim_arg == "OS_SET")    sim = new_simulator(OS_SET);
+  else if (sim_arg == "IAF")       sim = new_simulator(IAF);
+  else if (sim_arg == "CHUNK_IAF") sim = new_simulator(CHUNK_IAF);
+  else if (sim_arg == "K_LIM_IAF") sim = new_simulator(CHUNK_IAF, 65536, kMemoryLimit);
+  else {
+    std::cerr << "ERROR: Did not recognize simulator: " << sim_arg << std::endl;
+    std::cerr << ArgumentsString << std::endl;
+    exit(EXIT_FAILURE);
+  }
 
-  // Print header
-  switch(sim_enum) {
-    case OS_TREE:
-      std::cout << "Testing OSTree LRU Sim" << std::endl; break;
-    case OS_SET:
-      std::cout << "Testing ContainerCacheSim" << std::endl; break;
-    case IAK:
-      std::cout << "Testing IncrementAndFreeze LRU Sim" << std::endl; break;
-    case CHUNK_IAK:
-      if (memory_limit == 0) {
-        std::cout << "Testing Chunked IAK LRU Sim. Minimum chunk = " << minimum_chunk 
-                << " memory_limit = none" << std::endl; break;
-      } else {
-        std::cout << "Testing Chunked IAK LRU Sim. Minimum chunk = " << minimum_chunk 
-                << " memory_limit = " << memory_limit << std::endl; break;
-      }
-    default:
-      std::cerr << "ERROR: Unrecognized sim_enum!" << std::endl;
+  // parse workload argument and run workload
+  std::string workload_arg = argv[2];
+  SimResult result;
+  size_t memory_usage;
+  if (workload_arg == "uniform") {
+    std::cout << "Uniform" << std::endl;
+    if (argc == 4) std::cerr << "WARNING: Ignoring argument " << argv[3] << std::endl;
+    
+    std::cout << "Running experiment...         \r"; fflush(stdout);
+    result = uniform_simulator(*sim, kSeed);
+    memory_usage = sim->get_memory_usage();
+  } 
+  else if (workload_arg == "zipfian") {
+    if (argc != 4) {
+      std::cerr << "ERROR: No zipfian alpha value provided." << std::endl;
+      std::cerr << ArgumentsString << std::endl;
       exit(EXIT_FAILURE);
+    }
+    std::cout << "Zipfian: " << std::atof(argv[3]) << std::endl;
+    std::cout << "Generating zipfian sequence...\r"; fflush(stdout);
+    std::vector<uint64_t> zipf_seq = generate_zipf(kSeed, std::atof(argv[3]));
+    size_t zipf_seq_mib = zipf_seq.size() * sizeof(uint64_t) / (1024*1024);
+    std::cout << "Running experiment...         \r"; fflush(stdout);
+    result = simulate_on_seq(*sim, zipf_seq);
+
+    assert(zipf_seq_mib < sim->get_memory_usage());
+    memory_usage = sim->get_memory_usage() - zipf_seq_mib;
+  } else {
+    std::cerr << "Did not recognize workload: " << workload_arg << std::endl;
+    std::cerr << ArgumentsString << std::endl;
+    exit(EXIT_FAILURE);
   }
+  std::cout << "                              \r";
+  std::cout << "Latency      = " << result.latency << std::endl;
+  std::cout << "Memory (MiB) = " << memory_usage << std::endl;
 
-  // uniform accesses simulation
-  {
-    sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
-    SimResult result = uniform_simulator(*sim, kSeed);
-    std::cout << "\tUniform Set Latency = " << result.latency << std::endl;
-    std::cout << "\tMemory Usage = " << sim->get_memory_usage() << std::endl;
-  }
-  
-
-  // working set simulation
-  // {
-  //   sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
-  //   SimResult result = working_set_simulator(*sim, kSeed);
-  //   std::cout << "\tWorking Set Latency = " << result.latency << std::endl;
-  //   std::cout << "\tMemory Usage = " << sim->get_memory_usage() << std::endl;
-  // }
-
-  // test with different Zipfian parameters
-  std::vector<double> zipf_exps{0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1, 1.2};
-  for (double exp : zipf_exps) {
-    sim = new_simulator(sim_enum, minimum_chunk, memory_limit);
-    std::vector<uint64_t> zipf_seq = generate_zipf(kSeed, exp);
-    SimResult result = simulate_on_seq(*sim, zipf_seq);
-    std::cout << "\tZipfian, alpha=" << exp << " Latency = "
-              << result.latency << std::endl;
-              std::cout << "\tMemory Usage = " << sim->get_memory_usage() << std::endl;
-  }
-}
-
-int main() {
-  run_workloads(OS_TREE);
-  run_workloads(OS_SET);
-  run_workloads(IAK);
-  run_workloads(CHUNK_IAK);
-  if (kMemoryLimit < kIdUniverseSize)
-    run_workloads(CHUNK_IAK, 65536, kMemoryLimit);
+  // Output results to temporary csv files for integration with bash script
+  std::ofstream latency_csv("tmp_latency.csv", std::ios::app);
+  std::ofstream memory_csv("tmp_memory.csv", std::ios::app);
+  latency_csv << ", " << absl::ToDoubleSeconds(result.latency);
+  memory_csv << ", " << memory_usage;
 }

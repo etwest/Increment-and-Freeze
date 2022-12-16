@@ -13,17 +13,19 @@ void IncrementAndFreeze::memory_access(uint32_t addr) {
 size_t IncrementAndFreeze::populate_operations(
     std::vector<request> &reqs, std::vector<request> *living_req) {
 
-  STARTTIME(sort);
+  STARTTIME(sort_requests);
   // sort requests by request id and then by access_number
   std::sort(reqs.begin(), reqs.end());
-  STOPTIME(sort);
+  STOPTIME(sort_requests);
 
   // Size of operations array is bounded by 2*reqs
   operations.clear();
+  STARTTIME(allocate_ops)
   operations.resize(2*reqs.size());
-  size_t unique_ids = 0;
+  STOPTIME(allocate_ops);
 
-  STARTTIME(populate_ops);
+  STARTTIME(build_op_array);
+  size_t unique_ids = 0;
 #pragma omp parallel reduction(+:unique_ids)
   {
     std::vector<request> living_req_priv;
@@ -68,7 +70,7 @@ size_t IncrementAndFreeze::populate_operations(
   }
   operations.resize(place_idx); // shrink down to remove nulls at end
   memory_usage = sizeof(Op) * operations.size(); // update memory usage of IncrementAndFreeze
-  STOPTIME(populate_ops);
+  STOPTIME(build_op_array);
 
   if (living_req == nullptr)
     return unique_ids;
@@ -89,24 +91,34 @@ size_t IncrementAndFreeze::populate_operations(
 void IncrementAndFreeze::update_hits_vector(std::vector<request>& reqs,
   SuccessVector& hits_vector, std::vector<request> *living_req) {
   STARTTIME(update_hits_vector);
+  STARTTIME(create_operations)
   size_t unique_ids = populate_operations(reqs, living_req);
+  STOPTIME(create_operations);
 
+  STARTTIME(resize_hits_vector);
   // Make sure hits_vector has enough space
   if (hits_vector.size() < unique_ids + 1)
     hits_vector.resize(unique_ids + 1);
+  STOPTIME(resize_hits_vector);
 
   // begin the recursive process
+  STARTTIME(projections);
   ProjSequence init_seq(1, reqs.size(), operations.begin(), operations.size());
 
   // We want to spin up a bunch of threads, but only start with 1.
   // More will be added in by do_projections.
-  STARTTIME(projections);
 #pragma omp parallel
 #pragma omp single
   do_projections(hits_vector, std::move(init_seq));
 
   STOPTIME(projections);
   STOPTIME(update_hits_vector);
+
+  // Print out hits vector for debugging
+  // std::cout << "Hits Vector: ";
+  // for (auto hit : hits_vector)
+  //   std::cout << hit << " ";
+  // std::cout << std::endl;
 }
 
 //recursively (and in parallel) perform all the projections
@@ -118,19 +130,37 @@ void IncrementAndFreeze::do_projections(SuccessVector& hits_vector, ProjSequence
     return;
   }
   else {
-    uint64_t dist = cur.end - cur.start;
-    uint64_t mid = (dist) / 2 + cur.start;
+    uint64_t dist = cur.end - cur.start + 1;
+    double num_partitions = std::min(dist, kIafBranching);
 
-    // generate projected sequence for first half
-    ProjSequence fst_half(cur.start, mid);
-    ProjSequence snd_half(mid + 1, cur.end);
+    // This biased toward making right side projects larger which is good
+    // because they shrink while left gets bigger
+    double split_amount = dist / num_partitions;
+    double fractional_end = cur.end;
+    // std::cout << "distance = " << dist << " partitions = " << num_partitions << " split_amnt = " << split_amount << std::endl;
 
-    cur.partition(fst_half, snd_half);
+    PartitionState state(split_amount, cur.num_ops);
 
+    // split off a portion of the projected sequence
+    ProjSequence remaining_sequence(0,0);
+    for (size_t i = num_partitions - 1; i > 0; i--) {
+      fractional_end -= split_amount;
+      // std::cout << "fractional_end = " << fractional_end << std::endl;
+      assert(fractional_end >= cur.start);
+
+      // split off rightmost portion of current sequence
+      ProjSequence split_sequence(fractional_end + 1, cur.end);
+      remaining_sequence = std::move(ProjSequence(cur.start, fractional_end));
+      cur.partition(remaining_sequence, split_sequence, i, state);
+      cur = std::move(remaining_sequence);
+
+      // create a task to process split off sequence
 #pragma omp task shared(hits_vector) mergeable final(dist <= 8192)
-    do_projections(hits_vector, std::move(fst_half));
+      do_projections(hits_vector, std::move(split_sequence));
+    }
 
-    do_projections(hits_vector, std::move(snd_half));
+    // process remaining projected sequence
+    do_projections(hits_vector, std::move(cur));
   }
 }
 
@@ -146,18 +176,23 @@ void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence c
       case Prefix:
         for (uint64_t j = cur.start; j <= op.get_target(); j++)
           local_distances[j - cur.start] += op.get_inc_amnt();
-
         break;
+
       case Postfix:
         for (uint64_t j = std::max(op.get_target(), cur.start); j <= cur.end; j++)
           local_distances[j - cur.start] += op.get_inc_amnt();
 
         // Freeze target by incrementing hits_vector[stack_depth]
         if (op.get_target() != 0) {
+          int hit = local_distances[op.get_target() - cur.start] + full_amnt;
+          // std::cout << "Freezing " << op << " = " << hit << std::endl;
+          assert(hit > 0);
+          assert((size_t)hit < hits_vector.size());
 #pragma omp atomic update
-          hits_vector[local_distances[op.get_target() - cur.start] + full_amnt]++;
+          hits_vector[hit]++;
         }
         break;
+
       default: // Null
         break;
     }
