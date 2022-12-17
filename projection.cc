@@ -69,15 +69,15 @@ void ProjSequence::partition(ProjSequence& left, ProjSequence& right, size_t spl
       //    already applied to this partition
       std::vector<Op>& scratch_stack = partition_scratch_spaces[partition_target];
       assert(scratch_stack.back().is_null());
-      // query for Postfix increments that are full increments in this partition
-      size_t incrs = state.qry_partition_incr(partition_target);
+      
+      // query for Postfix increments that are full increments in this partition and incr them
+      size_t incrs = state.qry_and_upd_partition_incr(partition_target);
       size_t stack_full_incr_sum = scratch_stack.back().get_full_amnt();
       scratch_stack.back() = op;
       scratch_stack.back().add_full(incrs + all_partitions_full_incr - stack_full_incr_sum);
 
-      // 3. Add to all_partitions_full_incr and add increment to applicable partitions
+      // 3. Add to all_partitions_full_incr
       all_partitions_full_incr += op.get_full_amnt();
-      state.upd_partition_incr(partition_target);
 
       // 4. save the amount of full we've already added to target_partition in a new Null op
       scratch_stack.emplace_back(); // add a new empty Null to end of scratch stack
@@ -168,7 +168,7 @@ void ProjSequence::partition(ProjSequence& left, ProjSequence& right, size_t spl
   // The last op in the scratch_stack is a Null that defines the amount we should
   // add to all_partitions_full_incr to define an additional full increment
   Op& back = scratch_stack.back();
-  size_t incrs_to_end = state.qry_partition_incr(split_off_idx - 1);
+  size_t incrs_to_end = state.qry_and_upd_partition_incr(split_off_idx - 1);
   merge_into_idx--;
   op_seq[merge_into_idx].add_full(all_partitions_full_incr + incrs_to_end - back.get_full_amnt());
   scratch_stack.clear();
