@@ -17,15 +17,15 @@
 enum OpType {Prefix=0, Postfix=1, Null=2};
 
 // An IAF operation
-// Due to design of Op, max number of requests to process at once is 2^31
+// Due to design of Op, max number of requests to process at once is 2^63
 class Op {
  private:
-  uint32_t _target = 0;                   // Boundary of operation
-  static constexpr uint32_t inc_amnt = 1; // subrange Increment amount
-  int32_t full_amnt = 0;                  // fullrange Increment amount
+  uint64_t _target = 0;                   // Boundary of operation
+  static constexpr uint64_t inc_amnt = 1; // subrange Increment amount
+  int64_t full_amnt = 0;                  // fullrange Increment amount
 
-  static constexpr uint32_t tmask = 0x7FFFFFFF;
-  static constexpr uint32_t ntmask = ~tmask;
+  static constexpr uint64_t tmask = ~(1l << 63);
+  static constexpr uint64_t ntmask = ~tmask;
   void set_target(const uint32_t& new_target) {
     assert(new_target == (new_target & tmask));
     _target &= ntmask;
@@ -33,7 +33,7 @@ class Op {
   };
   inline void set_type(const OpType& t) {
     _target &= tmask;
-    _target |= ((int)t << 31);
+    _target |= ((int64_t)t << 63);
   };
  public:
   // create an Prefix (if target is 0 -> becomes a Null op)
@@ -82,7 +82,7 @@ class Op {
 
   inline OpType get_type() const {
     if (is_null()) return Null;
-    else return (OpType)(_target >> 31);
+    else return (OpType)(_target >> 63);
   }
   inline bool is_null() const          { return _target == 0; }
   inline uint64_t get_target() const   { return _target & tmask; }
