@@ -18,6 +18,16 @@ cc_binary(
     ]
 )
 
+cc_binary(
+    name = "dump_traces",
+    deps = [
+        ":params",
+    ],
+    srcs = [
+        "dump_traces.cc",
+    ],
+)
+
 cc_library(
     name = "cache_sim",
     hdrs = [

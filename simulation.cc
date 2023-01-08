@@ -47,7 +47,7 @@ struct SimResult {
 //  * print:   If true print out the results of the simulation.
 //  * returns: The success function and time it took to compute.
 SimResult working_set_simulator(CacheSim &sim, uint32_t seed, bool print = false) {
-  std::mt19937 rand(seed);  // create random number generator
+  std::mt19937_64 rand(seed);  // create random number generator
   auto start = absl::Now();
   for (uint64_t i = 0; i < kAccesses; i++) {
     // compute the next address
@@ -73,7 +73,7 @@ SimResult working_set_simulator(CacheSim &sim, uint32_t seed, bool print = false
 }
 
 SimResult uniform_simulator(CacheSim &sim, uint32_t seed, bool print = false) {
-  std::mt19937 rand(seed); // create random number generator
+  std::mt19937_64 rand(seed); // create random number generator
   auto start = absl::Now();
   for (uint64_t i = 0; i < kAccesses; i++) {
     // compute the next address
@@ -108,8 +108,9 @@ SimResult simulate_on_seq(CacheSim &sim, std::vector<uint64_t>& seq, bool print 
 
 std::vector<uint64_t> generate_zipf(uint32_t seed, double alpha) {
   // std::ofstream zipf_hist("Zipf_hist_" + std::to_string(alpha) + ".data");
-  std::mt19937 rand(seed); // create random number generator
+  std::mt19937_64 rand(seed); // create random number generator
   std::vector<double> freq_vec;
+  freq_vec.reserve(kIdUniverseSize);
   // generate the divisor
   double divisor = 0;
   for (uint64_t i = 1; i < kIdUniverseSize + 1; i++) {
