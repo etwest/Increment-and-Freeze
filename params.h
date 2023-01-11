@@ -14,7 +14,7 @@ constexpr uint64_t kMemoryLimit    = 8'000'000;   // memory limit -- depth vecto
 
 // IncrementAndFreeze parameters
 constexpr size_t kIafBaseCase      = 256;         // Base case size for IAF algorithm
-constexpr size_t kIafBranching     = 8;           // Fanout of each recursive node in 'tree'
+constexpr size_t kIafBranching     = 16;           // Fanout of each recursive node in 'tree'
 
 // params for the representative workload
 constexpr uint64_t kWorkingSet = 50'000; // number of commonly accessed addresses
