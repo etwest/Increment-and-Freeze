@@ -26,7 +26,7 @@ class Op {
 
   static constexpr uint64_t tmask = ~(1l << 63);
   static constexpr uint64_t ntmask = ~tmask;
-  void set_target(const uint32_t& new_target) {
+  void set_target(const uint64_t& new_target) {
     assert(new_target == (new_target & tmask));
     _target &= ntmask;
     _target |= new_target;

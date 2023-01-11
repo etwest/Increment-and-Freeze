@@ -6,8 +6,8 @@
 
 #include "params.h"
 
-void IncrementAndFreeze::memory_access(uint32_t addr) {
-  requests.push_back({addr, (uint32_t) requests.size() + 1});
+void IncrementAndFreeze::memory_access(uint64_t addr) {
+  requests.push_back({addr, (uint64_t) requests.size() + 1});
 }
 
 size_t IncrementAndFreeze::populate_operations(
@@ -165,7 +165,7 @@ void IncrementAndFreeze::do_projections(SuccessVector& hits_vector, ProjSequence
 }
 
 void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence cur) {
-  int32_t full_amnt = 0;
+  int64_t full_amnt = 0;
   size_t local_distances[kIafBaseCase];
   std::fill(local_distances, local_distances+kIafBaseCase, 0);
 

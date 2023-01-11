@@ -7,7 +7,7 @@
 
 #include "params.h"
 
-void uniform_trace(std::ofstream& out, uint32_t seed) {
+void uniform_trace(std::ofstream& out, uint64_t seed) {
   std::vector<uint64_t> ret;
   ret.reserve(kAccesses);
   std::mt19937_64 rand(seed);
@@ -15,7 +15,7 @@ void uniform_trace(std::ofstream& out, uint32_t seed) {
     out << rand() % kIdUniverseSize << std::endl;
 }
 
-void zipfian_trace(std::ofstream& out, uint32_t seed, double alpha) {
+void zipfian_trace(std::ofstream& out, uint64_t seed, double alpha) {
   std::mt19937_64 rand(seed); // create random number generator
   std::vector<double> freq_vec;
   freq_vec.reserve(kIdUniverseSize);

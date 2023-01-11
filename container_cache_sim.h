@@ -31,7 +31,7 @@ class ContainerCacheSim : public CacheSim {
    * virtual_addr:   the virtual address to access
    * returns         nothing
    */
-  void memory_access(uint32_t addr);
+  void memory_access(uint64_t addr);
 
   /*
    * Moves a page with a given timestamp to the front of the queue

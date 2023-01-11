@@ -3,7 +3,7 @@
 #include <utility>
 
 // perform a memory access and use the LRU_queue to update the success function
-void OSTCacheSim::memory_access(uint32_t addr) {
+void OSTCacheSim::memory_access(uint64_t addr) {
   uint64_t ts = access_number++;
 
   // attempt to find the addr in the OSTree
@@ -45,7 +45,7 @@ CacheSim::SuccessVector OSTCacheSim::get_success_function() {
   // build vector to return based upon the number of unique pages accessed
   // we index this vector by 1 so make it one larger
   CacheSim::SuccessVector success(page_hits.size()+1);
-  for (uint32_t page = 0; page < page_hits.size(); page++) {
+  for (uint64_t page = 0; page < page_hits.size(); page++) {
     nhits += page_hits[page];
     success[page+1] = nhits;  // faults at given size is sum of self and bigger
   }
