@@ -60,3 +60,4 @@ setup_expr "Chunk'd - K_LIM"
 ./bazel-bin/sim K_LIM_IAF uniform
 zipfian_exprs K_LIM_IAF
 finalize_expr
+
