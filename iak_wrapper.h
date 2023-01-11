@@ -34,7 +34,7 @@ class IAKWrapper : public CacheSim {
 
   public:
     // Logs a memory access to simulate. The order this function is called in matters.
-    void memory_access(uint32_t addr);
+    void memory_access(uint64_t addr);
     
     /* Returns the success function after processing requests in the current chunk.
      * Does some work, up to u log u depending on the number of unprocessed requests.

@@ -34,7 +34,7 @@ class CacheSim {
   uint64_t access_number = 1; // simulated timestamp
   size_t memory_usage = 0;    // memory usage of the cache sim
  public:
-  using SuccessVector = std::vector<uint32_t>;
+  using SuccessVector = std::vector<uint64_t>;
 
   CacheSim() = default;
   virtual ~CacheSim() = default;
@@ -43,7 +43,7 @@ class CacheSim {
    * addr:    the id to access 
    * returns  nothing
    */
-  virtual void memory_access(uint32_t addr) = 0;
+  virtual void memory_access(uint64_t addr) = 0;
 
   virtual SuccessVector get_success_function() = 0;
 

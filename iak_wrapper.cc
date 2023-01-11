@@ -11,8 +11,8 @@
 #include "increment_and_freeze.h"
 #include "params.h"
 
-void IAKWrapper::memory_access(uint32_t addr) {
-  chunk_input.requests.push_back({addr, (uint32_t) chunk_input.requests.size() + 1});
+void IAKWrapper::memory_access(uint64_t addr) {
+  chunk_input.requests.push_back({addr, (uint64_t) chunk_input.requests.size() + 1});
 
   if (chunk_input.requests.size() >= get_u()) {
     // std::cout << "requests chunk array:" << std::endl;
