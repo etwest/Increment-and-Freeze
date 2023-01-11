@@ -75,13 +75,23 @@ SimResult working_set_simulator(CacheSim &sim, uint64_t seed, bool print = false
 SimResult uniform_simulator(CacheSim &sim, uint64_t seed, bool print = false) {
   std::mt19937_64 rand(seed); // create random number generator
   auto start = absl::Now();
+  std::cout << "Performing Accesses...  0%       \r"; fflush(stdout);
+  size_t tenth_percent = kAccesses / 1000;
+  size_t last_print = 0;
+  size_t cur_tenth = 0;
   for (uint64_t i = 0; i < kAccesses; i++) {
+    if (i - last_print > tenth_percent) {
+      cur_tenth += 1;
+      std::cout << "Performing Accesses...  " << (float)cur_tenth/10 << "%        \r"; fflush(stdout);
+      last_print = i;
+    }
     // compute the next address
     uint64_t addr = rand() % kIdUniverseSize;
 
     // access the address
     sim.memory_access(addr);
   }
+  std::cout << "Getting Success Function...       \r"; fflush(stdout);
   CacheSim::SuccessVector succ = sim.get_success_function();
   auto duration = absl::Now() - start;
   if (print) {
@@ -93,10 +103,20 @@ SimResult uniform_simulator(CacheSim &sim, uint64_t seed, bool print = false) {
 
 SimResult simulate_on_seq(CacheSim &sim, std::vector<uint64_t>& seq, bool print = false) {
   auto start = absl::Now();
+  std::cout << "Performing Accesses...  0%       \r"; fflush(stdout);
+  size_t tenth_percent = kAccesses / 1000;
+  size_t last_print = 0;
+  size_t cur_tenth = 0;
   for (uint64_t i = 0; i < seq.size(); i++) {
+    if (i - last_print > tenth_percent) {
+      cur_tenth += 1;
+      std::cout << "Performing Accesses...  " << (float)cur_tenth/10 << "%        \r"; fflush(stdout);
+      last_print = i;
+    }
     // access the address
     sim.memory_access(seq[i]);
   }
+  std::cout << "Getting Success Function...       \r"; fflush(stdout);
   CacheSim::SuccessVector succ = sim.get_success_function();
   auto duration = absl::Now() - start;
   if (print) {
@@ -182,8 +202,7 @@ int main(int argc, char** argv) {
   if (workload_arg == "uniform") {
     std::cout << "Uniform" << std::endl;
     if (argc == 4) std::cerr << "WARNING: Ignoring argument " << argv[3] << std::endl;
-    
-    std::cout << "Running experiment...         \r"; fflush(stdout);
+
     result = uniform_simulator(*sim, kSeed);
     memory_usage = sim->get_memory_usage();
   } 
@@ -194,10 +213,9 @@ int main(int argc, char** argv) {
       exit(EXIT_FAILURE);
     }
     std::cout << "Zipfian: " << std::atof(argv[3]) << std::endl;
-    std::cout << "Generating zipfian sequence...\r"; fflush(stdout);
+    std::cout << "Generating zipfian sequence...";
     std::vector<uint64_t> zipf_seq = generate_zipf(kSeed, std::atof(argv[3]));
     size_t zipf_seq_mib = zipf_seq.size() * sizeof(uint64_t) / (1024*1024);
-    std::cout << "Running experiment...         \r"; fflush(stdout);
     result = simulate_on_seq(*sim, zipf_seq);
 
     assert(zipf_seq_mib < sim->get_memory_usage());
