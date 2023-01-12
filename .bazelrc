@@ -34,7 +34,7 @@ build:debug32bit --copt -O0
 build:debug32bit --copt -DADDR_BIT32
 
 build:fast --copt -DNDEBUG
-
+build:fast32bit --copt -DNDEBUG
 build:fast32bit --copt -DADDR_BIT32
 
 build:perftest --copt -DDEBUG_PERF
