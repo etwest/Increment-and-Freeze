@@ -17,9 +17,9 @@
  */
 class OSTCacheSim : public CacheSim {
  private:
-  std::vector<uint64_t> page_hits;  // vector used to construct success function
+  std::vector<req_count_t> page_hits;  // vector used to construct success function
   OSTreeHead LRU_queue;             // order statistics tree for LRU depth
-  std::unordered_map<uint64_t, uint64_t> page_table;  // map from v_addr to ts
+  std::unordered_map<req_count_t, uint64_t> page_table;  // map from v_addr to ts
  public:
   OSTCacheSim() = default;
   ~OSTCacheSim() = default;
@@ -31,7 +31,7 @@ class OSTCacheSim : public CacheSim {
    * virtual_addr:   the virtual address to access
    * returns         nothing
    */
-  void memory_access(uint64_t addr);
+  void memory_access(req_count_t addr);
 
   /*
    * Moves a page with a given timestamp to the front of the queue
@@ -40,7 +40,7 @@ class OSTCacheSim : public CacheSim {
    * new_ts:   the timestamp of the access
    * returns   the rank of the page with old_ts in the LRU_queue
    */
-  size_t move_front_queue(uint64_t old_ts, uint64_t new_ts);
+  uint64_t move_front_queue(uint64_t old_ts, uint64_t new_ts);
 
   /*
    * Get the success function. The success function gives the number of

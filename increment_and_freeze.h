@@ -20,21 +20,21 @@
 class IncrementAndFreeze: public CacheSim {
  public:
   struct request {
-    uint64_t addr;
-    uint64_t access_number;
+    req_count_t addr;
+    req_count_t access_number;
 
     inline bool operator< (request oth) const {
       return addr < oth.addr || (addr == oth.addr && access_number < oth.access_number);
     }
 
     request() = default;
-    request(uint64_t a, uint64_t n) : addr(a), access_number(n) {}
+    request(req_count_t a, req_count_t n) : addr(a), access_number(n) {}
   };
-  static_assert(sizeof(request) == 2*sizeof(uint64_t));
+  static_assert(sizeof(request) == 2*sizeof(req_count_t));
 
   struct ChunkOutput {
     std::vector<request> living_requests;
-    std::vector<uint64_t> hits_vector;
+    std::vector<req_count_t> hits_vector;
   };
 
   struct ChunkInput {
@@ -53,31 +53,31 @@ class IncrementAndFreeze: public CacheSim {
    * Precondition: requests must be properly populated.
    * Returns: number of unique ids in requests
    */
-  size_t populate_operations(std::vector<request> &req, std::vector<request> *living_req);
+  req_count_t populate_operations(std::vector<request> &req, std::vector<request> *living_req);
 
   /* Helper function for update_hits_vector
    * Recursively (and in parallel) populates the distance vector if the
    * projection is small enough, or calls itself with smaller projections otherwise.
    */
-  void do_projections(std::vector<uint64_t>& distance_vector, ProjSequence seq);
+  void do_projections(std::vector<req_count_t>& distance_vector, ProjSequence seq);
  
   /*
    * Helper function for solving a projected sequence using the brute force algorithm
    * This takes time O(n^2) but requires no recursion or other overheads. Thus, we can
    * use it to solve larger ProjSequences.
    */
-  void do_base_case(std::vector<uint64_t>& distance_vector, ProjSequence seq);
+  void do_base_case(std::vector<req_count_t>& distance_vector, ProjSequence seq);
 
   /*
    * Update a hits vector with the stack depths of the memory requests found in reqs
    * reqs:        vector of memory requests to update the hits vector with
    * hits_vector: A hits vector indicates the number of requests that required a given memory amount
    */
-  void update_hits_vector(std::vector<request>& reqs, std::vector<uint64_t>& hits_vector,
+  void update_hits_vector(std::vector<request>& reqs, std::vector<req_count_t>& hits_vector,
                           std::vector<request> *living_req=nullptr);
  public:
   // Logs a memory access to simulate. The order this function is called in matters.
-  void memory_access(uint64_t addr);
+  void memory_access(req_count_t addr);
   /* Returns the success function.
    * Does *a lot* of work.
    * When calling print_success_function, the answer is re-computed.

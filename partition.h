@@ -17,7 +17,7 @@
 // State that is persisted between calls to partition() at a single node in recursion tree.
 class PartitionState {
  private:
-  std::array<size_t, kIafBranching> incr_array{};
+  std::array<req_count_t, kIafBranching> incr_array{};
   static constexpr size_t incr_tree_depth = log2(kIafBranching);
 
  public:
@@ -45,18 +45,18 @@ class PartitionState {
   // [partition_target+1, kIafBranching)
   // We represent this tree with the trick that root index = 0
   // left child = cur*2 + 1, right child = cur*2 + 2
-  inline size_t qry_and_upd_partition_incr(size_t partition_target) {
+  inline req_count_t qry_and_upd_partition_incr(req_count_t partition_target) {
     assert(partition_target < kIafBranching-1);
     size_t depth_shift = incr_tree_depth - 1;
     size_t idx = 0;
-    size_t sum = 0;
+    req_count_t sum = 0;
 
     for (size_t depth = 0; depth < incr_tree_depth; depth++) {
       assert(idx < kIafBranching);
       // if 0 go left, if 1 go right
       size_t leftright = (partition_target & (1 << depth_shift)) >> depth_shift;
-      incr_array[idx] += leftright ^ 1;                 // if go left add to tree node value
-      sum += incr_array[idx] & ((size_t)0 - leftright); // if go right add to sum
+      incr_array[idx] += leftright ^ 1;                      // if go left add to tree node value
+      sum += incr_array[idx] & ((req_count_t)0 - leftright); // if go right add to sum
 
       idx = 2*idx + leftright + 1;
       --depth_shift;

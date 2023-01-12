@@ -11,8 +11,8 @@
 #include "increment_and_freeze.h"
 #include "params.h"
 
-void IAKWrapper::memory_access(uint64_t addr) {
-  chunk_input.requests.push_back({addr, (uint64_t) chunk_input.requests.size() + 1});
+void IAKWrapper::memory_access(req_count_t addr) {
+  chunk_input.requests.push_back({addr, (req_count_t) chunk_input.requests.size() + 1});
 
   if (chunk_input.requests.size() >= get_u()) {
     // std::cout << "requests chunk array:" << std::endl;
@@ -95,9 +95,9 @@ CacheSim::SuccessVector IAKWrapper::get_success_function() {
   }
 
   // TODO: parallel prefix sum for integrating
-  uint64_t running_count = 0;
+  size_t running_count = 0;
   CacheSim::SuccessVector success_func(chunk_input.output.hits_vector.size());
-  for (uint64_t i = 1; i < chunk_input.output.hits_vector.size(); i++) {
+  for (size_t i = 1; i < chunk_input.output.hits_vector.size(); i++) {
     running_count += chunk_input.output.hits_vector[i];
     success_func[i] = running_count;
   }

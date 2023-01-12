@@ -20,26 +20,26 @@ class PartitionState;
 class ProjSequence {
  public:
   std::vector<Op>::iterator op_seq; // iterator to beginning of operations sequence
-  size_t num_ops;                   // number of operations in this projection
+  req_count_t num_ops;                   // number of operations in this projection
 
   // Request sequence range
-  uint64_t start;
-  uint64_t end;
+  req_count_t start;
+  req_count_t end;
   
   // Initialize an empty projection with bounds (to be filled in by partition)
-  ProjSequence(uint64_t start, uint64_t end) : start(start), end(end) {};
+  ProjSequence(req_count_t start, req_count_t end) : start(start), end(end) {};
 
   // Init a projection with bounds and iterators
-  ProjSequence(uint64_t start, uint64_t end, std::vector<Op>::iterator op_seq, size_t num_ops) : 
+  ProjSequence(req_count_t start, req_count_t end, std::vector<Op>::iterator op_seq, req_count_t num_ops) : 
    op_seq(op_seq), num_ops(num_ops), start(start), end(end) {};
 
-  void partition(ProjSequence& left, ProjSequence& right, size_t split_off_idx, PartitionState& state);
+  void partition(ProjSequence& left, ProjSequence& right, req_count_t split_off_idx, PartitionState& state);
 
   friend std::ostream& operator<<(std::ostream& os, const ProjSequence& seq) {
     os << "start = " << seq.start << " end = " << seq.end << std::endl;
     os << "num_ops = " << seq.num_ops << std::endl;
     os << "Operations: ";
-    for (size_t i = 0; i < seq.num_ops; i++)
+    for (req_count_t i = 0; i < seq.num_ops; i++)
       os << seq.op_seq[i] << " ";
     return os;
   }

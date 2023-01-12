@@ -21,8 +21,14 @@ inline uint8_t _depth = 0;
 #define STOPTIME(X)  
 #endif //DEBUG_PERF
 
+// number of bits needed to specify number of requests
+#ifdef ADDR_BIT32
+typedef uint32_t req_count_t;
+#else
+typedef uint64_t req_count_t;
+#endif
 
-inline uint64_t get_max_mem_used()
+inline size_t get_max_mem_used()
 {
   struct rusage data;
   getrusage(RUSAGE_SELF, &data);
@@ -34,7 +40,7 @@ class CacheSim {
   uint64_t access_number = 1; // simulated timestamp
   size_t memory_usage = 0;    // memory usage of the cache sim
  public:
-  using SuccessVector = std::vector<uint64_t>;
+  using SuccessVector = std::vector<req_count_t>;
 
   CacheSim() = default;
   virtual ~CacheSim() = default;
@@ -43,7 +49,7 @@ class CacheSim {
    * addr:    the id to access 
    * returns  nothing
    */
-  virtual void memory_access(uint64_t addr) = 0;
+  virtual void memory_access(req_count_t addr) = 0;
 
   virtual SuccessVector get_success_function() = 0;
 

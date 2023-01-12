@@ -76,13 +76,13 @@ SimResult uniform_simulator(CacheSim &sim, uint64_t seed, bool print = false) {
   std::mt19937_64 rand(seed); // create random number generator
   auto start = absl::Now();
   std::cout << "Performing Accesses...  0%       \r"; fflush(stdout);
-  size_t tenth_percent = kAccesses / 1000;
+  size_t half_percent = kAccesses / 200;
   size_t last_print = 0;
   size_t cur_tenth = 0;
   for (uint64_t i = 0; i < kAccesses; i++) {
-    if (i - last_print > tenth_percent) {
+    if (i - last_print > half_percent) {
       cur_tenth += 1;
-      std::cout << "Performing Accesses...  " << (float)cur_tenth/10 << "%        \r"; fflush(stdout);
+      std::cout << "Performing Accesses...  " << (float)cur_tenth/2 << "%        \r"; fflush(stdout);
       last_print = i;
     }
     // compute the next address
@@ -104,13 +104,13 @@ SimResult uniform_simulator(CacheSim &sim, uint64_t seed, bool print = false) {
 SimResult simulate_on_seq(CacheSim &sim, std::vector<uint64_t>& seq, bool print = false) {
   auto start = absl::Now();
   std::cout << "Performing Accesses...  0%       \r"; fflush(stdout);
-  size_t tenth_percent = kAccesses / 1000;
+  size_t half_percent = kAccesses / 200;
   size_t last_print = 0;
   size_t cur_tenth = 0;
   for (uint64_t i = 0; i < seq.size(); i++) {
-    if (i - last_print > tenth_percent) {
+    if (i - last_print > half_percent) {
       cur_tenth += 1;
-      std::cout << "Performing Accesses...  " << (float)cur_tenth/10 << "%        \r"; fflush(stdout);
+      std::cout << "Performing Accesses...  " << (float)cur_tenth/2 << "%        \r"; fflush(stdout);
       last_print = i;
     }
     // access the address

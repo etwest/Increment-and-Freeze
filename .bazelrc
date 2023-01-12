@@ -23,7 +23,19 @@ build:debug --linkopt -fsanitize=undefined
 build:debug --linkopt -fsanitize=leak
 build:debug --copt -O0
 
+build:debug32bit --copt -fno-omit-frame-pointer
+build:debug32bit --copt -fsanitize=address
+build:debug32bit --copt -fsanitize=undefined
+build:debug32bit --copt -fsanitize=leak
+build:debug32bit --linkopt -fsanitize=address
+build:debug32bit --linkopt -fsanitize=undefined 
+build:debug32bit --linkopt -fsanitize=leak
+build:debug32bit --copt -O0
+build:debug32bit --copt -DADDR_BIT32
+
 build:fast --copt -DNDEBUG
+
+build:fast32bit --copt -DADDR_BIT32
 
 build:perftest --copt -DDEBUG_PERF
 build:perftest --copt -DNDEBUG

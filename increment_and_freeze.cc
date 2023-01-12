@@ -6,12 +6,14 @@
 
 #include "params.h"
 
-void IncrementAndFreeze::memory_access(uint64_t addr) {
-  requests.push_back({addr, (uint64_t) requests.size() + 1});
+void IncrementAndFreeze::memory_access(req_count_t addr) {
+  requests.push_back({addr, (req_count_t) requests.size() + 1});
 }
 
-size_t IncrementAndFreeze::populate_operations(
+req_count_t IncrementAndFreeze::populate_operations(
     std::vector<request> &reqs, std::vector<request> *living_req) {
+
+  reqs.resize(reqs.size()); // get rid of empty requests to save memory
 
   STARTTIME(sort_requests);
   // sort requests by request id and then by access_number
@@ -25,12 +27,12 @@ size_t IncrementAndFreeze::populate_operations(
   STOPTIME(allocate_ops);
 
   STARTTIME(build_op_array);
-  size_t unique_ids = 0;
+  req_count_t unique_ids = 0;
 #pragma omp parallel reduction(+:unique_ids)
   {
     std::vector<request> living_req_priv;
 #pragma omp for nowait // nowait removes the barrier, so the critical copying can happen ASAP
-    for (uint64_t i = 0; i < reqs.size(); i++) {
+    for (req_count_t i = 0; i < reqs.size(); i++) {
       auto [addr, access_num] = reqs[i];
       auto [last_addr, last_access_num] = i == 0 ? request(0, 0): reqs[i-1];
 
@@ -61,8 +63,8 @@ size_t IncrementAndFreeze::populate_operations(
     }
   }
   // Compact operations vector
-  size_t place_idx = 1;
-  for (size_t cur_idx = 1; cur_idx < operations.size(); cur_idx++) {
+  req_count_t place_idx = 1;
+  for (req_count_t cur_idx = 1; cur_idx < operations.size(); cur_idx++) {
     if (!operations[cur_idx].is_null()) {
       operations[place_idx] = operations[cur_idx];
       place_idx++;
@@ -92,7 +94,7 @@ void IncrementAndFreeze::update_hits_vector(std::vector<request>& reqs,
   SuccessVector& hits_vector, std::vector<request> *living_req) {
   STARTTIME(update_hits_vector);
   STARTTIME(create_operations)
-  size_t unique_ids = populate_operations(reqs, living_req);
+  req_count_t unique_ids = populate_operations(reqs, living_req);
   STOPTIME(create_operations);
 
   STARTTIME(resize_hits_vector);
@@ -130,8 +132,8 @@ void IncrementAndFreeze::do_projections(SuccessVector& hits_vector, ProjSequence
     return;
   }
   else {
-    uint64_t dist = cur.end - cur.start + 1;
-    double num_partitions = std::min(dist, kIafBranching);
+    req_count_t dist = cur.end - cur.start + 1;
+    double num_partitions = std::min(dist, (req_count_t) kIafBranching);
 
     // This biased toward making right side projects larger which is good
     // because they shrink while left gets bigger
@@ -169,17 +171,17 @@ void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence c
   size_t local_distances[kIafBaseCase];
   std::fill(local_distances, local_distances+kIafBaseCase, 0);
 
-  for (uint64_t i = 0; i < cur.num_ops; i++) {
+  for (req_count_t i = 0; i < cur.num_ops; i++) {
     Op &op = cur.op_seq[i];
 
     switch(op.get_type()) {
       case Prefix:
-        for (uint64_t j = cur.start; j <= op.get_target(); j++)
+        for (req_count_t j = cur.start; j <= op.get_target(); j++)
           local_distances[j - cur.start] += op.get_inc_amnt();
         break;
 
       case Postfix:
-        for (uint64_t j = std::max(op.get_target(), cur.start); j <= cur.end; j++)
+        for (req_count_t j = std::max(op.get_target(), cur.start); j <= cur.end; j++)
           local_distances[j - cur.start] += op.get_inc_amnt();
 
         // Freeze target by incrementing hits_vector[stack_depth]
@@ -211,8 +213,8 @@ CacheSim::SuccessVector IncrementAndFreeze::get_success_function() {
 
   STARTTIME(sequential_prefix_sum);
   // integrate to convert to success function
-  uint64_t running_count = 0;
-  for (uint64_t i = 1; i < success.size(); i++) {
+  req_count_t running_count = 0;
+  for (req_count_t i = 1; i < success.size(); i++) {
     running_count += success[i];
     success[i] = running_count;
   }

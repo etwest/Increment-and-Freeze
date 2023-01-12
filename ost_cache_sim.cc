@@ -3,7 +3,7 @@
 #include <utility>
 
 // perform a memory access and use the LRU_queue to update the success function
-void OSTCacheSim::memory_access(uint64_t addr) {
+void OSTCacheSim::memory_access(req_count_t addr) {
   uint64_t ts = access_number++;
 
   // attempt to find the addr in the OSTree
@@ -26,8 +26,8 @@ void OSTCacheSim::memory_access(uint64_t addr) {
 // then insert it back with an updated timestamp.
 // return the rank of the page before updating the timestamp
 // assumes that a page with the old_ts exists in the LRU_queue
-size_t OSTCacheSim::move_front_queue(uint64_t old_ts, uint64_t new_ts) {
-  std::pair<size_t, uint64_t> found = LRU_queue.find(old_ts);
+uint64_t OSTCacheSim::move_front_queue(uint64_t old_ts, uint64_t new_ts) {
+  std::pair<uint64_t, req_count_t> found = LRU_queue.find(old_ts);
 
   LRU_queue.remove(found.first);
   LRU_queue.insert(new_ts, found.second);
@@ -37,7 +37,7 @@ size_t OSTCacheSim::move_front_queue(uint64_t old_ts, uint64_t new_ts) {
 // return the success function by starting at the back of the
 // page_hits vector and summing the elements to the front
 CacheSim::SuccessVector OSTCacheSim::get_success_function() {
-  uint64_t nhits = 0;
+  req_count_t nhits = 0;
 
   // update the memory usage of the OSTreeSim
   memory_usage = LRU_queue.get_weight() * sizeof(OSTree);
@@ -45,7 +45,7 @@ CacheSim::SuccessVector OSTCacheSim::get_success_function() {
   // build vector to return based upon the number of unique pages accessed
   // we index this vector by 1 so make it one larger
   CacheSim::SuccessVector success(page_hits.size()+1);
-  for (uint64_t page = 0; page < page_hits.size(); page++) {
+  for (req_count_t page = 0; page < page_hits.size(); page++) {
     nhits += page_hits[page];
     success[page+1] = nhits;  // faults at given size is sum of self and bigger
   }
