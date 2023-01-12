@@ -12,9 +12,9 @@ constexpr uint64_t kSeed = 298234433;   // seed for the randomness
 // constexpr uint64_t kIdUniverseSize = 268'435'456;   // the total number of unique ids
 // constexpr uint64_t kMemoryLimit    = 67'108'864;    // memory limit -- depth vector size
 
-constexpr uint64_t kAccesses       = 100'000'000; // the number of memory accesses
-constexpr uint64_t kIdUniverseSize = 4'000'000;   // the total number of unique ids
-constexpr uint64_t kMemoryLimit    = 1'500'000;   // memory limit -- depth vector size
+constexpr uint64_t kAccesses       = 500'000'000; // the number of memory accesses
+constexpr uint64_t kIdUniverseSize = 20'000'000;  // the total number of unique ids
+constexpr uint64_t kMemoryLimit    = 8'000'000;   // memory limit -- depth vector size
 
 // IncrementAndFreeze parameters
 constexpr size_t kIafBaseCase      = 256;         // Base case size for IAF algorithm
