@@ -1,8 +1,9 @@
 #ifndef ONLINE_CACHE_SIMULATOR_CACHE_SIM_H_
 #define ONLINE_CACHE_SIMULATOR_CACHE_SIM_H_
 
-#include <iostream>
-#include <vector>
+#include <iostream>     // std::ostream, std::endl
+#include <vector>       // vector
+#include <iomanip>      // std::setw
 
 #include "absl/time/clock.h"
 
@@ -28,16 +29,19 @@ typedef uint32_t req_count_t;
 typedef uint64_t req_count_t;
 #endif
 
-inline size_t get_max_mem_used()
-{
+static inline double get_max_mem_used() {
   struct rusage data;
   getrusage(RUSAGE_SELF, &data);
-  return data.ru_maxrss;
+  return (double) data.ru_maxrss / 1024.0;
+}
+
+static inline double percent(double val, double total) {
+  return round((val / total) * 1000000) / 10000;
 }
 
 class CacheSim {
  protected:
-  uint64_t access_number = 1; // simulated timestamp
+  uint64_t access_number = 1; // simulated timestamp and number of total requests
   size_t memory_usage = 0;    // memory usage of the cache sim
  public:
   using SuccessVector = std::vector<req_count_t>;
@@ -52,14 +56,24 @@ class CacheSim {
   virtual void memory_access(req_count_t addr) = 0;
 
   virtual SuccessVector get_success_function() = 0;
+  
+  double get_memory_usage() { return get_max_mem_used(); }
 
-  void print_success_function() {
-    // TODO: This is too verbose for real data.
-    SuccessVector func = get_success_function();
-    for (size_t page = 1; page < func.size(); page++)
-      std::cout << page << ": " << func[page] << std::endl;
+  void dump_success_function(std::ostream& os, SuccessVector succ, size_t sample_rate=1) {
+    assert(sample_rate < succ.size());
+    size_t total_requests = access_number - 1;
+    os << "#" << std::setw(15) << "Cache Size" << std::setw(16) 
+       << "Hits" << std::setw(16) << "Hit Rate" << std::endl;
+    for (size_t page = 1; page < succ.size(); page+=sample_rate) {
+      os << std::setw(16) << page << std::setw(16) << succ[page]
+         << std::setw(16) << percent(succ[page], total_requests) << "%" << std::endl;
+    }
+
+    // Finally dump the number of forced misses
+    size_t misses = total_requests - succ[succ.size() - 1];
+    os << std::setw(16) <<"Misses" << std::setw(16) << misses 
+       << std::setw(16) << percent(misses, total_requests) << "%" << std::endl;
   }
-  size_t get_memory_usage() { return get_max_mem_used() / 1024; }
 };
 
 #endif  // ONLINE_CACHE_SIMULATOR_INCLUDE_CACHE_SIM_H_

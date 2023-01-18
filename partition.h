@@ -10,7 +10,7 @@
 #include <array>        // for array
 #include <cmath>        // for ceil
 
-#include "params.h"     // for kIafBranching
+#include "iaf_params.h" // for kIafBranching
 #include "op.h"         // for op
 #include "projection.h" // for ProjSequence
 

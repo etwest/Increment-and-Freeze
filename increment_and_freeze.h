@@ -10,7 +10,7 @@
 #include <array>        // for array
 #include <cmath>        // for ceil
 
-#include "params.h"     // for kIafBranching
+#include "iaf_params.h" // for kIafBranching
 #include "cache_sim.h"  // for CacheSim
 #include "op.h"         // for op
 #include "partition.h"  // for partitionstate

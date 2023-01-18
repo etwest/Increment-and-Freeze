@@ -9,7 +9,7 @@
 #include <vector>      // for vector, vector<>::iterator
 
 #include "cache_sim.h"  // for CacheSim
-#include "params.h"     // for kIafBranching
+#include "iaf_params.h" // for kIafBranching
 
 #ifdef ADDR_BIT32
 typedef int32_t sign_req_count_t;

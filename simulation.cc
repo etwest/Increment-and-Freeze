@@ -46,7 +46,7 @@ struct SimResult {
 //  * seed:    The seed to the random number generator.
 //  * print:   If true print out the results of the simulation.
 //  * returns: The success function and time it took to compute.
-SimResult working_set_simulator(CacheSim &sim, uint64_t seed, bool print = false) {
+SimResult working_set_simulator(CacheSim &sim, uint64_t seed) {
   std::mt19937_64 rand(seed);  // create random number generator
   auto start = absl::Now();
   for (uint64_t i = 0; i < kAccesses; i++) {
@@ -65,14 +65,10 @@ SimResult working_set_simulator(CacheSim &sim, uint64_t seed, bool print = false
   }
   CacheSim::SuccessVector succ = sim.get_success_function();
   auto duration = absl::Now() - start;
-  if (print) {
-    std::cout << "Success function: " << std::endl;
-    sim.print_success_function();
-  }
   return {succ, duration};
 }
 
-SimResult uniform_simulator(CacheSim &sim, uint64_t seed, bool print = false) {
+SimResult uniform_simulator(CacheSim &sim, uint64_t seed) {
   std::mt19937_64 rand(seed); // create random number generator
   auto start = absl::Now();
   std::cout << "Performing Accesses...  0%       \r"; fflush(stdout);
@@ -94,14 +90,10 @@ SimResult uniform_simulator(CacheSim &sim, uint64_t seed, bool print = false) {
   std::cout << "Getting Success Function...       \r"; fflush(stdout);
   CacheSim::SuccessVector succ = sim.get_success_function();
   auto duration = absl::Now() - start;
-  if (print) {
-    std::cout << "Success function: " << std::endl;
-    sim.print_success_function();
-  }
   return {succ, duration};
 }
 
-SimResult simulate_on_seq(CacheSim &sim, std::vector<uint64_t>& seq, bool print = false) {
+SimResult simulate_on_seq(CacheSim &sim, std::vector<uint64_t>& seq) {
   auto start = absl::Now();
   std::cout << "Performing Accesses...  0%       \r"; fflush(stdout);
   size_t half_percent = kAccesses / 200;
@@ -119,10 +111,6 @@ SimResult simulate_on_seq(CacheSim &sim, std::vector<uint64_t>& seq, bool print 
   std::cout << "Getting Success Function...       \r"; fflush(stdout);
   CacheSim::SuccessVector succ = sim.get_success_function();
   auto duration = absl::Now() - start;
-  if (print) {
-    std::cout << "Success function: " << std::endl;
-    sim.print_success_function();
-  }
   return {succ, duration};
 }
 
@@ -166,8 +154,9 @@ std::vector<uint64_t> generate_zipf(uint64_t seed, double alpha) {
   return seq_vec;
 }
 
-constexpr char ArgumentsString[] = "Arguments: sim, workload, [zipf_alpha]\n\
-sim:        Which simulator to use. One of: 'OS_TREE', 'OS_SET', 'IAF', 'CHUNK_IAF', 'K_LIM_IAF'\n\
+constexpr char ArgumentsString[] = "Arguments: out_file, sim, workload, [zipf_alpha]\n\
+out_file:   The file in which to place the success function.\n\
+sim:        Which simulator to use. One of: 'OS_TREE', 'OS_SET', 'IAF', 'BOUND_IAF', 'K_LIM_IAF'\n\
 workload:   Which synthetic workload to run. One of: 'uniform', 'zipfian'\n\
 zipf_alpha: If running Zipfian workload then provide the alpha value";
 
@@ -175,20 +164,28 @@ zipf_alpha: If running Zipfian workload then provide the alpha value";
 // print the latency of the workload and the amount of memory used
 // arguments are sim, workload, and zipfian parameter if applicable
 int main(int argc, char** argv) {
-  if (argc < 3 || argc > 4) {
+  if (argc < 4 || argc > 5) {
     std::cerr << "ERROR: Incorrect number of arguments!" << std::endl;
+    std::cerr << ArgumentsString << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  // parse output file argument
+  std::ofstream succ_file(argv[1]);
+  if (!succ_file.is_open()) {
+    std::cerr << "ERROR: Could not open out file: " << argv[1] << std::endl;
     std::cerr << ArgumentsString << std::endl;
     exit(EXIT_FAILURE);
   }
 
   // parse sim argument
   std::unique_ptr<CacheSim> sim;
-  std::string sim_arg = argv[1];
+  std::string sim_arg = argv[2];
   if (sim_arg == "OS_TREE")        sim = new_simulator(OS_TREE);
   else if (sim_arg == "OS_SET")    sim = new_simulator(OS_SET);
   else if (sim_arg == "IAF")       sim = new_simulator(IAF);
-  else if (sim_arg == "CHUNK_IAF") sim = new_simulator(CHUNK_IAF);
-  else if (sim_arg == "K_LIM_IAF") sim = new_simulator(CHUNK_IAF, 65536, kMemoryLimit);
+  else if (sim_arg == "BOUND_IAF") sim = new_simulator(BOUND_IAF);
+  else if (sim_arg == "K_LIM_IAF") sim = new_simulator(BOUND_IAF, 65536, kMemoryLimit);
   else {
     std::cerr << "ERROR: Did not recognize simulator: " << sim_arg << std::endl;
     std::cerr << ArgumentsString << std::endl;
@@ -196,25 +193,25 @@ int main(int argc, char** argv) {
   }
 
   // parse workload argument and run workload
-  std::string workload_arg = argv[2];
+  std::string workload_arg = argv[3];
   SimResult result;
-  size_t memory_usage;
+  double memory_usage;
   if (workload_arg == "uniform") {
     std::cout << "Uniform" << std::endl;
-    if (argc == 4) std::cerr << "WARNING: Ignoring argument " << argv[3] << std::endl;
+    if (argc == 5) std::cerr << "WARNING: Ignoring argument " << argv[4] << std::endl;
 
     result = uniform_simulator(*sim, kSeed);
     memory_usage = sim->get_memory_usage();
   } 
   else if (workload_arg == "zipfian") {
-    if (argc != 4) {
+    if (argc != 5) {
       std::cerr << "ERROR: No zipfian alpha value provided." << std::endl;
       std::cerr << ArgumentsString << std::endl;
       exit(EXIT_FAILURE);
     }
-    std::cout << "Zipfian: " << std::atof(argv[3]) << std::endl;
+    std::cout << "Zipfian: " << std::atof(argv[4]) << std::endl;
     std::cout << "Generating zipfian sequence... \r"; fflush(stdout);
-    std::vector<uint64_t> zipf_seq = generate_zipf(kSeed, std::atof(argv[3]));
+    std::vector<uint64_t> zipf_seq = generate_zipf(kSeed, std::atof(argv[4]));
     size_t zipf_seq_mib = zipf_seq.size() * sizeof(uint64_t) / (1024*1024);
     result = simulate_on_seq(*sim, zipf_seq);
 
@@ -234,4 +231,10 @@ int main(int argc, char** argv) {
   std::ofstream memory_csv("tmp_memory.csv", std::ios::app);
   latency_csv << ", " << absl::ToDoubleSeconds(result.latency);
   memory_csv << ", " << memory_usage;
+
+
+  // Output the success function to a file
+  std::cout << "Writing success function...           \r"; fflush(stdout);
+  sim->dump_success_function(succ_file, result.success);
+  std::cout << "                                      \r"; fflush(stdout);
 }

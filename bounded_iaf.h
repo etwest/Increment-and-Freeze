@@ -9,14 +9,14 @@
 #include "cache_sim.h"
 #include "increment_and_freeze.h"
 
-class IAKWrapper : public CacheSim {
+class BoundedIAF : public CacheSim {
   private:
     using ChunkInput = IncrementAndFreeze::ChunkInput;
     using ChunkOutput = IncrementAndFreeze::ChunkOutput;
     // Struct that holds hits vector, living requests, and chunk requests to process
     ChunkInput chunk_input;
 
-    IncrementAndFreeze iak_alg;
+    IncrementAndFreeze iaf_alg;
 
     size_t cur_u;
     size_t max_living_req;
@@ -44,15 +44,15 @@ class IAKWrapper : public CacheSim {
     inline size_t get_u() { return cur_u; };
     inline size_t get_mem_limit() { return max_living_req; };
 
-    // IAKWrapper Constructor.
+    // BoundedIAF Constructor.
     // min_chunk_size: minimum size of requests array before running IAK bigger values of 
     //                 min_chunk_size means more parallelism but more memory consumption.
     // max_cache_size: Limit on the memory sizes for which we report the hit rate. For example a 
     //                 max cache size of 1 GiB means that we report hit rate for all memory sizes
     //                 <= 1 GiB.
-    IAKWrapper(size_t min_chunk_size=65536, size_t max_cache_size=((size_t)-1)/max_u_mult) 
+    BoundedIAF(size_t min_chunk_size=65536, size_t max_cache_size=((size_t)-1)/max_u_mult) 
       : cur_u(min_chunk_size), max_living_req(max_cache_size) {};
-    ~IAKWrapper() = default;
+    ~BoundedIAF() = default;
 };
 
-#endif  // ONLINE_CACHE_SIMULATOR_INCLUDE_IAKWRAPPER_H_
+#endif  // ONLINE_CACHE_SIMULATOR_INCLUDE_BOUNDED_IAF_H_

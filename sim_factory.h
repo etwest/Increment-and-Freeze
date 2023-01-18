@@ -2,7 +2,7 @@
 #define ONLINE_CACHE_SIMULATOR_SIM_FACTORY_H_
 
 #include "container_cache_sim.h"
-#include "iak_wrapper.h"
+#include "bounded_iaf.h"
 #include "increment_and_freeze.h"
 #include "ost_cache_sim.h"
 
@@ -11,7 +11,7 @@ enum CacheSimType {
   OS_TREE,
   OS_SET,
   IAF,
-  CHUNK_IAF,
+  BOUND_IAF,
 };
 
 std::unique_ptr<CacheSim> new_simulator(CacheSimType sim_enum, size_t min_chunk = 65536,
@@ -23,11 +23,11 @@ std::unique_ptr<CacheSim> new_simulator(CacheSimType sim_enum, size_t min_chunk 
       return std::make_unique<ContainerCacheSim>();
     case IAF:
       return std::make_unique<IncrementAndFreeze>();
-    case CHUNK_IAF:
+    case BOUND_IAF:
       if (mem_limit != 0)
-        return std::make_unique<IAKWrapper>(min_chunk, mem_limit);
+        return std::make_unique<BoundedIAF>(min_chunk, mem_limit);
       else
-        return std::make_unique<IAKWrapper>(min_chunk);
+        return std::make_unique<BoundedIAF>(min_chunk);
     default:
       std::cerr << "ERROR: Unrecognized sim_enum!" << std::endl;
       exit(EXIT_FAILURE);

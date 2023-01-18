@@ -4,9 +4,8 @@
 #include <omp.h>
 #include <utility>
 
-#include "params.h"
-
 void IncrementAndFreeze::memory_access(req_count_t addr) {
+  ++access_number;
   requests.push_back({addr, (req_count_t) requests.size() + 1});
 }
 

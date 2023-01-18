@@ -1,4 +1,4 @@
-#include "iak_wrapper.h"
+#include "bounded_iaf.h"
 
 #include <cassert>
 #include <cstddef>
@@ -9,9 +9,9 @@
 #include <vector>
 
 #include "increment_and_freeze.h"
-#include "params.h"
 
-void IAKWrapper::memory_access(req_count_t addr) {
+void BoundedIAF::memory_access(req_count_t addr) {
+  ++access_number;
   chunk_input.requests.push_back({addr, (req_count_t) chunk_input.requests.size() + 1});
 
   if (chunk_input.requests.size() >= get_u()) {
@@ -36,7 +36,7 @@ void print_result(IncrementAndFreeze::ChunkOutput& result) {
   std::cout << std::endl;
 }
 
-void IAKWrapper::process_requests() {
+void BoundedIAF::process_requests() {
   STARTTIME(proc_req);
   // std::cout << std::endl;
   // std::cout << "Processing chunk" << std::endl;
@@ -49,11 +49,11 @@ void IAKWrapper::process_requests() {
 
   // auto start = std::chrono::high_resolution_clock::now();
 
-  iak_alg.process_chunk(chunk_input);
+  iaf_alg.process_chunk(chunk_input);
 
   // update maximum memory usage
-  if (iak_alg.get_memory_usage() > memory_usage)
-    memory_usage = iak_alg.get_memory_usage();
+  if (iaf_alg.get_memory_usage() > memory_usage)
+    memory_usage = iaf_alg.get_memory_usage();
   
   // auto depth_time =  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
   // std::cout << "GET DEPTH TIME: " << depth_time << std::endl;
@@ -87,7 +87,7 @@ void IAKWrapper::process_requests() {
   STOPTIME(proc_req);
 }
 
-CacheSim::SuccessVector IAKWrapper::get_success_function() {
+CacheSim::SuccessVector BoundedIAF::get_success_function() {
   // Ensure all requests processed
   if (chunk_input.requests.size() - chunk_input.output.living_requests.size() > 0) {
     // std::cout << "Processing chunk of size " << chunk_input.requests.size() << " before get_success_function()." << std::endl;

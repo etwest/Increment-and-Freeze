@@ -6,26 +6,28 @@ test_suite(
 cc_binary(
     name = "sim",
     deps = [
-        ":iak_wrapper",
+        ":bounded_iaf",
         ":ost_cache_sim",
         ":container_cache_sim",
     ],
     srcs = [
-	"simulation.cc",
+    	"simulation.cc",
+        "params.h"
     ],
     linkopts = [
-	"-lgomp",
+	   "-lgomp",
     ]
 )
 
 cc_binary(
     name = "dump_traces",
     deps = [
-        ":params",
+        ":cache_sim",
     ],
     srcs = [
         "dump_traces.cc",
-    ],
+        "params.h",
+    ]
 )
 
 cc_library(
@@ -40,8 +42,8 @@ cc_library(
 )
 
 cc_library(
-    name = "params",
-    hdrs = ["params.h"],
+    name = "iaf_params",
+    hdrs = ["iaf_params.h"],
 )
 
 cc_library(
@@ -76,7 +78,7 @@ cc_library(
     srcs = ["increment_and_freeze.cc", "projection.cc"],
     deps = [
         ":cache_sim",
-        ":params",
+        ":iaf_params",
     ],
     copts = [
         "-fopenmp",
@@ -84,12 +86,12 @@ cc_library(
 )
 
 cc_library(
-    name = "iak_wrapper",
-    hdrs = ["iak_wrapper.h"],
-    srcs = ["iak_wrapper.cc"],
+    name = "bounded_iaf",
+    hdrs = ["bounded_iaf.h"],
+    srcs = ["bounded_iaf.cc"],
     deps = [
         ":increment_and_freeze",
-        ":params",
+        ":iaf_params",
     ],
 )
 
@@ -103,7 +105,7 @@ cc_test(
   ],
   deps = [
     "@googletest//:gtest_main",
-    ":iak_wrapper",
+    ":bounded_iaf",
     ":ost_cache_sim",
     ":container_cache_sim",
   ],
