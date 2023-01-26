@@ -185,12 +185,15 @@ void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence c
 
         // Freeze target by incrementing hits_vector[stack_depth]
         if (op.get_target() != 0) {
-          int hit = local_distances[op.get_target() - cur.start] + full_amnt;
+          int64_t hit = local_distances[op.get_target() - cur.start] + full_amnt;
           // std::cout << "Freezing " << op << " = " << hit << std::endl;
           assert(hit > 0);
           assert((size_t)hit < hits_vector.size());
 #pragma omp atomic update
-          hits_vector[hit]++;
+            hits_vector[hit]++;
+#ifdef ALL_METRICS
+            distance_vector[op.get_target()] = hit;
+#endif // ALL_METRICS
         }
         break;
 
@@ -205,6 +208,10 @@ void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence c
 
 CacheSim::SuccessVector IncrementAndFreeze::get_success_function() {
   STARTTIME(get_success_fnc);
+
+#ifdef ALL_METRICS
+  distance_vector = std::vector<req_count_t>(requests.size(), infinity);
+#endif // ALL_METRICS
 
   // hits[x] tells us the number of requests that are hits for all memory sizes >= x
   SuccessVector success;

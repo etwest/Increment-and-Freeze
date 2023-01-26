@@ -38,5 +38,7 @@ build:fast --copt -DNDEBUG
 build:fast32bit --copt -DNDEBUG
 build:fast32bit --copt -DADDR_BIT32
 
+build:metrics --copt -DALL_METRICS
+
 build:perftest --copt -DDEBUG_PERF
 build:perftest --copt -DNDEBUG

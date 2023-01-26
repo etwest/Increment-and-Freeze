@@ -172,7 +172,7 @@ int main(int argc, char** argv) {
 
   // parse output file argument
   std::ofstream succ_file(argv[1]);
-  if (!succ_file.is_open()) {
+  if (!succ_file) {
     std::cerr << "ERROR: Could not open out file: " << argv[1] << std::endl;
     std::cerr << ArgumentsString << std::endl;
     exit(EXIT_FAILURE);

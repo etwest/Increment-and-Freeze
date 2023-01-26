@@ -30,6 +30,19 @@ cc_binary(
     ]
 )
 
+cc_binary(
+    name = "process_trace",
+    deps = [
+        ":increment_and_freeze"
+    ],
+    srcs = [
+        "process_trace.cc",
+    ],
+    linkopts = [
+        "-lgomp",
+    ]
+)
+
 cc_library(
     name = "cache_sim",
     hdrs = [
