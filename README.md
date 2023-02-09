@@ -30,3 +30,23 @@ This library implements the online and universe size aware extension to the IAF 
 
 ### Address Bits
 By default our libraries use 64-bit integers in their datastructures. However, for a large portion of traces, 32-bit integers are sufficient. Passing `-DADDR_BIT32` when compiling the libraries will switch our datastructures to use 32-bit integers, improving runtime performance and halving memory consumption.
+
+## Extracting Stack Depth from a Trace
+The `IncrementAndFreeze` library also provides functionality for extracting the stack depth of every request in the trace. To do this complile the `process_stream` executable with the `metrics` bazel configuration.
+```
+bazel build --config=metrics process_trace
+```
+
+Then we can process a trace by running the process trace executable:
+```
+./bazel-bin/process_trace
+Arguments: succ_file, dist_file, trace, trace_format
+succ_file:    The file in which to place the success function and stack depth histogram.
+dist_file:    The file in which to place the stack depth vector.
+trace:        The file containing the request trace.
+trace_format: The format of the trace file. One of 'INT' (base 10 ints), 'HEX' (base 16 ints)
+```
+
+Example:  
+`./bazel-bin/process_trace success.txt stack_depth.txt ssdtrace-03-reqs.txt INT` processes the trace file ssdtrace-03-reqs.txt and writes the metrics to the success.txt and stack_depth.txt files.
+
