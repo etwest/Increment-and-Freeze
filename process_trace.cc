@@ -85,10 +85,12 @@ int main(int argc, char** argv) {
   std::cout << "Computing success function . . ." << std::endl;
   CacheSim::SuccessVector succ = iaf.get_success_function();
 
-  std::cout << "Dumping metrics to output file . . ." << std::endl;
+  std::cout << "Dumping metrics to output files . . ." << std::endl;
 #ifdef ALL_METRICS
   iaf.dump_all_metrics(succ_file, dist_file, succ);
 #else
   iaf.dump_success_function(succ_file, succ);
 #endif  // ALL_METRICS
+
+  std::cout << "Memory usage = " << iaf.get_memory_usage() << "MiB" << std::endl;
 }

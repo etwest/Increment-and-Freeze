@@ -25,6 +25,10 @@ req_count_t IncrementAndFreeze::populate_operations(
   operations.resize(2*reqs.size());
   STOPTIME(allocate_ops);
 
+#ifdef ALL_METRICS
+  prev_vec.resize(reqs.size() + 1);
+#endif // ALL_METRICS
+
   STARTTIME(build_op_array);
   req_count_t unique_ids = 0;
 #pragma omp parallel reduction(+:unique_ids)
@@ -40,12 +44,18 @@ req_count_t IncrementAndFreeze::populate_operations(
         // prev is same id as us so create Prefix and Postfix
         operations[2*access_num-2] = Op(access_num-1, -1); // Prefix  i-1, +1, Full -1
         operations[2*access_num-1] = Op(last_access_num);  // Postfix prev(i), +1, Full 0
+#ifdef ALL_METRICS
+        prev_vec[access_num] = last_access_num;
+#endif // ALL_METRICS
       }
       else {
         // previous access is different. This is therefore first access to this id
         // so only create Prefix.
         operations[2*access_num-2] = Op(access_num-1, 0); // Prefix  i-1, +1, Full 0
         ++unique_ids;
+#ifdef ALL_METRICS
+        prev_vec[access_num] = 0;
+#endif // ALL_METRICS
 
         // The previous request survives this chunk so add to living
         if (living_req != nullptr && i > 0) {
@@ -184,15 +194,16 @@ void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence c
           local_distances[j - cur.start] += op.get_inc_amnt();
 
         // Freeze target by incrementing hits_vector[stack_depth]
-        if (op.get_target() != 0) {
+        if (op.get_target() > 0) {
           int64_t hit = local_distances[op.get_target() - cur.start] + full_amnt;
           // std::cout << "Freezing " << op << " = " << hit << std::endl;
           assert(hit > 0);
           assert((size_t)hit < hits_vector.size());
 #pragma omp atomic update
-            hits_vector[hit]++;
+            ++hits_vector[hit];
 #ifdef ALL_METRICS
-            distance_vector[op.get_target()] = hit;
+            if (distance_vector.size() > 0)
+              distance_vector[op.get_target()] = hit;
 #endif // ALL_METRICS
         }
         break;
@@ -210,7 +221,7 @@ CacheSim::SuccessVector IncrementAndFreeze::get_success_function() {
   STARTTIME(get_success_fnc);
 
 #ifdef ALL_METRICS
-  distance_vector = std::vector<req_count_t>(requests.size(), infinity);
+  distance_vector = std::vector<req_count_t>(requests.size() + 1, infinity);
 #endif // ALL_METRICS
 
   // hits[x] tells us the number of requests that are hits for all memory sizes >= x
