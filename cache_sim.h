@@ -92,7 +92,8 @@ class CacheSim {
                 << "%" << "\n";
   }
 #ifdef ALL_METRICS
-  void dump_all_metrics(std::ostream& succ_stream, std::ostream& vec_stream, SuccessVector succ) {
+  void dump_all_metrics(std::ostream& succ_stream, std::ostream& vec_stream, SuccessVector succ, 
+    std::vector<size_t> request_map, size_t sampled_rate) {
     const size_t bufsize = 256*1024;
     char buf[bufsize];
     vec_stream.rdbuf()->pubsetbuf(buf, bufsize);
@@ -100,13 +101,14 @@ class CacheSim {
     // dump histogram and success function
     size_t total_requests = access_number - 1;
     size_t prev = 0;
+    succ_stream << "# Success Function with sample rate = 1/" << sampled_rate << "\n";
     succ_stream << "#" << std::setw(13) << "Cache Size" << std::setw(14) << "Adtl. Hits"
                 << std::setw(14) << " Total Hits" << std::setw(14) << "Hit Rate" << "\n";
     for (size_t page = 1; page < succ.size(); page++) {
       req_count_t cur = succ[page] - prev;
       prev = succ[page];
-      succ_stream << std::setw(14) << page << std::setw(14) << cur << std::setw(14)
-                  << " " + std::to_string(succ[page]) << std::setw(14)
+      succ_stream << std::setw(14) << page * sampled_rate << std::setw(14) << cur * sampled_rate << std::setw(14)
+                  << " " + std::to_string(succ[page] * sampled_rate) << std::setw(14)
                   << percent(succ[page], total_requests) << "%" << "\n";
     }
 
@@ -118,21 +120,21 @@ class CacheSim {
 
     // dump the stack depth of each page to vec_stream
     std::vector<req_count_t> new_success(succ.size());
-    vec_stream << "#" << std::setw(13) << "Req Index" << std::setw(14) << " Stack Depth"
-               << "\n";
+    vec_stream << "# Distance Vector with sample rate = 1/" << sampled_rate << "\n";
+    vec_stream << "#" << std::setw(13) << "Req Index" << std::setw(14) << " Stack Depth" << "\n";
     for (size_t req = 0; req < distance_vector.size(); req++) {
       if (prev_vec[req] > 0) {
         req_count_t stack_depth = distance_vector[prev_vec[req]];
         if (stack_depth != infinity) {
-          vec_stream << std::setw(14) << req << std::setw(14) << " " + std::to_string(stack_depth)
-                     << "\n";
+          vec_stream << std::setw(14) << request_map[req] << std::setw(14) 
+                     << " " + std::to_string(stack_depth * sampled_rate) << "\n";
           ++new_success[stack_depth];
         }
         else {
           std::cerr << "ERROR: Anything pointed at should not have depth of infinity" << "\n";
         }
       } else {
-        vec_stream << std::setw(14) << req << std::setw(14) << " infinity" << "\n";
+        vec_stream << std::setw(14) << request_map[req] << std::setw(14) << " infinity" << "\n";
       }
     }
 
