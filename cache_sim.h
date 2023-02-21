@@ -114,9 +114,9 @@ class CacheSim {
 
     // Dump the number of forced misses to succ_stream
     size_t misses = total_requests - succ[succ.size() - 1];
-    succ_stream << std::setw(14) << "Misses" << std::setw(14) << misses << std::setw(14)
-                << " " + std::to_string(misses) << std::setw(14) << percent(misses, total_requests)
-                << "%" << "\n";
+    succ_stream << std::setw(14) << "Misses" << std::setw(14) << misses * sampled_rate
+                << std::setw(14) << " " + std::to_string(misses * sampled_rate) << std::setw(14)
+                << percent(misses, total_requests) << "%" << "\n";
 
     // dump the stack depth of each page to vec_stream
     std::vector<req_count_t> new_success(succ.size());
