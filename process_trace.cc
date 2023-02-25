@@ -148,7 +148,7 @@ int main(int argc, char** argv) {
   // Now actually process the trace file
   std::cout << "Reading trace file . . ." << std::endl;
   std::string line;
-  size_t request_index = 0;
+  size_t request_index = 1;
   size_t sample_cutoff = (uint32_t)-1 / sample_rate;
   std::vector<size_t> sampled_requests;
   while (getline(trace, line)) {

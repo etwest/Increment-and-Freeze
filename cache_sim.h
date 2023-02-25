@@ -122,11 +122,12 @@ class CacheSim {
     std::vector<req_count_t> new_success(succ.size());
     vec_stream << "# Distance Vector with sample rate = 1/" << sampled_rate << "\n";
     vec_stream << "#" << std::setw(13) << "Req Index" << std::setw(14) << " Stack Depth" << "\n";
-    for (size_t req = 0; req < distance_vector.size(); req++) {
+    for (size_t req = 1; req < distance_vector.size(); req++) {
+      req_count_t true_id = request_map[req-1];
       if (prev_vec[req] > 0) {
         req_count_t stack_depth = distance_vector[prev_vec[req]];
         if (stack_depth != infinity) {
-          vec_stream << std::setw(14) << request_map[req] << std::setw(14) 
+          vec_stream << std::setw(14) << true_id << std::setw(14) 
                      << " " + std::to_string(stack_depth * sampled_rate) << "\n";
           ++new_success[stack_depth];
         }
@@ -134,7 +135,7 @@ class CacheSim {
           std::cerr << "ERROR: Anything pointed at should not have depth of infinity" << "\n";
         }
       } else {
-        vec_stream << std::setw(14) << request_map[req] << std::setw(14) << " infinity" << "\n";
+        vec_stream << std::setw(14) << true_id << std::setw(14) << " infinity" << "\n";
       }
     }
 
