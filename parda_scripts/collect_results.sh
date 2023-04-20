@@ -1,5 +1,5 @@
 
-# $1 = location of $parse
+# $1 = location of parse_results.py
 parse=$1
 
 echo "," > results.csv

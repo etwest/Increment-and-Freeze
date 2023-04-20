@@ -1,7 +1,10 @@
 # Increment-and-Freeze
-Increment-and-Freeze is a divide-and-conquer algorithm for computing the LRU success function (or hit-rate curve) of a trace T. It has log-fold parallelism and a cost of O(n/B log n) in the external memory model.
+Increment-and-Freeze is a divide-and-conquer algorithm for computing the LRU success function (or hit-rate curve) of a trace T. It has log-fold parallelism and a cost of O(n/B log n) IOs in the external memory model.
 
 TODO: Paper reference here eventually
+
+## License
+The Increment-and-Freeze source code is licensed under the GPLv2 license. See `LICENSE.txt`.
 
 ## Requirements
 - openmp
@@ -24,9 +27,9 @@ Additionally, some parameters to IAF are found in `iaf_params.h`. These are the 
 
 ### bounded_iaf
 This library implements the online and universe size aware extension to the IAF algorithm. Its API is identical to that of Increment-and-Freeze except that its constructor is as follows.  
-`IAKWrapper(min_chunk_size, cache_size_limit)`
+`BoundedIAF(min_chunk_size, cache_size_limit)`
 - `min_chunk_size`: This optional parameter determines the minimum size of a chunk. Default = 64KiB.
-- `cache_size_limit`: This optional parameter limits the number of values reported in the success function to be at most `cache_size_limit`. Limiting the number of values in the success function improves performance and reduces memory usages. So, it is recommended that a cache limit be provided if knowing the hit-rate of large cache sizes is unnecessary.
+- `cache_size_limit`: This optional parameter limits the number of values reported in the success function to be at most `cache_size_limit`. Limiting the number of values in the success function improves performance and reduces memory usage. So, it is recommended that a cache limit be provided if knowing the hit-rate of large cache sizes is unnecessary.
 
-### Address Bits
-By default our libraries use 64-bit integers in their datastructures. However, for a large portion of traces, 32-bit integers are sufficient. Passing `-DADDR_BIT32` when compiling the libraries will switch our datastructures to use 32-bit integers, improving runtime performance and halving memory consumption.
+### Bits per Address
+By default our libraries use 64-bit integers in their datastructures. However, for a large portion of traces, 32-bit integers are sufficient to represent each address. Passing `-DADDR_BIT32` when compiling the libraries will switch our datastructures to use 32-bit integers, improving runtime performance and halving memory consumption.
