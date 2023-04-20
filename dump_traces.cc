@@ -1,6 +1,6 @@
 /*
  * Increment-and-Freeze is an efficient library for computing LRU hit-rate curves.
- * Copyright (C) 2023 Daniel Delayo, Bradley Kuszmaul, Evan West
+ * Copyright (C) 2023 Daniel DeLayo, Bradley Kuszmaul, Evan West
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
