@@ -1,7 +1,8 @@
 # Increment-and-Freeze
-Increment-and-Freeze is a divide-and-conquer algorithm for computing the LRU success function (or hit-rate curve) of a trace T. It has log-fold parallelism and a cost of O(n/B log n) IOs in the external memory model.
+Increment-and-Freeze is a divide-and-conquer algorithm for computing the LRU success function (or hit-rate curve) of a trace T. It has log-fold parallelism and a cost of O(n/B log n) IOs in the external memory model. Our paper introducing Increment-and-Freeze appeared in SPAA 2023.
 
-TODO: Paper reference here eventually
+**Citation**  
+Michael A. Bender, Daniel DeLayo, Bradley C. Kuszmaul, William Kuszmaul, and Evan West. 2023. Increment–and–Freeze: Every Cache, Everywhere, All of the Time. In Proceedings of the 35th ACM Symposium on Parallelism in Algorithms and Architectures (SPAA ’23), June 17–19, 2023, Orlando, FL, USA. ACM, New York, NY, USA, 11 pages. https://doi.org/10.1145/3558481.3591085
 
 ## License
 The Increment-and-Freeze source code is licensed under the GPLv2 license. See `LICENSE.txt`.
