@@ -9,6 +9,7 @@ The Increment-and-Freeze source code is licensed under the GPLv2 license. See `L
 
 ## Requirements
 - openmp
+- [OPTIONAL] Parda (see [Our Parda Documentation](parda_scripts/README.md))
 
 ## Experiments
 Our experiments main file is `simulation.cc` and experiments are driven by the `run_simulations.sh` bash script. For the experiments reported in our paper we compiled our code with bazel configuration `fast32bit`.
