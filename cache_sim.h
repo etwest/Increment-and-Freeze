@@ -23,13 +23,15 @@
 #include <iostream>     // std::ostream, std::endl
 #include <vector>       // vector
 #include <iomanip>      // std::setw
+#include <cmath>        // round
+#include <cassert>      // assert
 
-#include "absl/time/clock.h"
 
 #include <sys/resource.h> //for rusage
 
 
 #ifdef DEBUG_PERF
+#include "absl/time/clock.h"
 inline uint8_t _depth = 0;
 #define STARTTIME(X) auto X = absl::Now(); _depth++;
 #define STOPTIME(X)  \
