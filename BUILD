@@ -37,7 +37,7 @@ cc_library(
         "sim_factory.h",
     ],
     deps = [
-        "@absl//absl/time:time",
+        "@abseil-cpp//absl/time:time",
     ],
 )
 

@@ -2,7 +2,7 @@ cc_library(
     name = "raw_order_statistic_set",
     hdrs = ["raw_order_statistic_set.h"],
     deps = [
-        "@absl//absl/memory",
+        "@abseil-cpp//absl/memory",
     ],
 )
 
@@ -20,7 +20,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":raw_order_statistic_set",
-        "@com_github_google_glog//:glog",
+        "@glog//:glog",
     ],
 )
 
@@ -30,8 +30,8 @@ cc_library(
     hdrs = ["order_statistic_test_common.h"],
     deps = [
         ":raw_order_statistic_set",
-        "@absl//absl/random",
-        "@absl//absl/strings:str_format",
+        "@abseil-cpp//absl/random",
+        "@abseil-cpp//absl/strings:str_format",
     ],
 )
 
@@ -44,8 +44,8 @@ cc_test(
         ":order_statistic_set",
         ":order_statistic_test_common",
         "@googletest//:gtest_main",
-        "@absl//absl/random",
-        "@absl//absl/strings",
+        "@abseil-cpp//absl/random",
+        "@abseil-cpp//absl/strings",
     ],
     linkopts = [
 	"-lgomp",
