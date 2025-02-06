@@ -49,6 +49,10 @@ typedef uint32_t req_count_t;
 typedef uint64_t req_count_t;
 #endif
 
+// ifs to use if some statements are likely to be true or false.
+#define likely_if(x) if(__builtin_expect((bool)(x), true))
+#define unlikely_if(x) if (__builtin_expect((bool)(x), false))
+
 static inline double get_max_mem_used() {
   struct rusage data;
   getrusage(RUSAGE_SELF, &data);

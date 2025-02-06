@@ -239,7 +239,6 @@ CacheSim::SuccessVector IncrementAndFreeze::get_success_function() {
 
   STARTTIME(sequential_prefix_sum);
   // integrate to convert to success function
-  std::cerr << "Number of duplicate requests = " << num_duplicates << std::endl;
   req_count_t running_count = num_duplicates;
   for (req_count_t i = 1; i < success.size(); i++) {
     running_count += success[i];

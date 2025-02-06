@@ -121,7 +121,6 @@ CacheSim::SuccessVector BoundedIAF::get_success_function() {
   // TODO: parallel prefix sum for integrating
 
   // start with num_duplicates to count those
-  std::cerr << "Number of duplicate requests = " << num_duplicates << std::endl;
   size_t running_count = num_duplicates;
   CacheSim::SuccessVector success_func(chunk_input.output.hits_vector.size());
   for (size_t i = 1; i < chunk_input.output.hits_vector.size(); i++) {
