@@ -25,7 +25,15 @@
 
 void IncrementAndFreeze::memory_access(req_count_t addr) {
   ++access_number;
-  requests.push_back({addr, (req_count_t) requests.size() + 1});
+
+  // catch case where new request is the same as the last
+  // in this case we can just drop this request and increment
+  // success_function(1)
+  if (requests.size() && addr == requests[requests.size() - 1].addr) {
+    ++num_duplicate;
+  } else {
+    requests.push_back({addr, (req_count_t) requests.size() + 1});
+  }
 }
 
 req_count_t IncrementAndFreeze::populate_operations(
@@ -231,7 +239,7 @@ CacheSim::SuccessVector IncrementAndFreeze::get_success_function() {
 
   STARTTIME(sequential_prefix_sum);
   // integrate to convert to success function
-  req_count_t running_count = 0;
+  req_count_t running_count = num_duplicate;
   for (req_count_t i = 1; i < success.size(); i++) {
     running_count += success[i];
     success[i] = running_count;

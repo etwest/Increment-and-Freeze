@@ -9,4 +9,13 @@ delme
 fault_results.txt
 
 # Bazel stuff
-bazel*
+bazel-*
+MODULE.bazel.lock
+
+# data files
+data+plots
+!data+plots/plot_success.py
+
+# parda installation
+parda
+

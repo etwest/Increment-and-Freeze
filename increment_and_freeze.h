@@ -67,6 +67,10 @@ class IncrementAndFreeze: public CacheSim {
   // Vector of operations used in ProjSequence to store memory operations
   std::vector<Op> operations;
 
+  // Number of requests that require cache size 1
+  // this enables optimization where these requests are dropped from the requests vector
+  size_t num_duplicate = 0;
+
   /* This converts the requests into the previous and next vectors
    * Requests is copied, not modified.
    * Precondition: requests must be properly populated.
@@ -83,7 +87,7 @@ class IncrementAndFreeze: public CacheSim {
   /*
    * Helper function for solving a projected sequence using the brute force algorithm
    * This takes time O(n^2) but requires no recursion or other overheads. Thus, we can
-   * use it to solve larger ProjSequences.
+   * use it to solve small ProjSequences faster than recursive approach.
    */
   void do_base_case(std::vector<req_count_t>& distance_vector, ProjSequence seq);
 
