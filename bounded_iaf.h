@@ -37,6 +37,10 @@ class BoundedIAF : public CacheSim {
 
     IncrementAndFreeze iaf_alg;
 
+    // for removing duplicate requests as an optimization to IAF
+    // these all count as hits on cache size = 1
+    size_t num_duplicates = 0;
+
     size_t cur_u;
     size_t max_living_req;
 

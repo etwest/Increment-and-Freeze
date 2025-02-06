@@ -69,7 +69,7 @@ class IncrementAndFreeze: public CacheSim {
 
   // Number of requests that require cache size 1
   // this enables optimization where these requests are dropped from the requests vector
-  size_t num_duplicate = 0;
+  size_t num_duplicates = 0;
 
   /* This converts the requests into the previous and next vectors
    * Requests is copied, not modified.

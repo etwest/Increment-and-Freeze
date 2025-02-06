@@ -31,15 +31,20 @@
 
 void BoundedIAF::memory_access(req_count_t addr) {
   ++access_number;
-  chunk_input.requests.push_back({addr, (req_count_t) chunk_input.requests.size() + 1});
+  if (chunk_input.requests.size() &&
+      addr == chunk_input.requests[chunk_input.requests.size() - 1].addr) {
+    ++num_duplicates;
+  } else {
+    chunk_input.requests.push_back({addr, (req_count_t) chunk_input.requests.size() + 1});
 
-  if (chunk_input.requests.size() >= get_u()) {
-    // std::cout << "requests chunk array:" << std::endl;
-    // for (auto req : requests) {
-    //   std::cout << req.first << "," << req.second << std::endl;
-    // }
+    if (chunk_input.requests.size() >= get_u()) {
+      // std::cout << "requests chunk array:" << std::endl;
+      // for (auto req : requests) {
+      //   std::cout << req.first << "," << req.second << std::endl;
+      // }
 
-    process_requests();
+      process_requests();
+    }
   }
 }
 
@@ -114,7 +119,10 @@ CacheSim::SuccessVector BoundedIAF::get_success_function() {
   }
 
   // TODO: parallel prefix sum for integrating
-  size_t running_count = 0;
+
+  // start with num_duplicates to count those
+  std::cerr << "Number of duplicate requests = " << num_duplicates << std::endl;
+  size_t running_count = num_duplicates;
   CacheSim::SuccessVector success_func(chunk_input.output.hits_vector.size());
   for (size_t i = 1; i < chunk_input.output.hits_vector.size(); i++) {
     running_count += chunk_input.output.hits_vector[i];
