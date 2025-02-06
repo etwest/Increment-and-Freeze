@@ -31,13 +31,15 @@
 
 void BoundedIAF::memory_access(req_count_t addr) {
   ++access_number;
-  if (chunk_input.requests.size() &&
-      addr == chunk_input.requests[chunk_input.requests.size() - 1].addr) {
+  auto &requests = chunk_input.requests;
+  
+  // small optimization, first check that the request is not a repeated request
+  if (requests.size() && addr == requests[requests.size() - 1].addr) {
     ++num_duplicates;
   } else {
-    chunk_input.requests.push_back({addr, (req_count_t) chunk_input.requests.size() + 1});
+    requests.push_back({addr, (req_count_t) requests.size() + 1});
 
-    if (chunk_input.requests.size() >= get_u()) {
+    if (requests.size() >= get_u()) {
       // std::cout << "requests chunk array:" << std::endl;
       // for (auto req : requests) {
       //   std::cout << req.first << "," << req.second << std::endl;
