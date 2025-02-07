@@ -20,7 +20,6 @@
 #include "increment_and_freeze.h"
 
 #include <algorithm>
-#include <omp.h>
 #include <utility>
 
 void IncrementAndFreeze::memory_access(req_count_t addr) {
