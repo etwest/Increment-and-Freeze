@@ -23,13 +23,14 @@
 #include <iostream>     // std::ostream, std::endl
 #include <vector>       // vector
 #include <iomanip>      // std::setw
-
-#include "absl/time/clock.h"
+#include <cmath>        // round
+#include <cassert>      // assert
 
 #include <sys/resource.h> //for rusage
 
 
 #ifdef DEBUG_PERF
+#include "absl/time/clock.h"
 inline uint8_t _depth = 0;
 #define STARTTIME(X) auto X = absl::Now(); _depth++;
 #define STOPTIME(X)  \
@@ -89,7 +90,7 @@ class CacheSim {
     }
 
     // Finally dump the number of forced misses
-    size_t misses = total_requests - succ[succ.size() - 1];
+    size_t misses = total_requests - (succ.size() ? succ[succ.size() - 1] : 0);
     os << std::setw(16) <<"Misses" << std::setw(16) << misses 
        << std::setw(16) << percent(misses, total_requests) << "%" << std::endl;
   }

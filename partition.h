@@ -33,11 +33,22 @@
 #include "op.h"         // for op
 #include "projection.h" // for ProjSequence
 
+// on some compilers there is no constexpr log2
+// so define it ourselves
+constexpr uint64_t ce_log2(uint64_t n) {
+  uint64_t ans = 0;
+  while (n > 1) {
+    ++ans;
+    n /= 2;
+  }
+  return ans;
+}
+
 // State that is persisted between calls to partition() at a single node in recursion tree.
 class PartitionState {
  private:
   std::array<req_count_t, kIafBranching> incr_array{};
-  static constexpr size_t incr_tree_depth = log2(kIafBranching);
+  static constexpr size_t incr_tree_depth = ce_log2(kIafBranching);
 
  public:
   const double div_factor;
