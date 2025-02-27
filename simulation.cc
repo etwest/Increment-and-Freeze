@@ -200,7 +200,6 @@ int main(int argc, char** argv) {
 
   // parse simulator arguments
   SimulatorArgs simulator_args;
-  simulator_args.k_mem_limit = std::stoul(argv[3]);
   simulator_args.sampling_rate = std::stoul(argv[4]);
   simulator_args.min_chunk = 65536;
 
@@ -221,7 +220,11 @@ int main(int argc, char** argv) {
   else if (sim_arg == "OS_SET")    sim = new_simulator(OS_SET, simulator_args);
   else if (sim_arg == "IAF")       sim = new_simulator(IAF, simulator_args);
   else if (sim_arg == "BOUND_IAF") sim = new_simulator(BOUND_IAF, simulator_args);
-  else if (sim_arg == "K_LIM_IAF") sim = new_simulator(BOUND_IAF, simulator_args);
+  else if (sim_arg == "K_LIM_IAF") {
+    // add provided memory limit to simulator arguments
+    simulator_args.k_mem_limit = std::stoul(argv[3]);
+    sim = new_simulator(BOUND_IAF, simulator_args);
+  }
   else {
     std::cerr << "ERROR: Did not recognize simulator: " << sim_arg << std::endl;
     std::cerr << ArgumentsString << std::endl;

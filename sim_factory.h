@@ -49,9 +49,10 @@ std::unique_ptr<CacheSim> new_simulator(CacheSimType sim_enum, SimulatorArgs arg
       return std::make_unique<IncrementAndFreeze>(args.sampling_rate);
     case BOUND_IAF:
       if (args.k_mem_limit != 0)
-        return std::make_unique<BoundedIAF>(args.min_chunk, args.k_mem_limit);
+        return std::make_unique<BoundedIAF>(args.sampling_rate, size_t(-1), args.min_chunk,
+                                            args.k_mem_limit);
       else
-        return std::make_unique<BoundedIAF>(args.min_chunk);
+        return std::make_unique<BoundedIAF>(args.sampling_rate, size_t(-1), args.min_chunk);
     default:
       std::cerr << "ERROR: Unrecognized sim_enum!" << std::endl;
       exit(EXIT_FAILURE);

@@ -28,10 +28,19 @@
 #include <vector>
 
 #include "increment_and_freeze.h"
+#include "xxh3.h"
 
 void BoundedIAF::memory_access(req_count_t addr) {
   ++access_number;
   auto &requests = chunk_input.requests;
+
+  if (sample_rate > 0) {
+    // compute the hash of the input
+    uint64_t hash = XXH3_64bits_withSeed(&addr, sizeof(addr), sample_seed);
+
+    // ignore all requests whose hash value is incorrect
+    if ((hash & sample_rate) != 0) return;
+  }
   
   // small optimization, first check that the request is not a repeated request
   if (requests.size() && addr == requests[requests.size() - 1].addr) {
@@ -124,10 +133,33 @@ CacheSim::SuccessVector BoundedIAF::get_success_function() {
 
   // start with num_duplicates to count those
   size_t running_count = num_duplicates;
-  CacheSim::SuccessVector success_func(chunk_input.output.hits_vector.size());
-  for (size_t i = 1; i < chunk_input.output.hits_vector.size(); i++) {
-    running_count += chunk_input.output.hits_vector[i];
-    success_func[i] = running_count;
+
+
+  CacheSim::SuccessVector success_func;
+  if (sample_rate > 0) {
+    const SuccessVector &downsampled_success = chunk_input.output.hits_vector;
+    size_t samples_per_measure = sample_rate + 1;
+    success_func = SuccessVector(downsampled_success.size() * samples_per_measure);
+
+    // integrate to convert to success function
+    for (req_count_t i = 1; i < downsampled_success.size(); i++) {
+      running_count += downsampled_success[i] * samples_per_measure;
+      running_count = std::min(running_count, access_number - 1);
+
+      size_t pos = i * samples_per_measure;
+      size_t num_to_update = std::min(success_func.size() - pos, samples_per_measure);
+
+      for (size_t j = 0; j < num_to_update; j++) {
+        success_func[pos + j] = running_count;
+      }
+    }
+  } else {
+    // integrate to convert to success function
+    success_func = SuccessVector(chunk_input.output.hits_vector.size());
+    for (size_t i = 1; i < chunk_input.output.hits_vector.size(); i++) {
+      running_count += chunk_input.output.hits_vector[i];
+      success_func[i] = running_count;
+    }
   }
 
   //for (auto& success : success_func)

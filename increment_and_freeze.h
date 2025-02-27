@@ -123,17 +123,16 @@ class IncrementAndFreeze: public CacheSim {
    */
   void process_chunk(ChunkInput &input);
 
-  /*
-   * IncrementAndFreeze Constructor
-   * _sample_rate: Sample 1 in 2^sample_rate request addresses. Pass a value > 0 to enable sampling.
-   * _sample_seed: Seed to use when sampling requests. You should let it be set automatically.
+  /* IncrementAndFreeze Constructor.
+   * _sample_rate:  sample 1 in 2^sample_rate request addresses. > 0 to enable sampling.
+   * _sample_seed:  seed to use when sampling requests. You should let it be set automatically.
    */
   IncrementAndFreeze(size_t _sample_rate = 0, size_t _sample_seed = size_t(-1))
       : sample_rate((1 << _sample_rate) - 1),
         sample_seed(_sample_seed == size_t(-1)
                         ? std::chrono::duration_cast<std::chrono::nanoseconds>(
                               std::chrono::steady_clock::now().time_since_epoch()).count()
-                        : _sample_rate) {}
+                        : _sample_seed) {}
   ~IncrementAndFreeze() = default;
 };
 

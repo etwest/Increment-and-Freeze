@@ -6,6 +6,7 @@ test_suite(
 cc_binary(
     name = "sim",
     deps = [
+        ":cache_sim",
         ":bounded_iaf",
         ":ost_cache_sim",
         ":container_cache_sim",
@@ -54,31 +55,28 @@ cc_library(
 
 cc_library(
     name = "ost_cache_sim",
-    hdrs = ["ost_cache_sim.h"],
+    hdrs = ["ost_cache_sim.h", "cache_sim.h"],
     srcs = ["ost_cache_sim.cc"],
     deps = [
-        ":cache_sim",
         ":ostree",
     ],
 )
 
 cc_library(
     name = "container_cache_sim",
-    hdrs = ["container_cache_sim.h"],
+    hdrs = ["container_cache_sim.h", "cache_sim.h"],
     srcs = ["container_cache_sim.cc"],
     deps = [
-        ":cache_sim",
         "//container:order_statistic_set",
     ],
 )
 
 cc_library(
     name = "increment_and_freeze",
-    hdrs = ["increment_and_freeze.h", "op.h", "partition.h", "projection.h"],
+    hdrs = ["increment_and_freeze.h", "op.h", "partition.h", "projection.h", "cache_sim.h"],
     srcs = ["increment_and_freeze.cc", "projection.cc"],
     deps = [
         "@xxhash//:xxhash",
-        ":cache_sim",
         ":iaf_params",
     ],
     copts = [
@@ -91,6 +89,7 @@ cc_library(
     hdrs = ["bounded_iaf.h"],
     srcs = ["bounded_iaf.cc"],
     deps = [
+        "@xxhash//:xxhash",
         ":increment_and_freeze",
         ":iaf_params",
     ],
@@ -106,6 +105,7 @@ cc_test(
   ],
   deps = [
     "@googletest//:gtest_main",
+    ":cache_sim",
     ":bounded_iaf",
     ":ost_cache_sim",
     ":container_cache_sim",
