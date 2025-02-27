@@ -21,9 +21,18 @@
 
 #include <algorithm>
 #include <utility>
+#include "xxh3.h"
 
 void IncrementAndFreeze::memory_access(req_count_t addr) {
   ++access_number;
+
+  if (sample_rate > 0) {
+    // compute the hash of the input
+    uint64_t hash = XXH3_64bits_withSeed(&addr, sizeof(addr), sample_seed);
+
+    // ignore all requests whose hash value is incorrect
+    if ((hash & sample_rate) != 0) return;
+  }
 
   // catch case where new request is the same as the last
   // in this case we can just drop this request and increment
@@ -237,12 +246,35 @@ CacheSim::SuccessVector IncrementAndFreeze::get_success_function() {
   update_hits_vector(requests, success);
 
   STARTTIME(sequential_prefix_sum);
-  // integrate to convert to success function
-  req_count_t running_count = num_duplicates;
-  for (req_count_t i = 1; i < success.size(); i++) {
-    running_count += success[i];
-    success[i] = running_count;
+  if (sample_rate > 0) {
+    SuccessVector downsampled_success = success;
+    success.resize(access_number);
+
+    // integrate to convert to success function
+    req_count_t running_count = num_duplicates;
+    size_t samples_per_measure = size_t(1) << sample_rate;
+
+    for (req_count_t i = 1; i < downsampled_success.size(); i++) {
+      running_count += downsampled_success[i] << sample_rate;
+      running_count = std::min(running_count, access_number);
+
+      size_t pos = (i-1) << sample_rate;
+      size_t num_to_update = std::min(success.size() - pos, samples_per_measure);
+
+      for (size_t j = 0; j < num_to_update; j++) {
+        success[pos + j] = running_count;
+      }
+    }
+  } else {
+    // integrate to convert to success function
+    req_count_t running_count = num_duplicates;
+    for (req_count_t i = 1; i < success.size(); i++) {
+      running_count += success[i];
+      success[i] = running_count;
+    }
   }
+
+  
   STOPTIME(sequential_prefix_sum);
   STOPTIME(get_success_fnc);
   return success;

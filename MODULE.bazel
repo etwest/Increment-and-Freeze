@@ -8,4 +8,4 @@
 bazel_dep(name = "googletest", version = "1.15.2")
 bazel_dep(name = "abseil-cpp", version = "20240722.1")
 bazel_dep(name = "glog", version = "0.6.0")
-
+bazel_dep(name = "xxhash", version = "0.8.2")

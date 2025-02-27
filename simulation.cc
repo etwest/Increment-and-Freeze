@@ -65,13 +65,13 @@ struct SimResult {
 //  * seed:    The seed to the random number generator.
 //  * print:   If true print out the results of the simulation.
 //  * returns: The success function and time it took to compute.
-SimResult working_set_simulator(CacheSim &sim, uint64_t seed) {
+SimResult working_set_simulator(CacheSim &sim, size_t accesses, size_t universe, uint64_t seed) {
   std::mt19937_64 rand(seed);  // create random number generator
   auto start = absl::Now();
-  for (uint64_t i = 0; i < kAccesses; i++) {
+  for (uint64_t i = 0; i < accesses; i++) {
     // compute the next address
     uint64_t working_size = kWorkingSet;
-    uint64_t leftover_size = kIdUniverseSize - kWorkingSet;
+    uint64_t leftover_size = universe - kWorkingSet;
     double working_chance = rand() / (double)(0xFFFFFFFF);
     uint64_t addr = rand();
     if (working_chance <= kLocality)
@@ -87,21 +87,21 @@ SimResult working_set_simulator(CacheSim &sim, uint64_t seed) {
   return {succ, duration};
 }
 
-SimResult uniform_simulator(CacheSim &sim, uint64_t seed) {
+SimResult uniform_simulator(CacheSim &sim, size_t accesses, size_t universe, uint64_t seed) {
   std::mt19937_64 rand(seed); // create random number generator
   auto start = absl::Now();
   std::cout << "Performing Accesses...  0%       \r"; fflush(stdout);
-  size_t half_percent = kAccesses / 200;
+  size_t half_percent = accesses / 200;
   size_t last_print = 0;
   size_t cur_half = 0;
-  for (uint64_t i = 0; i < kAccesses; i++) {
+  for (uint64_t i = 0; i < accesses; i++) {
     if (i - last_print > half_percent) {
       cur_half += 1;
       std::cout << "Performing Accesses...  " << (float)cur_half/2 << "%        \r"; fflush(stdout);
       last_print = i;
     }
     // compute the next address
-    uint64_t addr = rand() % kIdUniverseSize;
+    uint64_t addr = rand() % universe;
 
     // access the address
     sim.memory_access(addr);
@@ -115,7 +115,7 @@ SimResult uniform_simulator(CacheSim &sim, uint64_t seed) {
 SimResult simulate_on_seq(CacheSim &sim, std::vector<uint64_t>& seq) {
   auto start = absl::Now();
   std::cout << "Performing Accesses...  0%       \r"; fflush(stdout);
-  size_t half_percent = kAccesses / 200;
+  size_t half_percent = seq.size() / 200;
   size_t last_print = 0;
   size_t cur_half = 0;
   for (uint64_t i = 0; i < seq.size(); i++) {
@@ -133,39 +133,39 @@ SimResult simulate_on_seq(CacheSim &sim, std::vector<uint64_t>& seq) {
   return {succ, duration};
 }
 
-std::vector<uint64_t> generate_zipf(uint64_t seed, double alpha) {
+std::vector<uint64_t> generate_zipf(uint64_t seed, size_t accesses, size_t universe, double alpha) {
   // std::ofstream zipf_hist("Zipf_hist_" + std::to_string(alpha) + ".data");
   std::mt19937_64 rand(seed); // create random number generator
   std::vector<double> freq_vec;
-  freq_vec.reserve(kIdUniverseSize);
+  freq_vec.reserve(universe);
   // generate the divisor
   double divisor = 0;
-  for (uint64_t i = 1; i < kIdUniverseSize + 1; i++) {
+  for (uint64_t i = 1; i < universe + 1; i++) {
     divisor += 1 / pow(i, alpha);
   }
 
   // now for each id calculate it's normalized frequency
-  for (uint64_t i = 1; i < kIdUniverseSize + 1; i++)
+  for (uint64_t i = 1; i < universe + 1; i++)
     freq_vec.push_back((1 / pow(i, alpha)) / divisor);
 
   // now push to sequence vector based upon frequency
   std::vector<uint64_t> seq_vec;
-  seq_vec.reserve(kAccesses);
-  for (uint64_t i = 0; i < kIdUniverseSize; i++) {
-    uint64_t num_items = round(freq_vec[i] * kAccesses);
+  seq_vec.reserve(accesses);
+  for (uint64_t i = 0; i < universe; i++) {
+    uint64_t num_items = round(freq_vec[i] * accesses);
     // zipf_hist << i << ":" << num_items << std::endl;
-    for (uint64_t j = 0; j < num_items && seq_vec.size() < kAccesses; j++)
+    for (uint64_t j = 0; j < num_items && seq_vec.size() < accesses; j++)
       seq_vec.push_back(i);
   }
 
   // if we have too few accesses make up for it by adding more to most common
-  if (seq_vec.size() < kAccesses) {
-    uint64_t num_needed = kAccesses - seq_vec.size();
+  if (seq_vec.size() < accesses) {
+    uint64_t num_needed = accesses - seq_vec.size();
     for (uint64_t i = 0; i < num_needed; i++)
-      seq_vec.push_back(i % kIdUniverseSize);
+      seq_vec.push_back(i % universe);
   }
 
-  seq_vec.resize(kAccesses);
+  seq_vec.resize(accesses);
 
   // shuffle the sequence vector
   std::shuffle(seq_vec.begin(), seq_vec.end(), rand);
@@ -173,24 +173,38 @@ std::vector<uint64_t> generate_zipf(uint64_t seed, double alpha) {
   return seq_vec;
 }
 
-constexpr char ArgumentsString[] = "Arguments: out_file, sim, workload, [zipf_alpha]\n\
-out_file:   The file in which to place the success function.\n\
-sim:        Which simulator to use. One of: 'OS_TREE', 'OS_SET', 'IAF', 'BOUND_IAF', 'K_LIM_IAF'\n\
-workload:   Which synthetic workload to run. One of: 'uniform', 'zipfian'\n\
-zipf_alpha: If running Zipfian workload then provide the alpha value";
+constexpr char ArgumentsString[] = "\
+Arguments:  accesses universe memory_lim sampling_rate out_file, sim, workload, [zipf_alpha]\n\
+accesses:      Number of memory accesses to perform\n\
+universe:      Number of addresses in the universe\n\
+memory_lim:    For 'K_LIM_IAF' limit memory to this many requests\n\
+sampling_rate: Sample every 1 in 2^sampling_rate addresses (pass 0 to perform no sampling)\n\
+out_file:      The file in which to place the success function\n\
+sim:           Which simulator to use: 'OS_TREE', 'OS_SET', 'IAF', 'BOUND_IAF', or 'K_LIM_IAF'\n\
+workload:      Which synthetic workload to run: 'uniform' or 'zipfian'\n\
+zipf_alpha:    If running Zipfian workload then provide the alpha value";
 
 // Run a given system and workload combination
 // print the latency of the workload and the amount of memory used
 // arguments are sim, workload, and zipfian parameter if applicable
 int main(int argc, char** argv) {
-  if (argc < 4 || argc > 5) {
+  if (argc < 8 || argc > 9) {
     std::cerr << "ERROR: Incorrect number of arguments!" << std::endl;
     std::cerr << ArgumentsString << std::endl;
     exit(EXIT_FAILURE);
   }
 
+  // parse simulator arguments
+  size_t accesses = std::stoul(argv[1]);
+  size_t universe = std::stoul(argv[2]);
+
+  // parse IAF arguments
+  size_t k_memory_lim = std::stoul(argv[3]);
+  size_t sampling_rate = std::stoul(argv[4]);
+
+
   // parse output file argument
-  std::ofstream succ_file(argv[1]);
+  std::ofstream succ_file(argv[5]);
   if (!succ_file.is_open()) {
     std::cerr << "ERROR: Could not open out file: " << argv[1] << std::endl;
     std::cerr << ArgumentsString << std::endl;
@@ -199,12 +213,12 @@ int main(int argc, char** argv) {
 
   // parse sim argument
   std::unique_ptr<CacheSim> sim;
-  std::string sim_arg = argv[2];
-  if (sim_arg == "OS_TREE")        sim = new_simulator(OS_TREE);
-  else if (sim_arg == "OS_SET")    sim = new_simulator(OS_SET);
-  else if (sim_arg == "IAF")       sim = new_simulator(IAF);
-  else if (sim_arg == "BOUND_IAF") sim = new_simulator(BOUND_IAF);
-  else if (sim_arg == "K_LIM_IAF") sim = new_simulator(BOUND_IAF, 65536, kMemoryLimit);
+  std::string sim_arg = argv[6];
+  if (sim_arg == "OS_TREE")        sim = new_simulator(OS_TREE, 0);
+  else if (sim_arg == "OS_SET")    sim = new_simulator(OS_SET, 0);
+  else if (sim_arg == "IAF")       sim = new_simulator(IAF, sampling_rate);
+  else if (sim_arg == "BOUND_IAF") sim = new_simulator(BOUND_IAF, sampling_rate);
+  else if (sim_arg == "K_LIM_IAF") sim = new_simulator(BOUND_IAF, sampling_rate, 65536, k_memory_lim);
   else {
     std::cerr << "ERROR: Did not recognize simulator: " << sim_arg << std::endl;
     std::cerr << ArgumentsString << std::endl;
@@ -212,25 +226,25 @@ int main(int argc, char** argv) {
   }
 
   // parse workload argument and run workload
-  std::string workload_arg = argv[3];
+  std::string workload_arg = argv[7];
   SimResult result;
   double memory_usage;
   if (workload_arg == "uniform") {
     std::cout << "Uniform" << std::endl;
-    if (argc == 5) std::cerr << "WARNING: Ignoring argument " << argv[4] << std::endl;
+    if (argc == 9) std::cerr << "WARNING: Ignoring argument " << argv[8] << std::endl;
 
-    result = uniform_simulator(*sim, kSeed);
+    result = uniform_simulator(*sim, accesses, universe, kSeed);
     memory_usage = sim->get_memory_usage();
   } 
   else if (workload_arg == "zipfian") {
-    if (argc != 5) {
+    if (argc != 9) {
       std::cerr << "ERROR: No zipfian alpha value provided." << std::endl;
       std::cerr << ArgumentsString << std::endl;
       exit(EXIT_FAILURE);
     }
-    std::cout << "Zipfian: " << std::atof(argv[4]) << std::endl;
+    std::cout << "Zipfian: " << std::atof(argv[8]) << std::endl;
     std::cout << "Generating zipfian sequence... \r"; fflush(stdout);
-    std::vector<uint64_t> zipf_seq = generate_zipf(kSeed, std::atof(argv[4]));
+    std::vector<uint64_t> zipf_seq = generate_zipf(kSeed, accesses, universe, std::atof(argv[8]));
     size_t zipf_seq_mib = zipf_seq.size() * sizeof(uint64_t) / (1024*1024);
     result = simulate_on_seq(*sim, zipf_seq);
 

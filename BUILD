@@ -77,6 +77,7 @@ cc_library(
     hdrs = ["increment_and_freeze.h", "op.h", "partition.h", "projection.h"],
     srcs = ["increment_and_freeze.cc", "projection.cc"],
     deps = [
+        "@xxhash//:xxhash",
         ":cache_sim",
         ":iaf_params",
     ],

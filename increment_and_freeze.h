@@ -20,20 +20,21 @@
 #ifndef ONLINE_CACHE_SIMULATOR_INCREMENT_AND_FREEZE_H_
 #define ONLINE_CACHE_SIMULATOR_INCREMENT_AND_FREEZE_H_
 
-#include <cassert>      // for assert
-#include <cstddef>      // for size_t
-#include <cstdint>      // for uint64_t, uint32_t, int64_t, int32_t
-#include <iostream>     // for operator<<, basic_ostream::operator<<, basic_o...
-#include <utility>      // for pair, move, swap
-#include <vector>       // for vector, vector<>::iterator
-#include <array>        // for array
-#include <cmath>        // for ceil
+#include <array>         // for array
+#include <cassert>       // for assert
+#include <chrono>        // for steady_clock::now()
+#include <cmath>         // for ceil
+#include <cstddef>       // for size_t
+#include <cstdint>       // for uint64_t, uint32_t, int64_t, int32_t
+#include <iostream>      // for operator<<, basic_ostream::operator<<, basic_o...
+#include <utility>       // for pair, move, swap
+#include <vector>        // for vector, vector<>::iterator
 
-#include "iaf_params.h" // for kIafBranching
-#include "cache_sim.h"  // for CacheSim
-#include "op.h"         // for op
-#include "partition.h"  // for partitionstate
-#include "projection.h" // for ProjSequence
+#include "cache_sim.h"   // for CacheSim
+#include "iaf_params.h"  // for kIafBranching
+#include "op.h"          // for op
+#include "partition.h"   // for partitionstate
+#include "projection.h"  // for ProjSequence
 
 // Implements the IncrementAndFreezeInPlace algorithm
 class IncrementAndFreeze: public CacheSim {
@@ -71,6 +72,14 @@ class IncrementAndFreeze: public CacheSim {
   // this enables optimization where these requests are dropped from the requests vector
   size_t num_duplicates = 0;
 
+  // Controls how many unique addresses are sampled by IAF to construct the hit-rate curve
+  // On average, every 1 in 2^sample_rate addresses will be sampled.
+  // by default this value is 1 (no sampling)
+  const size_t sample_rate;
+
+  // seed for hash function used in address sampling
+  const size_t sample_seed;
+
   /* This converts the requests into the previous and next vectors
    * Requests is copied, not modified.
    * Precondition: requests must be properly populated.
@@ -101,6 +110,7 @@ class IncrementAndFreeze: public CacheSim {
  public:
   // Logs a memory access to simulate. The order this function is called in matters.
   void memory_access(req_count_t addr);
+
   /* Returns the success function.
    * Does *a lot* of work.
    * When calling print_success_function, the answer is re-computed.
@@ -113,7 +123,17 @@ class IncrementAndFreeze: public CacheSim {
    */
   void process_chunk(ChunkInput &input);
 
-  IncrementAndFreeze() = default;
+  /*
+   * IncrementAndFreeze Constructor
+   * _sample_rate: Sample 1 in 2^sample_rate request addresses. Pass a value > 0 to enable sampling.
+   * _sample_seed: Seed to use when sampling requests. You should let it be set automatically.
+   */
+  IncrementAndFreeze(size_t _sample_rate = 0, size_t _sample_seed = size_t(-1))
+      : sample_rate((1 << _sample_rate) - 1),
+        sample_seed(_sample_seed == size_t(-1)
+                        ? std::chrono::duration_cast<std::chrono::nanoseconds>(
+                              std::chrono::steady_clock::now().time_since_epoch()).count()
+                        : _sample_rate) {}
   ~IncrementAndFreeze() = default;
 };
 

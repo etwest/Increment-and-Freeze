@@ -20,8 +20,8 @@
 #ifndef ONLINE_CACHE_SIMULATOR_SIM_FACTORY_H_
 #define ONLINE_CACHE_SIMULATOR_SIM_FACTORY_H_
 
-#include "container_cache_sim.h"
 #include "bounded_iaf.h"
+#include "container_cache_sim.h"
 #include "increment_and_freeze.h"
 #include "ost_cache_sim.h"
 
@@ -33,7 +33,7 @@ enum CacheSimType {
   BOUND_IAF,
 };
 
-std::unique_ptr<CacheSim> new_simulator(CacheSimType sim_enum, size_t min_chunk = 65536,
+std::unique_ptr<CacheSim> new_simulator(CacheSimType sim_enum, size_t sampling_rate, size_t min_chunk = 65536,
                                         size_t mem_limit = 0) {
   switch (sim_enum) {
     case OS_TREE:
@@ -41,7 +41,7 @@ std::unique_ptr<CacheSim> new_simulator(CacheSimType sim_enum, size_t min_chunk 
     case OS_SET:
       return std::make_unique<ContainerCacheSim>();
     case IAF:
-      return std::make_unique<IncrementAndFreeze>();
+      return std::make_unique<IncrementAndFreeze>(sampling_rate);
     case BOUND_IAF:
       if (mem_limit != 0)
         return std::make_unique<BoundedIAF>(min_chunk, mem_limit);
