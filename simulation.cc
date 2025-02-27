@@ -174,7 +174,7 @@ std::vector<uint64_t> generate_zipf(uint64_t seed, size_t accesses, size_t unive
 }
 
 constexpr char ArgumentsString[] = "\
-Arguments:  accesses universe memory_lim sampling_rate out_file, sim, workload, [zipf_alpha]\n\
+Arguments:  accesses, universe, memory_lim, sampling_rate, out_file, sim, workload, [zipf_alpha]\n\
 accesses:      Number of memory accesses to perform\n\
 universe:      Number of addresses in the universe\n\
 memory_lim:    For 'K_LIM_IAF' limit memory to this many requests\n\
@@ -194,13 +194,15 @@ int main(int argc, char** argv) {
     exit(EXIT_FAILURE);
   }
 
-  // parse simulator arguments
+  // parse workload arguments
   size_t accesses = std::stoul(argv[1]);
   size_t universe = std::stoul(argv[2]);
 
-  // parse IAF arguments
-  size_t k_memory_lim = std::stoul(argv[3]);
-  size_t sampling_rate = std::stoul(argv[4]);
+  // parse simulator arguments
+  SimulatorArgs simulator_args;
+  simulator_args.k_mem_limit = std::stoul(argv[3]);
+  simulator_args.sampling_rate = std::stoul(argv[4]);
+  simulator_args.min_chunk = 65536;
 
 
   // parse output file argument
@@ -214,11 +216,12 @@ int main(int argc, char** argv) {
   // parse sim argument
   std::unique_ptr<CacheSim> sim;
   std::string sim_arg = argv[6];
-  if (sim_arg == "OS_TREE")        sim = new_simulator(OS_TREE, 0);
-  else if (sim_arg == "OS_SET")    sim = new_simulator(OS_SET, 0);
-  else if (sim_arg == "IAF")       sim = new_simulator(IAF, sampling_rate);
-  else if (sim_arg == "BOUND_IAF") sim = new_simulator(BOUND_IAF, sampling_rate);
-  else if (sim_arg == "K_LIM_IAF") sim = new_simulator(BOUND_IAF, sampling_rate, 65536, k_memory_lim);
+
+  if (sim_arg == "OS_TREE")        sim = new_simulator(OS_TREE, simulator_args);
+  else if (sim_arg == "OS_SET")    sim = new_simulator(OS_SET, simulator_args);
+  else if (sim_arg == "IAF")       sim = new_simulator(IAF, simulator_args);
+  else if (sim_arg == "BOUND_IAF") sim = new_simulator(BOUND_IAF, simulator_args);
+  else if (sim_arg == "K_LIM_IAF") sim = new_simulator(BOUND_IAF, simulator_args);
   else {
     std::cerr << "ERROR: Did not recognize simulator: " << sim_arg << std::endl;
     std::cerr << ArgumentsString << std::endl;

@@ -33,20 +33,25 @@ enum CacheSimType {
   BOUND_IAF,
 };
 
-std::unique_ptr<CacheSim> new_simulator(CacheSimType sim_enum, size_t sampling_rate, size_t min_chunk = 65536,
-                                        size_t mem_limit = 0) {
+struct SimulatorArgs {
+  size_t sampling_rate = 0;
+  size_t min_chunk = 65536;
+  size_t k_mem_limit = 0;
+};
+
+std::unique_ptr<CacheSim> new_simulator(CacheSimType sim_enum, SimulatorArgs args) {
   switch (sim_enum) {
     case OS_TREE:
       return std::make_unique<OSTCacheSim>();
     case OS_SET:
       return std::make_unique<ContainerCacheSim>();
     case IAF:
-      return std::make_unique<IncrementAndFreeze>(sampling_rate);
+      return std::make_unique<IncrementAndFreeze>(args.sampling_rate);
     case BOUND_IAF:
-      if (mem_limit != 0)
-        return std::make_unique<BoundedIAF>(min_chunk, mem_limit);
+      if (args.k_mem_limit != 0)
+        return std::make_unique<BoundedIAF>(args.min_chunk, args.k_mem_limit);
       else
-        return std::make_unique<BoundedIAF>(min_chunk);
+        return std::make_unique<BoundedIAF>(args.min_chunk);
     default:
       std::cerr << "ERROR: Unrecognized sim_enum!" << std::endl;
       exit(EXIT_FAILURE);

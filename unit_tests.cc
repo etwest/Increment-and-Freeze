@@ -30,7 +30,9 @@ using SuccessVector = CacheSim::SuccessVector;
 
 // Very simple validation of success function
 TEST_P(CacheSimUnitTests, SimpleTest) {
-  std::unique_ptr<CacheSim> sim = new_simulator(GetParam(), 8);
+  SimulatorArgs sim_args;
+  sim_args.min_chunk = 8;
+  std::unique_ptr<CacheSim> sim = new_simulator(GetParam(), sim_args);
 
   // add a few updates
   sim->memory_access(1);
@@ -52,7 +54,9 @@ TEST_P(CacheSimUnitTests, SimpleTest) {
 
 // Validate the success function returned by the CacheSim
 TEST_P(CacheSimUnitTests, ValidateSuccess) {
-  std::unique_ptr<CacheSim> sim = new_simulator(GetParam(), 8);
+  SimulatorArgs sim_args;
+  sim_args.min_chunk = 8;
+  std::unique_ptr<CacheSim> sim = new_simulator(GetParam(), sim_args);
 
   // add a few updates
   size_t repeats = 20;
@@ -92,7 +96,9 @@ TEST_P(CacheSimUnitTests, ValidateSuccess) {
 // Validate the success function returned by the CacheSim
 // when multiple calls are made to get_success_function
 TEST_P(CacheSimUnitTests, MultipleSuccessCalls) {
-  std::unique_ptr<CacheSim> sim = new_simulator(GetParam(), 8);
+  SimulatorArgs sim_args;
+  sim_args.min_chunk = 8;
+  std::unique_ptr<CacheSim> sim = new_simulator(GetParam(), sim_args);
 
   // add a few updates
   size_t loops = 3;

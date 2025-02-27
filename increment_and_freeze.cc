@@ -247,18 +247,17 @@ CacheSim::SuccessVector IncrementAndFreeze::get_success_function() {
 
   STARTTIME(sequential_prefix_sum);
   if (sample_rate > 0) {
-    SuccessVector downsampled_success = success;
-    success.resize(access_number);
+    SuccessVector downsampled_success = std::move(success);
+    size_t samples_per_measure = sample_rate + 1;
+    success = SuccessVector(downsampled_success.size() * samples_per_measure);
 
     // integrate to convert to success function
     req_count_t running_count = num_duplicates;
-    size_t samples_per_measure = size_t(1) << sample_rate;
-
     for (req_count_t i = 1; i < downsampled_success.size(); i++) {
-      running_count += downsampled_success[i] << sample_rate;
-      running_count = std::min(running_count, access_number);
+      running_count += downsampled_success[i] * samples_per_measure;
+      running_count = std::min(running_count, access_number - 1);
 
-      size_t pos = (i-1) << sample_rate;
+      size_t pos = i * samples_per_measure;
       size_t num_to_update = std::min(success.size() - pos, samples_per_measure);
 
       for (size_t j = 0; j < num_to_update; j++) {
