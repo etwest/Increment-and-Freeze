@@ -39,7 +39,7 @@ void BoundedIAF::memory_access(req_count_t addr) {
     uint64_t hash = XXH3_64bits_withSeed(&addr, sizeof(addr), sample_seed);
 
     // ignore all requests whose hash value is incorrect
-    if ((hash & sample_rate) != 0) return;
+    likely_if ((hash & sample_rate) != 0) return;
   }
   
   // small optimization, first check that the request is not a repeated request
