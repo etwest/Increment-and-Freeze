@@ -98,6 +98,19 @@ class CacheSim {
     os << std::setw(16) <<"Misses" << std::setw(16) << misses 
        << std::setw(16) << percent(misses, total_requests) << "%" << std::endl;
   }
+  
+  void csv_success_function(std::ostream& os, SuccessVector succ, size_t sample_rate=1) {
+    assert(sample_rate < succ.size());
+    if (succ.size() == 0)
+      return;
+    size_t total_requests = access_number - 1;
+    // Print the number of requests and largest cache size
+    os << total_requests << "," << succ.size() - 1 << std::endl;  
+    os << "Cache Size,Hits" << std::endl;
+    for (size_t page = 1; page < succ.size(); page+=sample_rate) {
+      os << page << "," << succ[page] << std::endl;
+    }
+  }
 };
 
 #endif  // ONLINE_CACHE_SIMULATOR_INCLUDE_CACHE_SIM_H_
