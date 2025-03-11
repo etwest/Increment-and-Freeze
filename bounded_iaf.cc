@@ -140,9 +140,10 @@ CacheSim::SuccessVector BoundedIAF::get_success_function() {
     const SuccessVector &downsampled_success = chunk_input.output.hits_vector;
     size_t samples_per_measure = sample_rate + 1;
     success_func = SuccessVector(downsampled_success.size() * samples_per_measure);
+    running_count *= samples_per_measure;
 
     // integrate to convert to success function
-    for (req_count_t i = 1; i < downsampled_success.size(); i++) {
+    for (req_count_t i = 0; i < downsampled_success.size(); i++) {
       running_count += downsampled_success[i] * samples_per_measure;
       running_count = std::min(running_count, access_number - 1);
 
