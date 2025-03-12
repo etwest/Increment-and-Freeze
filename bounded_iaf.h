@@ -42,6 +42,9 @@ class BoundedIAF : public CacheSim {
 
   // seed for hash function used in address sampling
   const size_t sample_seed;
+  
+  // determine which partition is used
+  const size_t sample_partition;
 
   IncrementAndFreeze iaf_alg;
 
@@ -84,13 +87,14 @@ class BoundedIAF : public CacheSim {
    *                  max cache size of 1 GiB means that we report hit rate for all memory sizes
    *                  <= 1 GiB.
    */
-  BoundedIAF(size_t _sample_rate = 0, size_t _sample_seed = size_t(-1),
+  BoundedIAF(size_t _sample_rate = 0, size_t _sample_seed = size_t(-1), size_t _sample_partition = 0, 
              size_t min_chunk_size = 65536, size_t max_cache_size = ((size_t)-1) / max_u_mult)
       : sample_rate((1 << _sample_rate) - 1),
         sample_seed(_sample_seed == size_t(-1)
                         ? std::chrono::duration_cast<std::chrono::nanoseconds>(
                               std::chrono::steady_clock::now().time_since_epoch()).count()
                         : _sample_seed),
+        sample_partition(_sample_partition),
         iaf_alg(_sample_rate, sample_seed),
         cur_u(min_chunk_size),
         max_living_req(max_cache_size/(sample_rate+1)){};

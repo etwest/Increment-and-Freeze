@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "increment_and_freeze.h"
+
 #include "xxh3.h"
 
 void BoundedIAF::memory_access(req_count_t addr) {
@@ -39,7 +40,9 @@ void BoundedIAF::memory_access(req_count_t addr) {
     uint64_t hash = XXH3_64bits_withSeed(&addr, sizeof(addr), sample_seed);
 
     // ignore all requests whose hash value is incorrect
-    likely_if ((hash & sample_rate) != 0) return;
+   // likely_if ((hash & sample_rate) != 0) return;
+    //FIXME: This probably optimizes worse, but it's useful for testing
+    likely_if ((hash % (sample_rate + 1)) != sample_partition) return;
   }
   
   // small optimization, first check that the request is not a repeated request
