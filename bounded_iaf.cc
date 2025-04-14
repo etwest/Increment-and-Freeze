@@ -39,8 +39,13 @@ void BoundedIAF::memory_access(req_count_t addr) {
   if (sample_rate > 0) {
     // compute the hash of the input
     //uint64_t hash = XXH3_64bits_withSeed(&addr, sizeof(addr), sample_seed);
-   // uint64_t hash = ((__int128_t)(addr) * 13208052345836349601ull) >> 64;
-    uint64_t hash = CityHash64((char*)&addr, sizeof(addr));
+    //uint64_t hash = CityHash64((char*)&addr, sizeof(addr));
+    // BEST SO FAR:
+    //uint64_t hash = ((__int128_t)(addr) * 13208052345836349601ull) >> 64;
+
+    // Current attempt
+    uint64_t hash = ((__int128_t)(addr) * 0xAAAAAAAAAAAAAAAAull) >> 64;
+  
 
     // ignore all requests whose hash value is incorrect
    // likely_if ((hash & sample_rate) != 0) return;
