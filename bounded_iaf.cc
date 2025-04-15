@@ -44,7 +44,9 @@ void BoundedIAF::memory_access(req_count_t addr) {
     //uint64_t hash = ((__int128_t)(addr) * 13208052345836349601ull) >> 64;
 
     // Current attempt
-    uint64_t hash = ((__int128_t)(addr) * 0xAAAAAAAAAAAAAAAAull) >> 64;
+    uint64_t hash = CityHash64((char*)&addr, sizeof(addr));
+    // What's better than 1 hash? A second hash.
+    hash = CityHash64((char*)&hash, sizeof(hash));
   
 
     // ignore all requests whose hash value is incorrect
