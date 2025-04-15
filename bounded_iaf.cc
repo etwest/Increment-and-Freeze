@@ -45,8 +45,9 @@ void BoundedIAF::memory_access(req_count_t addr) {
 
     // Current attempt
     uint64_t hash = CityHash64((char*)&addr, sizeof(addr));
-    // What's better than 1 hash? A second hash.
-    hash = CityHash64((char*)&hash, sizeof(hash));
+    // Fold the output into 16 bits 
+    for (int i = 3; i > 0; --i)
+      hash ^= (hash >> (16*i))
   
 
     // ignore all requests whose hash value is incorrect
