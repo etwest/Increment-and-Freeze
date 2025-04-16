@@ -30,7 +30,8 @@
 #include "increment_and_freeze.h"
 
 //#include "xxh3.h"
-#include "city.h"
+//#include "city.h"
+#include <openssl/sha.h>
 
 void BoundedIAF::memory_access(req_count_t addr) {
   ++access_number;
@@ -43,17 +44,23 @@ void BoundedIAF::memory_access(req_count_t addr) {
     // BEST SO FAR:
     //uint64_t hash = ((__int128_t)(addr) * 13208052345836349601ull) >> 64;
 
-    // Current attempt
+    /*// Current attempt
     uint64_t hash = CityHash64((char*)&addr, sizeof(addr));
     // Fold the output into 16 bits 
     for (int i = 3; i > 0; --i)
       hash ^= (hash >> (16*i));
-  
+  */
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, (char*)&addr, sizeof(addr));
+    SHA256_Final(hash, &sha256);
+    uint64_t hash_value = *(uint64_t*)hash;
 
     // ignore all requests whose hash value is incorrect
    // likely_if ((hash & sample_rate) != 0) return;
     //FIXME: This probably optimizes worse, but it's useful for testing
-    likely_if ((hash % (sample_rate + 1)) != sample_partition) return;
+    likely_if ((hash_value % (sample_rate + 1)) != sample_partition) return;
     
   }
   
