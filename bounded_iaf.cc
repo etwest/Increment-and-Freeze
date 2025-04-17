@@ -34,6 +34,8 @@
 //#include <openssl/sha.h>
 #include "MurmurHash3.h"
 
+constexpr uint64_t big_prime = 13208052345836349601ull;
+
 void BoundedIAF::memory_access(req_count_t addr) {
   ++access_number;
   auto &requests = chunk_input.requests;
@@ -59,14 +61,27 @@ void BoundedIAF::memory_access(req_count_t addr) {
     SHA256_Final(hash, &sha256);
     uint64_t hash_value = *(uint64_t*)hash;
 */
-    __int128_t hash = 0;
-    MurmurHash3_x64_128(&addr, sizeof(addr), 0, &hash);
+    __int128_t hash_big = 0;
+    MurmurHash3_x64_128(&addr, sizeof(addr), 0, &hash_big);
+
+    // Mod by a 64 bit prime
+    uint64_t hash = hash_big % big_prime;
+    
+    // Now we need to break it up into one of (sample_rate+1) buckets. 
+    // Calculate divisor (optimize TODO), which represents how many addresses exist in each partition
+    uint64_t addr_per_partition = big_prime / (sample_rate + 1);
+    
+    // map hash from 64 bit prime remainder to bucket
+    uint64_t partition = hash / addr_per_partition;
+    
 
     // ignore all requests whose hash value is incorrect
    // likely_if ((hash & sample_rate) != 0) return;
     //FIXME: This probably optimizes worse, but it's useful for testing
-    likely_if ((hash % (sample_rate + 1)) != sample_partition) return;
+    // OLD VERSION
+    //likely_if ((hash % (sample_rate + 1)) != sample_partition) return;
     
+    likely_if (partition != sample_partition) return;
   }
   
   // small optimization, first check that the request is not a repeated request
