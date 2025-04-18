@@ -34,7 +34,8 @@
 //#include <openssl/sha.h>
 #include "MurmurHash3.h"
 
-constexpr uint64_t big_prime = 13208052345836349601ull;
+constexpr uint64_t prime_64b = 13208052345836349601ull;
+constexpr uint64_t prime_32b = 2147483647;
 
 void BoundedIAF::memory_access(req_count_t addr) {
   ++access_number;
@@ -62,14 +63,14 @@ void BoundedIAF::memory_access(req_count_t addr) {
     uint64_t hash_value = *(uint64_t*)hash;
 */
     __int128_t hash_big = 0;
-    MurmurHash3_x64_128(&addr, sizeof(addr), 0, &hash_big);
+    MurmurHash3_x64_128(&addr, sizeof(addr), prime_64b, &hash_big);
 
     // Mod by a 64 bit prime
-    uint64_t hash = hash_big % big_prime;
+    uint64_t hash = hash_big % prime_32b;
     
     // Now we need to break it up into one of (sample_rate+1) buckets. 
     // Calculate divisor (optimize TODO), which represents how many addresses exist in each partition
-    uint64_t addr_per_partition = big_prime / (sample_rate + 1);
+    uint64_t addr_per_partition = prime_32b / (sample_rate + 1);
     
     // map hash from 64 bit prime remainder to bucket
     uint64_t partition = hash / addr_per_partition;
