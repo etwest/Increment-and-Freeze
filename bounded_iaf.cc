@@ -32,9 +32,10 @@
 //#include "xxh3.h"
 //#include "city.h"
 //#include <openssl/sha.h>
-#include "MurmurHash3.h"
+//#include "MurmurHash3.h"
 
 constexpr uint64_t prime_64b = 13208052345836349601ull;
+constexpr uint64_t rand_64b = 9316249495263525862ull;
 constexpr uint64_t prime_32b = 2147483647;
 
 void BoundedIAF::memory_access(req_count_t addr) {
@@ -62,27 +63,17 @@ void BoundedIAF::memory_access(req_count_t addr) {
     SHA256_Final(hash, &sha256);
     uint64_t hash_value = *(uint64_t*)hash;
 */
-    __int128_t hash_big = 0;
-    MurmurHash3_x64_128(&addr, sizeof(addr), prime_64b, &hash_big);
+    //dMurmurHash3_x64_128(&addr, sizeof(addr), prime_64b, &hash_big);
+    
 
-    // Mod by a 64 bit prime
-    uint64_t hash = hash_big % prime_32b;
-    
-    // Now we need to break it up into one of (sample_rate+1) buckets. 
-    // Calculate divisor (optimize TODO), which represents how many addresses exist in each partition
-    uint64_t addr_per_partition = prime_32b / (sample_rate + 1);
-    
-    // map hash from 64 bit prime remainder to bucket
-    uint64_t partition = hash / addr_per_partition;
-    
+    // Universal Hashing from wikipedia
+    __int128_t hash_big = (__int128_t)prime_64b * addr + rand_64b;
+
+    uint64_t hash = hash_big >> 64;
 
     // ignore all requests whose hash value is incorrect
-   // likely_if ((hash & sample_rate) != 0) return;
-    //FIXME: This probably optimizes worse, but it's useful for testing
     // OLD VERSION
-    //likely_if ((hash % (sample_rate + 1)) != sample_partition) return;
-    
-    likely_if (partition != sample_partition) return;
+    likely_if ((hash & sample_rate) != sample_partition) return;
   }
   
   // small optimization, first check that the request is not a repeated request
