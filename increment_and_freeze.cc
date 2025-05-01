@@ -26,12 +26,12 @@
 void IncrementAndFreeze::memory_access(req_count_t addr) {
   ++access_number;
 
-  if (sample_rate > 0) {
+  if (sample_mask > 0) {
     // compute the hash of the input
     uint64_t hash = XXH3_64bits_withSeed(&addr, sizeof(addr), sample_seed);
 
     // ignore all requests whose hash value is incorrect
-    if ((hash & sample_rate) != 0) return;
+    if ((hash & sample_mask) != 0) return;
   }
 
   // catch case where new request is the same as the last
@@ -246,9 +246,9 @@ CacheSim::SuccessVector IncrementAndFreeze::get_success_function() {
   update_hits_vector(requests, success);
 
   STARTTIME(sequential_prefix_sum);
-  if (sample_rate > 0) {
+  if (sample_mask > 0) {
     SuccessVector downsampled_success = std::move(success);
-    size_t samples_per_measure = sample_rate + 1;
+    size_t samples_per_measure = sample_mask + 1;
     success = SuccessVector(downsampled_success.size() * samples_per_measure);
 
     // integrate to convert to success function

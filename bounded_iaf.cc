@@ -39,10 +39,9 @@ constexpr uint64_t rand_64b = 9316249495263525862ull;
 constexpr uint64_t prime_32b = 2147483647;
 
 void BoundedIAF::memory_access(req_count_t addr) {
-  ++access_number;
   auto &requests = chunk_input.requests;
 
-  if (sample_rate > 0) {
+  if (sample_mask > 0) {
     // compute the hash of the input
     //uint64_t hash = XXH3_64bits_withSeed(&addr, sizeof(addr), sample_seed);
     //uint64_t hash = CityHash64((char*)&addr, sizeof(addr));
@@ -73,8 +72,10 @@ void BoundedIAF::memory_access(req_count_t addr) {
 
     // ignore all requests whose hash value is incorrect
     // OLD VERSION
-    likely_if ((hash & sample_rate) != sample_partition) return;
+    likely_if ((hash & sample_mask) != sample_partition) return;
   }
+  
+  ++access_number;
   
   // small optimization, first check that the request is not a repeated request
   if (requests.size() && addr == requests[requests.size() - 1].addr) {
@@ -170,18 +171,21 @@ CacheSim::SuccessVector BoundedIAF::get_success_function() {
 
 
   CacheSim::SuccessVector success_func;
-  if (sample_rate > 0) {
+  if (sample_mask > 0) {
     const SuccessVector &downsampled_success = chunk_input.output.hits_vector;
-    size_t samples_per_measure = sample_rate + 1;
+    size_t samples_per_measure = sample_mask + 1;
     success_func = SuccessVector(downsampled_success.size() * samples_per_measure);
     running_count *= samples_per_measure;
 
     // integrate to convert to success function
-    for (req_count_t i = 0; i < downsampled_success.size(); i++) {
+    for (req_count_t i = 1; i < downsampled_success.size(); i++) {
       running_count += downsampled_success[i] * samples_per_measure;
-      running_count = std::min(running_count, access_number - 1);
+      //Bound running count by access number
+      // No don't
+      //running_count = std::min(running_count, (access_number - 1) * samples_per_measure);
 
       size_t pos = i * samples_per_measure;
+      // bounds check on array
       size_t num_to_update = std::min(success_func.size() - pos, samples_per_measure);
 
       for (size_t j = 0; j < num_to_update; j++) {

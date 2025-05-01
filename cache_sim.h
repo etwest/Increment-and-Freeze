@@ -67,11 +67,25 @@ class CacheSim {
  protected:
   uint64_t access_number = 1; // simulated timestamp and number of total requests
   size_t memory_usage = 0;    // memory usage of the cache sim
+  // Controls how many unique addresses are sampled by IAF to construct the hit-rate curve
+  // On average, every 1 in 2^sample_rate addresses will be sampled.
+  // by default this value is 0 (no sampling)
+  const size_t sample_mask;
+
+  // seed for hash function used in address sampling
+  const size_t sample_seed;
+  
+  // determine which partition is used
+  const size_t sample_partition;
+
  public:
   using SuccessVector = std::vector<req_count_t>;
 
   CacheSim() = default;
   virtual ~CacheSim() = default;
+  CacheSim(size_t _sample_mask, size_t _sample_seed, size_t _sample_partition)
+  : sample_mask(_sample_mask), sample_seed(_sample_seed), sample_partition(_sample_partition)
+   {};
   /*
    * Perform a memory access upon a given id
    * addr:    the id to access 
@@ -86,6 +100,8 @@ class CacheSim {
   void dump_success_function(std::ostream& os, SuccessVector succ, size_t sample_rate=1) {
     assert(sample_rate < succ.size());
     size_t total_requests = access_number - 1;
+    if (sample_mask)
+      total_requests *= (sample_mask+1);
     os << "#" << std::setw(15) << "Cache Size" << std::setw(16) 
        << "Hits" << std::setw(16) << "Hit Rate" << std::endl;
     for (size_t page = 1; page < succ.size(); page+=sample_rate) {
@@ -104,6 +120,8 @@ class CacheSim {
     if (succ.size() == 0)
       return;
     size_t total_requests = access_number - 1;
+    if (sample_mask)
+      total_requests *= (sample_mask+1);
     // Print the number of requests and largest cache size
     os << total_requests << "," << succ.size() - 1 << std::endl;  
     os << "Cache Size,Hits" << std::endl;

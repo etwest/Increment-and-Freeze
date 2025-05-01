@@ -72,14 +72,6 @@ class IncrementAndFreeze: public CacheSim {
   // this enables optimization where these requests are dropped from the requests vector
   size_t num_duplicates = 0;
 
-  // Controls how many unique addresses are sampled by IAF to construct the hit-rate curve
-  // On average, every 1 in 2^sample_rate addresses will be sampled.
-  // by default this value is 1 (no sampling)
-  const size_t sample_rate;
-
-  // seed for hash function used in address sampling
-  const size_t sample_seed;
-
   /* This converts the requests into the previous and next vectors
    * Requests is copied, not modified.
    * Precondition: requests must be properly populated.
@@ -127,12 +119,11 @@ class IncrementAndFreeze: public CacheSim {
    * _sample_rate:  sample 1 in 2^sample_rate request addresses. > 0 to enable sampling.
    * _sample_seed:  seed to use when sampling requests. You should let it be set automatically.
    */
-  IncrementAndFreeze(size_t _sample_rate = 0, size_t _sample_seed = size_t(-1))
-      : sample_rate((1 << _sample_rate) - 1),
-        sample_seed(_sample_seed == size_t(-1)
-                        ? std::chrono::duration_cast<std::chrono::nanoseconds>(
-                              std::chrono::steady_clock::now().time_since_epoch()).count()
-                        : _sample_seed) {}
+  IncrementAndFreeze(size_t _sample_rate = 0, size_t _sample_seed = size_t(-1), size_t _sample_partition = 0)
+      : CacheSim((1 << _sample_rate) - 1, 
+        _sample_seed == size_t(-1)
+        ? std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() 
+        : _sample_seed, _sample_partition) {};
   ~IncrementAndFreeze() = default;
 };
 
