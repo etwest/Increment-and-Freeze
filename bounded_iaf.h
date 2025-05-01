@@ -85,7 +85,7 @@ class BoundedIAF : public CacheSim {
         : _sample_seed, _sample_partition),
         iaf_alg(_sample_rate, sample_seed),
         cur_u(min_chunk_size),
-        max_living_req(max_cache_size/(_sample_rate+1)){};
+        max_living_req(max_cache_size/(sample_mask+1)){};
   ~BoundedIAF() = default;
 };
 
