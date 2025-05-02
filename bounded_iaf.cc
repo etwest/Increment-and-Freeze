@@ -40,6 +40,7 @@ constexpr uint64_t prime_32b = 2147483647;
 
 void BoundedIAF::memory_access(req_count_t addr) {
   auto &requests = chunk_input.requests;
+  ++access_number;
 
   if (sample_mask > 0) {
     // compute the hash of the input
@@ -75,7 +76,7 @@ void BoundedIAF::memory_access(req_count_t addr) {
     likely_if ((hash & sample_mask) != sample_partition) return;
   }
   
-  ++access_number;
+  ++sample_access_number;
   
   // small optimization, first check that the request is not a repeated request
   if (requests.size() && addr == requests[requests.size() - 1].addr) {
@@ -166,33 +167,43 @@ CacheSim::SuccessVector BoundedIAF::get_success_function() {
 
   // TODO: parallel prefix sum for integrating
 
-  // start with num_duplicates to count those
-  size_t running_count = num_duplicates;
-
+  //TODO: This will have to be ported over to IaF...
 
   CacheSim::SuccessVector success_func;
   if (sample_mask > 0) {
+    // We operate on a downsampled vector. Renaming
     const SuccessVector &downsampled_success = chunk_input.output.hits_vector;
+
+    // We start with 0 hits on a cache of size 0
+    // And num_duplicates hits on a cache of size 1
+    size_t running_count = num_duplicates;
+    
+    // rename with units. A power of 2
     size_t samples_per_measure = sample_mask + 1;
-    success_func = SuccessVector(downsampled_success.size() * samples_per_measure);
-    running_count *= samples_per_measure;
+    
+    // Allocate space for the extrapolation (0 cache, plus samples_per_measure spots for all others
+    // But we still want a fixed-size output :)
+    success_func = SuccessVector(1+ ((downsampled_success.size()-1) * samples_per_measure));
+
+    // Our downsampled cache of size 1 represents all caches size [1, samples_per_measure)
 
     // integrate to convert to success function
     for (req_count_t i = 1; i < downsampled_success.size(); i++) {
-      running_count += downsampled_success[i] * samples_per_measure;
-      //Bound running count by access number
-      // No don't
-      //running_count = std::min(running_count, (access_number - 1) * samples_per_measure);
+      // Pretend all samples_per_measure caches have the same value!
+      running_count += downsampled_success[i];
 
-      size_t pos = i * samples_per_measure;
-      // bounds check on array
-      size_t num_to_update = std::min(success_func.size() - pos, samples_per_measure);
-
-      for (size_t j = 0; j < num_to_update; j++) {
-        success_func[pos + j] = running_count;
+      // The size 0 cache doesn't spread out to more slots, but we must account for it
+      size_t start_pos = 1 + (i-1) * samples_per_measure;
+      size_t end_pos = std::min(size_t(1 + i * samples_per_measure), success_func.size());
+      
+      // Spread the data
+      for (size_t j = start_pos; j < end_pos; j++) {
+        success_func[j] = running_count * samples_per_measure; 
       }
     }
   } else {
+    // start with num_duplicates to count those
+    size_t running_count = num_duplicates;
     // integrate to convert to success function
     success_func = SuccessVector(chunk_input.output.hits_vector.size());
     for (size_t i = 1; i < chunk_input.output.hits_vector.size(); i++) {

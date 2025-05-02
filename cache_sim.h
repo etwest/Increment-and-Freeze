@@ -66,6 +66,7 @@ static inline double percent(double val, double total) {
 class CacheSim {
  protected:
   uint64_t access_number = 1; // simulated timestamp and number of total requests
+  uint64_t sample_access_number = 1; // simulated timestamp and number of total requests 
   size_t memory_usage = 0;    // memory usage of the cache sim
   // Controls how many unique addresses are sampled by IAF to construct the hit-rate curve
   // On average, every 1 in 2^sample_rate addresses will be sampled.
@@ -101,7 +102,7 @@ class CacheSim {
     assert(sample_rate < succ.size());
     size_t total_requests = access_number - 1;
     if (sample_mask)
-      total_requests *= (sample_mask+1);
+      total_requests = (sample_access_number-1) * (sample_mask+1);
     os << "#" << std::setw(15) << "Cache Size" << std::setw(16) 
        << "Hits" << std::setw(16) << "Hit Rate" << std::endl;
     for (size_t page = 1; page < succ.size(); page+=sample_rate) {
@@ -119,9 +120,10 @@ class CacheSim {
     assert(sample_rate < succ.size());
     if (succ.size() == 0)
       return;
+    //FIXME do for dump too
     size_t total_requests = access_number - 1;
     if (sample_mask)
-      total_requests *= (sample_mask+1);
+      total_requests = (sample_access_number-1) * (sample_mask+1);
     // Print the number of requests and largest cache size
     os << total_requests << "," << succ.size() - 1 << std::endl;  
     os << "Cache Size,Hits" << std::endl;

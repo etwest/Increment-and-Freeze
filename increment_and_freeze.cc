@@ -24,8 +24,8 @@
 #include "xxh3.h"
 
 void IncrementAndFreeze::memory_access(req_count_t addr) {
-  ++access_number;
 
+  ++sample_access_number;
   if (sample_mask > 0) {
     // compute the hash of the input
     uint64_t hash = XXH3_64bits_withSeed(&addr, sizeof(addr), sample_seed);
@@ -33,6 +33,7 @@ void IncrementAndFreeze::memory_access(req_count_t addr) {
     // ignore all requests whose hash value is incorrect
     if ((hash & sample_mask) != 0) return;
   }
+  ++access_number;
 
   // catch case where new request is the same as the last
   // in this case we can just drop this request and increment
