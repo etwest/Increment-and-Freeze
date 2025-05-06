@@ -183,7 +183,10 @@ CacheSim::SuccessVector BoundedIAF::get_success_function() {
     
     // Allocate space for the extrapolation (0 cache, plus samples_per_measure spots for all others
     // But we still want a fixed-size output :)
-    success_func = SuccessVector(1+ ((downsampled_success.size()-1) * samples_per_measure));
+    if (downsampled_success.size())
+      success_func = SuccessVector(1+ ((downsampled_success.size()-1) * samples_per_measure));
+    else
+      success_func = SuccessVector(1);
 
     // Our downsampled cache of size 1 represents all caches size [1, samples_per_measure)
 
