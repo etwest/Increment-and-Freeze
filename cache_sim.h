@@ -124,8 +124,8 @@ class CacheSim {
     size_t total_requests = access_number - 1;
     if (sample_mask)
       total_requests = (sample_access_number-1) * (sample_mask+1);
-    // Print the number of requests and largest cache size
-    os << total_requests << "," << succ.size() - 1 << std::endl;  
+    // Print the number of requests and largest cache size (and number of reqs, including filtered out)
+    os << total_requests << "," << succ.size() - 1 << "," << access_number-1 << std::endl;  
     os << "Cache Size,Hits" << std::endl;
     for (size_t page = 1; page < succ.size(); page+=sample_rate) {
       os << page << "," << succ[page] << std::endl;
