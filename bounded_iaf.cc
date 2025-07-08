@@ -29,43 +29,14 @@
 
 #include "increment_and_freeze.h"
 
-//#include "xxh3.h"
-//#include "city.h"
-//#include <openssl/sha.h>
-//#include "MurmurHash3.h"
-
 constexpr uint64_t prime_64b = 13208052345836349601ull;
 constexpr uint64_t rand_64b = 9316249495263525862ull;
 constexpr uint64_t prime_32b = 2147483647;
 
 void BoundedIAF::memory_access(req_count_t addr) {
-  auto &requests = chunk_input.requests;
   ++access_number;
 
   if (sample_mask > 0) {
-    // compute the hash of the input
-    //uint64_t hash = XXH3_64bits_withSeed(&addr, sizeof(addr), sample_seed);
-    //uint64_t hash = CityHash64((char*)&addr, sizeof(addr));
-    // BEST SO FAR:
-    //uint64_t hash = ((__int128_t)(addr) * 13208052345836349601ull) >> 64;
-
-    /*// Current attempt
-    uint64_t hash = CityHash64((char*)&addr, sizeof(addr));
-    // Fold the output into 16 bits 
-    for (int i = 3; i > 0; --i)
-      hash ^= (hash >> (16*i));
-  */
-  /*
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, (char*)&addr, sizeof(addr));
-    SHA256_Final(hash, &sha256);
-    uint64_t hash_value = *(uint64_t*)hash;
-*/
-    //dMurmurHash3_x64_128(&addr, sizeof(addr), prime_64b, &hash_big);
-    
-
     // Universal Hashing from wikipedia
     __int128_t hash_big = (__int128_t)prime_64b * addr + rand_64b;
 

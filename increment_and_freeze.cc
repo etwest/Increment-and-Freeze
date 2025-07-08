@@ -21,17 +21,24 @@
 
 #include <algorithm>
 #include <utility>
-#include "xxh3.h"
+
+constexpr uint64_t prime_64b = 13208052345836349601ull;
+constexpr uint64_t rand_64b = 9316249495263525862ull;
+constexpr uint64_t prime_32b = 2147483647;
+
 
 void IncrementAndFreeze::memory_access(req_count_t addr) {
 
   ++sample_access_number;
   if (sample_mask > 0) {
-    // compute the hash of the input
-    uint64_t hash = XXH3_64bits_withSeed(&addr, sizeof(addr), sample_seed);
+    // Universal Hashing from wikipedia
+    __int128_t hash_big = (__int128_t)prime_64b * addr + rand_64b;
+
+    uint64_t hash = hash_big >> 64;
 
     // ignore all requests whose hash value is incorrect
-    if ((hash & sample_mask) != 0) return;
+    // OLD VERSION
+    likely_if ((hash & sample_mask) != sample_partition) return;
   }
   ++access_number;
 
