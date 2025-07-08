@@ -34,6 +34,7 @@ constexpr uint64_t rand_64b = 9316249495263525862ull;
 constexpr uint64_t prime_32b = 2147483647;
 
 void BoundedIAF::memory_access(req_count_t addr) {
+  auto &requests = chunk_input.requests;
   ++access_number;
 
   if (sample_mask > 0) {
