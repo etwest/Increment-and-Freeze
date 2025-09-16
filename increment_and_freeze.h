@@ -101,13 +101,13 @@ class IncrementAndFreeze: public CacheSim {
                           std::vector<request> *living_req=nullptr);
  public:
   // Logs a memory access to simulate. The order this function is called in matters.
-  void memory_access(req_count_t addr);
+  void memory_access(req_count_t addr) override;
 
   /* Returns the success function.
    * Does *a lot* of work.
    * When calling print_success_function, the answer is re-computed.
    */
-  SuccessVector get_success_function();
+  SuccessVector get_success_function() override;
 
   /*
    * Process a chunk of requests (called by IAF_Wrapper)

@@ -194,7 +194,7 @@ void IncrementAndFreeze::do_projections(SuccessVector& hits_vector, ProjSequence
 
       // split off rightmost portion of current sequence
       ProjSequence split_sequence(fractional_end + 1, cur.end);
-      remaining_sequence = std::move(ProjSequence(cur.start, fractional_end));
+      remaining_sequence = ProjSequence(cur.start, fractional_end);
       cur.partition(remaining_sequence, split_sequence, i, state);
       cur = std::move(remaining_sequence);
 

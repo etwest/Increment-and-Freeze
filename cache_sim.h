@@ -82,7 +82,7 @@ class CacheSim {
  public:
   using SuccessVector = std::vector<req_count_t>;
 
-  CacheSim() = default;
+  CacheSim() = delete;
   virtual ~CacheSim() = default;
   CacheSim(size_t _sample_mask, size_t _sample_seed, size_t _sample_partition)
   : sample_mask(_sample_mask), sample_seed(_sample_seed), sample_partition(_sample_partition)
