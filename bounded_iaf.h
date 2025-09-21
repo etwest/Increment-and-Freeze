@@ -56,6 +56,9 @@ class BoundedIAF : public CacheSim {
   void process_requests();
 
  public:
+  // Returns true if this address will be included
+  bool should_sample(req_count_t addr) override;
+
   // Logs a memory access to simulate. The order this function is called in matters.
   void memory_access(req_count_t addr) override;
 

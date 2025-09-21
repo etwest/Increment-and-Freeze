@@ -29,9 +29,8 @@ constexpr uint64_t rand_64b = 9316249495263525862ull;
 constexpr uint64_t prime_32b = 2147483647;
 
 
-void IncrementAndFreeze::memory_access(req_count_t addr) {
+bool IncrementAndFreeze::should_sample(req_count_t addr) {
 
-  ++sample_access_number;
   if (sample_mask > 0) {
     // Universal Hashing from wikipedia
     __int128_t hash_big = (__int128_t)prime_64b * addr + rand_64b;
@@ -40,8 +39,15 @@ void IncrementAndFreeze::memory_access(req_count_t addr) {
 
     // ignore all requests whose hash value is incorrect
     // OLD VERSION
-    likely_if ((hash & sample_mask) != sample_partition) return;
+    likely_if ((hash & sample_mask) != sample_partition) return false;
   }
+  return true;
+}
+
+void IncrementAndFreeze::memory_access(req_count_t addr) {
+
+  ++sample_access_number;
+  if (!should_sample(addr)) return;
   ++access_number;
 
   // catch case where new request is the same as the last

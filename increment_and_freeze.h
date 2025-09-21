@@ -100,6 +100,9 @@ class IncrementAndFreeze: public CacheSim {
   void update_hits_vector(std::vector<request>& reqs, std::vector<req_count_t>& hits_vector,
                           std::vector<request> *living_req=nullptr);
  public:
+  // Returns true if this address will be included
+  bool should_sample(req_count_t addr) override;
+
   // Logs a memory access to simulate. The order this function is called in matters.
   void memory_access(req_count_t addr) override;
 

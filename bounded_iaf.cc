@@ -32,11 +32,9 @@
 constexpr uint64_t prime_64b = 13208052345836349601ull;
 constexpr uint64_t rand_64b = 9316249495263525862ull;
 //constexpr uint64_t prime_32b = 2147483647;
-
-void BoundedIAF::memory_access(req_count_t addr) {
-  auto &requests = chunk_input.requests;
-  ++access_number;
-
+  
+// Returns true if this address will be included
+bool BoundedIAF::should_sample(req_count_t addr) {
   if (sample_mask > 0) {
     // Universal Hashing from wikipedia
     __int128_t hash_big = (__int128_t)prime_64b * addr + rand_64b;
@@ -45,8 +43,17 @@ void BoundedIAF::memory_access(req_count_t addr) {
 
     // ignore all requests whose hash value is incorrect
     // OLD VERSION
-    likely_if ((hash & sample_mask) != sample_partition) return;
+    likely_if ((hash & sample_mask) != sample_partition) return false;
   }
+  return true;
+}
+
+void BoundedIAF::memory_access(req_count_t addr) {
+  auto &requests = chunk_input.requests;
+  ++access_number;
+
+  if (!should_sample(addr)) return;
+
   
   ++sample_access_number;
   
