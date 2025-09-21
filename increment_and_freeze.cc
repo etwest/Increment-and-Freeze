@@ -22,6 +22,8 @@
 #include <algorithm>
 #include <utility>
 
+#include "omp.h"
+
 constexpr uint64_t prime_64b = 13208052345836349601ull;
 constexpr uint64_t rand_64b = 9316249495263525862ull;
 constexpr uint64_t prime_32b = 2147483647;
