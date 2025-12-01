@@ -37,13 +37,14 @@ constexpr uint64_t rand_64b = 9316249495263525862ull;
 bool BoundedIAF::should_sample(req_count_t addr) {
   if (sample_mask > 0) {
     // Universal Hashing from wikipedia
-    __int128_t hash_big = (__int128_t)prime_64b * addr + rand_64b;
+    __int128_t hash_big = (__int128_t)prime_64b * addr;// + rand_64b;
 
     uint64_t hash = hash_big >> 64;
 
     // ignore all requests whose hash value is incorrect
     // OLD VERSION
-    likely_if ((hash & sample_mask) != sample_partition) return false;
+    // likely_if ((hash & sample_mask) != sample_partition) return false;
+    return (hash & sample_mask) != sample_partition;
   }
   return true;
 }
