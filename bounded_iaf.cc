@@ -44,7 +44,7 @@ bool BoundedIAF::should_sample(req_count_t addr) {
     // ignore all requests whose hash value is incorrect
     // OLD VERSION
     // likely_if ((hash & sample_mask) != sample_partition) return false;
-    return (hash & sample_mask) != sample_partition;
+    return (hash & sample_mask) == sample_partition;
   }
   return true;
 }
