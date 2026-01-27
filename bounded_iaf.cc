@@ -35,7 +35,6 @@ constexpr uint64_t rand_64b = 9316249495263525862ull;
   
 // Returns true if this address will be included
 bool BoundedIAF::should_sample(req_count_t addr) {
-  ++access_number;
   if (sample_mask > 0) {
     // Universal Hashing from wikipedia
     __int128_t hash_big = (__int128_t)prime_64b * addr;// + rand_64b;
@@ -53,6 +52,7 @@ bool BoundedIAF::should_sample(req_count_t addr) {
 void BoundedIAF::memory_access(req_count_t addr) {
   auto &requests = chunk_input.requests;
 
+  ++access_number;
   if (!should_sample(addr)) return;
 
   

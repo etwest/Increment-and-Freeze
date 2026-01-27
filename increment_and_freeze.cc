@@ -30,7 +30,6 @@ constexpr uint64_t prime_32b = 2147483647;
 
 
 bool IncrementAndFreeze::should_sample(req_count_t addr) {
-  ++access_number;
   if (sample_mask > 0) {
     // Universal Hashing from wikipedia
     __int128_t hash_big = (__int128_t)prime_64b * addr;// + rand_64b;
@@ -46,7 +45,7 @@ bool IncrementAndFreeze::should_sample(req_count_t addr) {
 }
 
 void IncrementAndFreeze::memory_access(req_count_t addr) {
-
+  ++access_number;
   if (!should_sample(addr)) return;
   ++sample_access_number;
 

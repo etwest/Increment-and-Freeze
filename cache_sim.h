@@ -98,6 +98,8 @@ class CacheSim {
   virtual SuccessVector get_success_function() = 0;
   
   double get_memory_usage() { return get_max_mem_used(); }
+  
+  void inc_access(uint64_t count) {access_number += count;};
 
   void dump_success_function(std::ostream& os, SuccessVector succ, size_t sample_rate=1) {
     assert(sample_rate < succ.size());
