@@ -17,9 +17,13 @@ set(IAF_SRCS
 
 # Add a library target using the list variable
 add_library(IAF ${IAF_SRCS})
-target_include_directories(IAF PUBLIC includes)
+target_include_directories(IAF PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/includes>
+    $<INSTALL_INTERFACE:includes> 
+)
+
 
 
 add_executable(simulation src/simulation.cc src/ost_cache_sim.cc src/ostree.cc)  
 target_include_directories(simulation PRIVATE container)
-target_link_libraries(simulation PRIVATE IAF)
+target_link_libraries(simulation PRIVATE IAF)   
