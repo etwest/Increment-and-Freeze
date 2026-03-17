@@ -21,9 +21,9 @@
 #define ONLINE_CACHE_SIMULATOR_INCLUDE_IAKWRAPPER_H_
 
 #include <cstddef>
-#include <cstdint>
-#include <utility>
-#include <vector>
+//#include <cstdint>
+//#include <utility>
+//#include <vector>
 
 #include "cache_sim.h"
 #include "increment_and_freeze.h"
