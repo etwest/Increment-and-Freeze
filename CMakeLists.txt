@@ -13,6 +13,7 @@ set(IAF_SRCS
     src/bounded_iaf.cc
     src/projection.cc
     src/increment_and_freeze.cc
+    includes/bounded_iaf.h
 )
 
 # Add a library target using the list variable
