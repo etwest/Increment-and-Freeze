@@ -21,7 +21,7 @@
 #define ONLINE_CACHE_SIMULATOR_SIM_FACTORY_H_
 
 #include "bounded_iaf.h"
-#include "container_cache_sim.h"
+//#include "container_cache_sim.h"
 #include "increment_and_freeze.h"
 #include "ost_cache_sim.h"
 
@@ -42,9 +42,9 @@ struct SimulatorArgs {
 std::unique_ptr<CacheSim> new_simulator(CacheSimType sim_enum, SimulatorArgs args) {
   switch (sim_enum) {
     case OS_TREE:
-      return std::make_unique<OSTCacheSim>();
-    case OS_SET:
-      return std::make_unique<ContainerCacheSim>();
+      return std::make_unique<OSTCacheSim>(args.sampling_rate);
+    //case OS_SET:
+      //return std::make_unique<ContainerCacheSim>();
     case IAF:
       return std::make_unique<IncrementAndFreeze>(args.sampling_rate);
     case BOUND_IAF:

@@ -26,7 +26,7 @@
 #include <vector>
 
 #include "cache_sim.h"
-#include "container/order_statistic_set.h"
+#include "order_statistic_set.h"
 
 /*
  * An ContainerCacheSim simulates LRU running on every possible

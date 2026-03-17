@@ -18,6 +18,7 @@
  */
 
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <cmath>
@@ -27,13 +28,12 @@
 #include <vector>
 #include <fstream>
 
-#include "absl/time/clock.h"
 #include "sim_factory.h"
 #include "params.h"
 
 struct SimResult {
   CacheSim::SuccessVector success;
-  absl::Duration latency;
+  std::chrono::milliseconds latency;
   bool operator== (const SimResult& other) const
   {
     if (success.size() == 0 || other.success.size() == 0) return false;
@@ -67,7 +67,7 @@ struct SimResult {
 //  * returns: The success function and time it took to compute.
 SimResult working_set_simulator(CacheSim &sim, size_t accesses, size_t universe, uint64_t seed) {
   std::mt19937_64 rand(seed);  // create random number generator
-  auto start = absl::Now();
+  auto start = std::chrono::steady_clock::now();
   for (uint64_t i = 0; i < accesses; i++) {
     // compute the next address
     uint64_t working_size = kWorkingSet;
@@ -83,13 +83,13 @@ SimResult working_set_simulator(CacheSim &sim, size_t accesses, size_t universe,
     sim.memory_access(addr);
   }
   CacheSim::SuccessVector succ = sim.get_success_function();
-  auto duration = absl::Now() - start;
+  std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
   return {succ, duration};
 }
 
 SimResult uniform_simulator(CacheSim &sim, size_t accesses, size_t universe, uint64_t seed) {
   std::mt19937_64 rand(seed); // create random number generator
-  auto start = absl::Now();
+  auto start = std::chrono::steady_clock::now();
   std::cout << "Performing Accesses...  0%       \r"; fflush(stdout);
   size_t half_percent = accesses / 200;
   size_t last_print = 0;
@@ -108,12 +108,12 @@ SimResult uniform_simulator(CacheSim &sim, size_t accesses, size_t universe, uin
   }
   std::cout << "Getting Success Function...       \r"; fflush(stdout);
   CacheSim::SuccessVector succ = sim.get_success_function();
-  auto duration = absl::Now() - start;
+  std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
   return {succ, duration};
 }
 
 SimResult simulate_on_seq(CacheSim &sim, std::vector<uint64_t>& seq) {
-  auto start = absl::Now();
+  auto start = std::chrono::steady_clock::now();
   std::cout << "Performing Accesses...  0%       \r"; fflush(stdout);
   size_t half_percent = seq.size() / 200;
   size_t last_print = 0;
@@ -129,7 +129,7 @@ SimResult simulate_on_seq(CacheSim &sim, std::vector<uint64_t>& seq) {
   }
   std::cout << "Getting Success Function...       \r"; fflush(stdout);
   CacheSim::SuccessVector succ = sim.get_success_function();
-  auto duration = absl::Now() - start;
+  std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
   return {succ, duration};
 }
 
@@ -268,7 +268,7 @@ int main(int argc, char** argv) {
   // Output results to temporary csv files for integration with bash script
   std::ofstream latency_csv("tmp_latency.csv", std::ios::app);
   std::ofstream memory_csv("tmp_memory.csv", std::ios::app);
-  latency_csv << ", " << absl::ToDoubleSeconds(result.latency);
+  latency_csv << ", " << result.latency;
   memory_csv << ", " << memory_usage;
 
 

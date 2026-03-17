@@ -12,8 +12,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(IAF_SRCS
     src/bounded_iaf.cc
     src/projection.cc
+    src/increment_and_freeze.cc
 )
 
 # Add a library target using the list variable
 add_library(IAF ${IAF_SRCS})
 target_include_directories(IAF PUBLIC includes)
+
+
+add_executable(simulation src/simulation.cc src/ost_cache_sim.cc src/ostree.cc)  
+target_include_directories(simulation PRIVATE includes container)
+target_link_libraries(simulation PRIVATE IAF)

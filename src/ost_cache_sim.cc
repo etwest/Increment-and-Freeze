@@ -21,6 +21,8 @@
 
 #include <utility>
 
+constexpr uint64_t prime_64b = 13208052345836349601ull;
+
 // perform a memory access and use the LRU_queue to update the success function
 void OSTCacheSim::memory_access(req_count_t addr) {
   uint64_t ts = access_number++;
@@ -69,4 +71,19 @@ CacheSim::SuccessVector OSTCacheSim::get_success_function() {
     success[page+1] = nhits;  // faults at given size is sum of self and bigger
   }
   return success;
+}
+
+bool OSTCacheSim::should_sample(req_count_t addr) {
+  if (sample_mask > 0) {
+    // Universal Hashing from wikipedia
+    __int128_t hash_big = (__int128_t)prime_64b * addr;// + rand_64b;
+
+    uint64_t hash = hash_big >> 64;
+
+    // ignore all requests whose hash value is incorrect
+    // OLD VERSION
+    // likely_if ((hash & sample_mask) != sample_partition) return false;
+    return (hash & sample_mask) == sample_partition;
+  }
+  return true;
 }

@@ -40,8 +40,13 @@ class OSTCacheSim : public CacheSim {
   OSTreeHead LRU_queue;             // order statistics tree for LRU depth
   std::unordered_map<req_count_t, uint64_t> page_table;  // map from v_addr to ts
  public:
-  OSTCacheSim() = default;
+  OSTCacheSim() = delete;
   ~OSTCacheSim() = default;
+  OSTCacheSim(size_t _sample_rate = 0, size_t _sample_seed = size_t(-1), size_t _sample_partition = 0)
+      : CacheSim((1 << _sample_rate) - 1, 
+        _sample_seed == size_t(-1)
+        ? std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() 
+        : _sample_seed, _sample_partition){};
 
   /*
    * Performs a memory access upon a given virtual page
@@ -67,6 +72,9 @@ class OSTCacheSim : public CacheSim {
    * returns   the success function in a vector
    */
   SuccessVector get_success_function();
+
+  bool should_sample(req_count_t addr);
+
 };
 
 #endif  // ONLINE_CACHE_SIMULATOR_OST_CACHE_SIM_H_
