@@ -7,7 +7,7 @@ extern "C" {
 struct Iaf_t;
 typedef struct Iaf_t* Iaf;
 
-Iaf Iaf_create();
+Iaf Iaf_create(void);
 void Iaf_write(Iaf h, void* addr);
 void Iaf_print(Iaf h);
 void Iaf_destroy(Iaf h);

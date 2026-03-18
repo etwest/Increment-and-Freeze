@@ -11,7 +11,7 @@ struct Iaf_t
     Iaf_t(): b() {};
 };
 
-Iaf Iaf_create()
+Iaf Iaf_create(void)
 {
     return new Iaf_t();
 }
