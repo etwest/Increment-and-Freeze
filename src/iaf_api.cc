@@ -17,8 +17,10 @@ Iaf Iaf_create(int sampling_log2, size_t max_cache_size)
     return new Iaf_t(sampling_log2, max_cache_size);
 }
 
+std::mutex iaf_lock;
 void Iaf_write(Iaf h, void* addr)
 {
+    std::scoped_lock lock{iaf_lock};  //TODO: Remove this lock eventually?
     h->b.memory_access((req_count_t)addr);
 }
 
