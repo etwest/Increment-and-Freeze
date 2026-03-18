@@ -26,6 +26,7 @@ void Iaf_write(Iaf h, void* addr)
 
 void Iaf_print(Iaf h)
 {
+    h->b.csv_success_function(std::cout, h->b.get_success_function());
 }
 
 void Iaf_destroy(Iaf h)
