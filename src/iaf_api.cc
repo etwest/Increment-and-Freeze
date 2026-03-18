@@ -8,12 +8,13 @@ struct Iaf_t
 {
     BoundedIAF b;
 
-    Iaf_t(): b() {};
+    Iaf_t(int sampling_log2, size_t max_cache_size): 
+    b(sampling_log2, 101010101010, 0, 65536, max_cache_size) {};
 };
 
-Iaf Iaf_create(void)
+Iaf Iaf_create(int sampling_log2, size_t max_cache_size)
 {
-    return new Iaf_t();
+    return new Iaf_t(sampling_log2, max_cache_size);
 }
 
 void Iaf_write(Iaf h, void* addr)
