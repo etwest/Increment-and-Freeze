@@ -1,9 +1,11 @@
 // C-compatible header
 
+#include <cstddef>
+#include <mutex>
+
 #include "iaf_api.h"
 #include "bounded_iaf.h"
 #include "cache_sim.h"
-#include <cstddef>
 
 struct Iaf_t
 {

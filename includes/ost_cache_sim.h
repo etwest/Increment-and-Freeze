@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
+#include <chrono>
 
 #include "cache_sim.h"
 #include "ostree.h"

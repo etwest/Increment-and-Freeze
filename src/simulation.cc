@@ -262,13 +262,13 @@ int main(int argc, char** argv) {
     exit(EXIT_FAILURE);
   }
   std::cout << "                              \r";
-  std::cout << "Latency      = " << result.latency << std::endl;
+  std::cout << "Latency      = " << result.latency.count() << std::endl;
   std::cout << "Memory (MiB) = " << memory_usage << std::endl;
 
   // Output results to temporary csv files for integration with bash script
   std::ofstream latency_csv("tmp_latency.csv", std::ios::app);
   std::ofstream memory_csv("tmp_memory.csv", std::ios::app);
-  latency_csv << ", " << result.latency;
+  latency_csv << ", " << result.latency.count();
   memory_csv << ", " << memory_usage;
 
 
