@@ -30,8 +30,8 @@ void Iaf_print(Iaf h)
     h->b.csv_success_function(std::cout, h->b.get_success_function());
 }
 
-void Iaf_destroy(Iaf &h)
+void Iaf_destroy(Iaf* h)
 {
-    delete h;
-    h = nullptr;
+    delete *h;
+    *h = nullptr;
 }
