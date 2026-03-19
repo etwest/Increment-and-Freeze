@@ -24,5 +24,8 @@ add_executable(simulation src/simulation.cc src/ost_cache_sim.cc src/ostree.cc)
 target_include_directories(simulation PRIVATE container)
 target_link_libraries(simulation PRIVATE IAF)   
 
+add_executable(api_test src/api_test.cc)  
+target_link_libraries(api_test PRIVATE IAF)   
+
 add_library(IAF::IAF ALIAS IAF)
 
