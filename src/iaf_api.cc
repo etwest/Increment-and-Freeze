@@ -3,6 +3,7 @@
 #include "iaf_api.h"
 #include "bounded_iaf.h"
 #include "cache_sim.h"
+#include <cstddef>
 
 struct Iaf_t
 {
@@ -18,14 +19,10 @@ Iaf Iaf_create(int sampling_log2, size_t max_cache_size)
 }
 
 std::mutex iaf_lock;
-//size_t parity = 0;
 void Iaf_write(Iaf h, void* addr)
 {
     std::scoped_lock lock{iaf_lock};  //TODO: Remove this lock eventually?
     h->b.memory_access((req_count_t)addr);
-    /*parity++;
-    if (parity % 100000 == 0)
-        Iaf_print(h);*/
 }
 
 void Iaf_print(Iaf h)
@@ -33,7 +30,8 @@ void Iaf_print(Iaf h)
     h->b.csv_success_function(std::cout, h->b.get_success_function());
 }
 
-void Iaf_destroy(Iaf h)
+void Iaf_destroy(Iaf &h)
 {
     delete h;
+    h = nullptr;
 }
