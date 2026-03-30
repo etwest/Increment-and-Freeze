@@ -1,6 +1,7 @@
 // C-compatible header
 
 #include <cstddef>
+#include <cstdint>
 #include <mutex>
 
 #include "iaf_api.h"
@@ -36,4 +37,11 @@ void Iaf_destroy(Iaf* h)
 {
     delete *h;
     *h = nullptr;
+}
+
+std::atomic<uint64_t> counter(0); // Initialize an atomic counter to 0
+
+void* Iaf_grab_id(Iaf h)
+{
+    return (void*) ++counter;
 }

@@ -13,5 +13,7 @@ extern "C" {
 
         std::cout << "h: " << h << std::endl;
 
+        std::cout << "id: " << Iaf_grab_id(h) << std::endl;
+
     }
 }

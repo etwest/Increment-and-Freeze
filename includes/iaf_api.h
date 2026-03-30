@@ -12,6 +12,7 @@ Iaf Iaf_create(int sampling_log2, size_t max_cache_size);
 void Iaf_write(Iaf h, void* addr);
 void Iaf_print(Iaf h);
 void Iaf_destroy(Iaf* h);
+void* Iaf_grab_id(Iaf h);
 
 #ifdef __cplusplus
 }
