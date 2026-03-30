@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <mutex>
 #include <stdint.h>
+#include <atomic>
 
 #include "iaf_api.h"
 #include "bounded_iaf.h"
