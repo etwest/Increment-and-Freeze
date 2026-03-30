@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
+#include <stdint.h>
 
 #include "iaf_api.h"
 #include "bounded_iaf.h"
@@ -41,7 +42,7 @@ void Iaf_destroy(Iaf* h)
 
 std::atomic<uint64_t> counter(0); // Initialize an atomic counter to 0
 
-void* Iaf_grab_id(Iaf h)
+uint64_t Iaf_grab_id(Iaf h)
 {
-    return (void*) ++counter;
+    return ++counter;
 }
