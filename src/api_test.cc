@@ -6,7 +6,7 @@ extern "C" {
     {
         Iaf h = nullptr;
         h = Iaf_create(0, 1000);
-        Iaf_write(h, (void*)1);
+        Iaf_write(h, (void*)2);
         Iaf_write(h, (void*)-1);
         Iaf_print(h);
         Iaf_destroy(&h);

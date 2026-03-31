@@ -9,6 +9,9 @@ extern "C" {
 struct Iaf_t;
 typedef struct Iaf_t* Iaf;
 
+#define IAF_ID_UNINIT 0
+#define IAF_ID_NEED_REINIT 1
+
 Iaf Iaf_create(int sampling_log2, size_t max_cache_size);
 void Iaf_write(Iaf h, void* addr);
 void Iaf_print(Iaf h);
