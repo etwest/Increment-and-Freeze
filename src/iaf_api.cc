@@ -28,6 +28,8 @@ void Iaf_write(Iaf h, void* addr)
 {
     assert(addr != (void*)IAF_ID_UNINIT && "Uninitialized addr!");
     assert(addr != (void*)IAF_ID_NEED_REINIT && "Addr marked for reinit but never reinit!");
+    if (addr == (void*)IAF_ID_IGNORE)
+        return;
     std::scoped_lock lock{iaf_lock};  //TODO: Remove this lock eventually?
     h->b.memory_access((req_count_t)addr);
 }
@@ -43,7 +45,7 @@ void Iaf_destroy(Iaf* h)
     *h = nullptr;
 }
 
-std::atomic<uint64_t> counter(IAF_ID_NEED_REINIT); // Initialize an atomic counter to 0
+std::atomic<uint64_t> counter(IAF_ID_RESERVED_BOUNDARY); // Initialize an atomic counter to minimum value
 
 uint64_t Iaf_grab_id(Iaf h)
 {
