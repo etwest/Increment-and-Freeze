@@ -101,14 +101,14 @@ class CacheSim {
   
   void inc_access(uint64_t count) {access_number += count;};
 
-  void dump_success_function(std::ostream& os, SuccessVector succ, size_t sample_rate=1) {
-    assert(sample_rate < succ.size());
+  void dump_success_function(std::ostream& os, SuccessVector succ, size_t stride=1) {
+    assert(stride < succ.size());
     size_t total_requests = access_number - 1;
     if (sample_mask)
       total_requests = (sample_access_number-1) * (sample_mask+1);
     os << "#" << std::setw(15) << "Cache Size" << std::setw(16) 
        << "Hits" << std::setw(16) << "Hit Rate" << std::endl;
-    for (size_t page = 1; page < succ.size(); page+=sample_rate) {
+    for (size_t page = 1; page < succ.size(); page+=stride) {
       os << std::setw(16) << page << std::setw(16) << succ[page]
          << std::setw(16) << percent(succ[page], total_requests) << "%" << std::endl;
     }
@@ -119,10 +119,10 @@ class CacheSim {
        << std::setw(16) << percent(misses, total_requests) << "%" << std::endl;
   }
   
-  void csv_success_function(std::ostream& os, SuccessVector succ, size_t sample_rate=1) {
-    assert(sample_rate < succ.size());
+  void csv_success_function(std::ostream& os, SuccessVector succ, size_t stride=1) {
     if (succ.size() == 0)
       return;
+    assert(stride < succ.size());
     //FIXME do for dump too
     size_t total_requests = access_number - 1;
     if (sample_mask)
@@ -130,7 +130,7 @@ class CacheSim {
     // Print the number of requests and largest cache size (and number of reqs, including filtered out)
     os << total_requests << "," << succ.size() - 1 << "," << access_number-1 << std::endl;  
     os << "Cache Size,Hits" << std::endl;
-    for (size_t page = 1; page < succ.size(); page+=sample_rate) {
+    for (size_t page = 1; page < succ.size(); page+=stride) {
       os << page << "," << succ[page] << std::endl;
     }
   }
