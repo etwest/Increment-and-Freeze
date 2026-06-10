@@ -134,6 +134,39 @@ class CacheSim {
       os << page << "," << succ[page] << std::endl;
     }
   }
+
+  void print_small_csv(std::ostream& os, SuccessVector succ) {
+    if (succ.size() <= 1)
+      return;
+
+    size_t total_requests = access_number - 1;
+    if (sample_mask)
+      total_requests = (sample_access_number-1) * (sample_mask+1);
+
+    os << total_requests << "," << succ.size() - 1 << "," << access_number-1 << std::endl;
+    os << "Cache Size,Hits" << std::endl;
+
+    // Always print the first point.
+    os << 1 << "," << succ[1] << std::endl;
+
+    double last_printed_hits = succ[1];
+    size_t last_printed_page = 1;
+
+    for (size_t i = 2; i < succ.size(); ++i) {
+        double current_hit_rate = static_cast<double>(succ[i]) / total_requests;
+
+        if (succ[i] >= last_printed_hits * 1.1) {
+            os << i << "," << succ[i] << std::endl;
+            last_printed_hits = succ[i];
+            last_printed_page = i;
+        }
+    }
+
+    // Always print the last point if it hasn't been printed.
+    if (succ.size() - 1 > last_printed_page) {
+        os << succ.size() - 1 << "," << succ.back() << std::endl;
+    }
+  }
 };
 
 #endif  // ONLINE_CACHE_SIMULATOR_INCLUDE_CACHE_SIM_H_
