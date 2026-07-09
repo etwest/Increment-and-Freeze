@@ -27,16 +27,18 @@
 #include <cassert>      // assert
 
 #include <sys/resource.h> //for rusage
+#include <chrono>
 
 
 #ifdef DEBUG_PERF
-#include "absl/time/clock.h"
 inline uint8_t _depth = 0;
-#define STARTTIME(X) auto X = absl::Now(); _depth++;
+#define STARTTIME(X) auto X = std::chrono::high_resolution_clock::now(); _depth++;
 #define STOPTIME(X)  \
     _depth--; \
     for (uint8_t _i = 0; _i < _depth; _i++) {std::cout << "\t";} \
-    std::cout << #X ": " << absl::Now() - X << std::endl;
+    auto Y = std::chrono::high_resolution_clock::now(); \
+    auto dur = std::chrono::duration_cast<std::chrono::microseconds>(Y - X); \
+    std::cout << #X ": " << dur.count() << "us" << std::endl;
 #else //DEBUG_PERF
 #define STARTTIME(X) 
 #define STOPTIME(X)  
@@ -153,8 +155,6 @@ class CacheSim {
     size_t last_printed_page = 1;
 
     for (size_t i = 2; i < succ.size(); ++i) {
-        double current_hit_rate = static_cast<double>(succ[i]) / total_requests;
-
         if (succ[i] >= last_printed_hits * 1.1) {
             os << i << "," << succ[i] << std::endl;
             last_printed_hits = succ[i];

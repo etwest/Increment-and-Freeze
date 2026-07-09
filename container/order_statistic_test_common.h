@@ -5,13 +5,12 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <random>
 #include <ostream>
 #include <set>
 #include <string>
 #include <utility>
 
-#include "absl/random/random.h"
-#include "absl/strings/str_format.h"
 #include "gmock/gmock-matchers.h"
 #include "gtest/gtest.h"
 #include "raw_order_statistic_set.h"
@@ -22,9 +21,9 @@ namespace cachelib {
 // matcher takes an integer, which is the expected rank.  E.g.,
 //   EXPECT_THAT(ost.begin(), Rank(0));
 MATCHER_P(Rank, rank,
-          absl::StrFormat("%s an iterator of rank which %s",
-                          negation ? "isn't" : "is",
-                          ::testing::DescribeMatcher<size_t>(rank))) {
+          std::string(negation ? "isn't" : "is") +
+              " an iterator of rank which " +
+              ::testing::DescribeMatcher<size_t>(rank)) {
   return ExplainMatchResult(rank, arg.rank(), result_listener);
 }
 
@@ -32,12 +31,10 @@ MATCHER_P(Rank, rank,
 // matcher checks for past-the-end (which doesn't match).  E.g.,
 //  EXPECT_THAT(ost.insert(42).first, IteratorReferences(&ost, 42));
 MATCHER_P2(IteratorReferences, container, matcher,
-           absl::StrFormat(
-               "%s an iterator referencing value which %s",
-               negation ? "isn't" : "is",
-               ::testing::DescribeMatcher<
-                   typename std::remove_reference<arg_type>::type::value_type>(
-                   matcher))) {
+           std::string(negation ? "isn't" : "is") +
+               " an iterator referencing value which " +
+               ::testing::DescribeMatcher<typename std::remove_reference<
+                   arg_type>::type::value_type>(matcher)) {
   if (arg == container->end()) {
     *result_listener << "and is past-the-end.";
     return false;
@@ -47,13 +44,11 @@ MATCHER_P2(IteratorReferences, container, matcher,
 
 // A matcher that an iterator is just-past-the end.  E.g.,
 //   EXPECT_THAT(ost.end(), IteratAtEnd(&ost));
-MATCHER_P(IteratorAtEnd, container,
-          absl::StrFormat("%s reference to end", negation ? "isn't" : "is")) {
+MATCHER_P(IteratorAtEnd, container, std::string(negation ? "isn't" : "is") + " reference to end") {
   return arg == container->end();
 }
 MATCHER_P(IteratorAtReverseEnd, container,
-          absl::StrFormat("%s reference to (reverse) end",
-                          negation ? "isn't" : "is")) {
+          std::string(negation ? "isn't" : "is") + " reference to (reverse) end") {
   return arg == container->rend();
 }
 
@@ -116,12 +111,13 @@ bool operator==(const std::map<K, V>& map, const Map& ost) {
 // and construct the pair comprising that number and another random number.  The
 // random numbers need not be high quality.
 static inline std::pair<size_t, size_t> find_pair_not_in_map(
-    const std::map<size_t, size_t>& map, size_t domain_limit,
-    absl::BitGen& bitgen) {
+    const std::map<size_t, size_t>& map, size_t domain_limit, std::mt19937& gen) {
+  std::uniform_int_distribution<size_t> domain_dist(0, domain_limit - 1);
+  std::uniform_int_distribution<size_t> value_dist;
   while (true) {
-    size_t domain_val = absl::Uniform<size_t>(bitgen, 0, domain_limit);
+    size_t domain_val = domain_dist(gen);
     if (map.find(domain_val) == map.end()) {
-      return {domain_val, absl::Uniform<size_t>(bitgen)};
+      return {domain_val, value_dist(gen)};
     }
   }
 }
@@ -129,19 +125,21 @@ static inline std::pair<size_t, size_t> find_pair_not_in_map(
 // Given a Order-Statistic map (i.e., one that has rank(), returns a a randomly
 // chosen element.
 template <class Tree>
-std::pair<std::pair<size_t, size_t>, std::pair<size_t, size_t>>
-find_pair_in_map(const Tree& tree, absl::BitGen& bitgen) {
-  size_t rank = absl::Uniform<size_t>(bitgen, 0, tree.size());
+std::pair<std::pair<size_t, size_t>, std::pair<size_t, size_t>> find_pair_in_map(
+    const Tree& tree, std::mt19937& gen) {
+  std::uniform_int_distribution<size_t> rank_dist(0, tree.size() - 1);
+  std::uniform_int_distribution<size_t> value_dist;
+  size_t rank = rank_dist(gen);
   auto rr = tree.select(rank);
   EXPECT_NE(rr, tree.end());
-  return {*rr, {rr->first, absl::Uniform<size_t>(bitgen)}};
+  return {*rr, {rr->first, value_dist(gen)}};
 }
 
 // Run random inserts and deletes on an object of type Tree, and also on a
 // std::map.  Make sure that the Tree and the map do the same thing.
 template <class Tree, class ExtraChecks>
 void RunRandomized(ExtraChecks extrachecks) {
-  absl::BitGen bitgen;
+  std::mt19937 bitgen(0);
   const size_t n_runs = 10;
   const size_t ops_per_run = 200;
   const size_t domain_max = 100000;
@@ -152,9 +150,9 @@ void RunRandomized(ExtraChecks extrachecks) {
     ost.clear();
     for (size_t opnum = 0; opnum < ops_per_run; ++opnum) {
       const size_t start_inserts = 10;
-      switch (size_t randop = (opnum < start_inserts
+      switch (size_t _ = (opnum < start_inserts
                                    ? 0
-                                   : absl::Uniform<size_t>(bitgen, 0, 5))) {
+                                   : std::uniform_int_distribution<size_t>(0, 4)(bitgen))) {
         case 0: {  // insert a random value that's not there.
           const auto pair = find_pair_not_in_map(map, domain_max, bitgen);
           // Check the lower bound
@@ -215,7 +213,8 @@ void RunRandomized(ExtraChecks extrachecks) {
         }
         case 4: {  // Delete a random thing that's there.
           if (!map.empty()) {
-            size_t rank = absl::Uniform<size_t>(bitgen, 0, map.size());
+            std::uniform_int_distribution<size_t> rank_dist(0, map.size() - 1);
+            size_t rank = rank_dist(bitgen);
             auto rr = ost.select(rank);
             EXPECT_NE(rr, ost.end());
             size_t val = rr->first;
@@ -225,7 +224,7 @@ void RunRandomized(ExtraChecks extrachecks) {
           break;
         }
         default:
-          DCHECK(0);
+          assert(0);
       }
       ost.Check();
       EXPECT_EQ(map.empty(), ost.empty());

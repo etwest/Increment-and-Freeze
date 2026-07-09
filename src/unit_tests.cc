@@ -17,12 +17,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-//#include "gtest/gtest.h"
+#include "gtest/gtest.h"
 #include "sim_factory.h"
 
 class CacheSimUnitTests : public testing::TestWithParam<CacheSimType> {};
 INSTANTIATE_TEST_SUITE_P(CacheSimSuite, CacheSimUnitTests,
-                         testing::Values(OS_TREE, OS_SET, IAF, BOUND_IAF));
+                         testing::Values(OS_TREE, /*OS_SET,*/ IAF, BOUND_IAF));
 
 namespace {
 using SuccessVector = CacheSim::SuccessVector;

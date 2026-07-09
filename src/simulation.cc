@@ -217,7 +217,7 @@ int main(int argc, char** argv) {
   std::string sim_arg = argv[6];
 
   if (sim_arg == "OS_TREE")        sim = new_simulator(OS_TREE, simulator_args);
-  else if (sim_arg == "OS_SET")    sim = new_simulator(OS_SET, simulator_args);
+  //else if (sim_arg == "OS_SET")    sim = new_simulator(OS_SET, simulator_args);
   else if (sim_arg == "IAF")       sim = new_simulator(IAF, simulator_args);
   else if (sim_arg == "BOUND_IAF") sim = new_simulator(BOUND_IAF, simulator_args);
   else if (sim_arg == "K_LIM_IAF") {

@@ -8,7 +8,7 @@ Michael A. Bender, Daniel DeLayo, Bradley C. Kuszmaul, William Kuszmaul, and Eva
 The Increment-and-Freeze source code is licensed under the GPLv2 license. See `LICENSE.txt`.
 
 ## Requirements
-- openmp
+- OpenMP (optional)
 - [OPTIONAL] Parda (see [Our Parda Documentation](parda_scripts/README.md))
 
 ## Experiments
@@ -35,3 +35,7 @@ This library implements the online and universe size aware extension to the IAF 
 
 ### Bits per Address
 By default our libraries use 64-bit integers in their datastructures. However, for a large portion of traces, 32-bit integers are sufficient to represent each address. Passing `-DADDR_BIT32` when compiling the libraries will switch our datastructures to use 32-bit integers, improving runtime performance and halving memory consumption.
+
+### Disabling OpenMP
+To build without OpenMP for single-threaded execution, you can use the `openmp=disabled` define with Bazel:
+`bazel build --define openmp=disabled //...`

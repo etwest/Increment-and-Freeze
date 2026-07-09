@@ -3,17 +3,17 @@
 #include <cstddef>
 #include <functional>
 #include <iterator>
+#include <random>
 #include <ostream>
 #include <set>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 #include "gtest/gtest.h"
 #include "order_statistic_test_common.h"
-#include "absl/random/random.h"
-#include "absl/strings/string_view.h"
 
 namespace cachelib {
 
@@ -359,7 +359,7 @@ TEST(OrderStatisticSetTest, String) {
   EXPECT_THAT(ost.find(""), IteratorAtEnd(&ost));
   EXPECT_THAT(ost.find("a"), IteratorReferences(&ost, "a"));
   EXPECT_THAT(ost.find(std::string("a")), IteratorReferences(&ost, "a"));
-  EXPECT_THAT(ost.find(absl::string_view("a")), IteratorReferences(&ost, "a"));
+  EXPECT_THAT(ost.find(std::string_view("a")), IteratorReferences(&ost, "a"));
   EXPECT_THAT(ost.find("aa"), IteratorAtEnd(&ost));
   EXPECT_THAT(ost.find("b"), IteratorReferences(&ost, "b"));
   EXPECT_THAT(ost.find("bb"), IteratorAtEnd(&ost));
@@ -372,7 +372,7 @@ TEST(OrderStatisticSetTest, String) {
   EXPECT_EQ(set, ost);
   EXPECT_EQ(set.erase(std::string("a")), ost.erase("a"));
   EXPECT_EQ(set, ost);
-  EXPECT_EQ(ost.erase(absl::string_view("b")), set.erase("b"));
+  EXPECT_EQ(ost.erase(std::string_view("b")), set.erase("b"));
   EXPECT_EQ(set, ost);
   EXPECT_EQ(ost.erase("c"), set.erase("c"));
   EXPECT_EQ(set, ost);
@@ -402,9 +402,10 @@ TEST(OrderStatisticSetTest, Iterator) {
 
 // TODO: The set parameter used to work with const size_t.
 size_t find_value_not_in_set(const std::set<size_t>& set,
-                             size_t domain_max, absl::BitGen& bitgen) {
+                             size_t domain_max, std::mt19937& bitgen) {
+  std::uniform_int_distribution<size_t> dist(0, domain_max - 1);
   while (true) {
-    size_t domain_val = absl::Uniform<size_t>(bitgen, 0, domain_max);
+    size_t domain_val = dist(bitgen);
     if (set.find(domain_val) == set.end()) {
       return domain_val;
     }
@@ -413,7 +414,7 @@ size_t find_value_not_in_set(const std::set<size_t>& set,
 
 template <class Tree, class ExtraChecks>
 void RunRandomizedSet(ExtraChecks extrachecks) {
-  absl::BitGen bitgen;
+  std::mt19937 bitgen(0);
   const size_t n_runs = 10;
   const size_t ops_per_run = 200;
   const size_t domain_max = 100000;
@@ -425,9 +426,9 @@ void RunRandomizedSet(ExtraChecks extrachecks) {
     ost.clear();
     for (size_t opnum = 0; opnum < ops_per_run; ++opnum) {
       const size_t start_inserts = 10;
-      switch (size_t randop = (opnum < start_inserts
+      switch (size_t _ = (opnum < start_inserts
                                    ? 0
-                                   : absl::Uniform<size_t>(bitgen, 0, 3))) {
+                                   : std::uniform_int_distribution<size_t>(0, 2)(bitgen))) {
         case 0: {  // insert a random value that's not there.
           size_t value = find_value_not_in_set(set, domain_max, bitgen);
           // Check the lower bound
@@ -448,7 +449,8 @@ void RunRandomizedSet(ExtraChecks extrachecks) {
         case 1: {  // insert something that is there (if set not
                    // empty), which is a no-op.
           if (!set.empty()) {
-            size_t rank = absl::Uniform<size_t>(bitgen, 0, set.size());
+            std::uniform_int_distribution<size_t> rank_dist(0, set.size() - 1);
+            size_t rank = rank_dist(bitgen);
             auto rr = ost.select(rank);
             EXPECT_NE(rr, ost.end());
             size_t val = *rr;
@@ -468,7 +470,8 @@ void RunRandomizedSet(ExtraChecks extrachecks) {
         }
         case 2: {  // Delete a random thing that's there.
           if (!set.empty()) {
-            size_t rank = absl::Uniform<size_t>(bitgen, 0, set.size());
+            std::uniform_int_distribution<size_t> rank_dist(0, set.size() - 1);
+            size_t rank = rank_dist(bitgen);
             auto rr = ost.select(rank);
             EXPECT_NE(rr, ost.end());
             size_t val = *rr;
@@ -478,7 +481,7 @@ void RunRandomizedSet(ExtraChecks extrachecks) {
           break;
         }
         default:
-          DCHECK(0);
+          assert(0);
       }
       ost.Check();
       EXPECT_EQ(set.empty(), ost.empty());

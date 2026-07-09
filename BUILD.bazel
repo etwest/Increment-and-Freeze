@@ -1,116 +1,180 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+config_setting(
+    name = "fast32bit",
+    define_values = {"addr_size": "32"},
+)
+
+COPTS_32BIT = select({
+    ":fast32bit": ["-DADDR_BIT32"],
+    "//conditions:default": [],
+})
+
+config_setting(
+    name = "openmp_disabled",
+    define_values = {"openmp": "disabled"},
+)
+
 test_suite(
     name = "tests",
-    tests = ["unit_tests"],
+    tests = [
+        "api_test",
+        "unit_tests",
+    ],
 )
 
 cc_binary(
     name = "sim",
-    deps = [
-        ":cache_sim",
-        ":bounded_iaf",
-        ":ost_cache_sim",
-        ":container_cache_sim",
-    ],
     srcs = [
-    	"simulation.cc",
-        "params.h"
+        "src/simulation.cc",
     ],
-    linkopts = [
-	   "-lgomp",
-    ]
+    linkopts = select({
+        ":openmp_disabled": [],
+        "//conditions:default": ["-lgomp"],
+    }),
+    deps = [
+        ":bounded_iaf",
+        ":container_cache_sim",
+        ":ost_cache_sim",
+    ],
 )
 
 cc_binary(
     name = "dump_traces",
+    srcs = [
+        "src/dump_traces.cc",
+    ],
     deps = [
         ":cache_sim",
     ],
-    srcs = [
-        "dump_traces.cc",
-        "params.h",
-    ]
 )
 
 cc_library(
     name = "cache_sim",
     hdrs = [
-        "cache_sim.h",
-        "sim_factory.h",
+        "includes/cache_sim.h",
+        "includes/sim_factory.h",
+        "includes/params.h",
     ],
-    deps = [
-        "@abseil-cpp//absl/time:time",
-    ],
+    copts = COPTS_32BIT,
+    includes = ["includes"],
 )
 
 cc_library(
     name = "iaf_params",
-    hdrs = ["iaf_params.h"],
+    hdrs = ["includes/iaf_params.h"],
+    copts = COPTS_32BIT,
+    includes = ["includes"],
 )
 
 cc_library(
     name = "ostree",
-    hdrs = ["ostree.h"],
-    srcs = ["ostree.cc"],
+    srcs = ["src/ostree.cc"],
+    hdrs = ["includes/ostree.h"],
+    copts = COPTS_32BIT,
+    includes = ["includes"],
 )
 
 cc_library(
     name = "ost_cache_sim",
-    hdrs = ["ost_cache_sim.h", "cache_sim.h"],
-    srcs = ["ost_cache_sim.cc"],
+    srcs = ["src/ost_cache_sim.cc"],
+    hdrs = ["includes/ost_cache_sim.h"],
+    copts = COPTS_32BIT,
+    includes = ["includes"],
     deps = [
+        ":cache_sim",
         ":ostree",
     ],
 )
 
 cc_library(
     name = "container_cache_sim",
-    hdrs = ["container_cache_sim.h", "cache_sim.h"],
-    srcs = ["container_cache_sim.cc"],
+    srcs = ["src/container_cache_sim.cc"],
+    hdrs = ["includes/container_cache_sim.h"],
+    copts = COPTS_32BIT,
+    includes = ["includes"],
     deps = [
+        ":cache_sim",
         "//container:order_statistic_set",
     ],
 )
 
 cc_library(
     name = "increment_and_freeze",
-    hdrs = ["increment_and_freeze.h", "op.h", "partition.h", "projection.h", "cache_sim.h"],
-    srcs = ["increment_and_freeze.cc", "projection.cc"],
-    deps = [
-        "@xxhash//:xxhash",
-        ":iaf_params",
+    srcs = [
+        "src/increment_and_freeze.cc",
+        "src/projection.cc",
     ],
-    copts = [
-        "-fopenmp",
+    hdrs = [
+        "includes/increment_and_freeze.h",
+        "includes/op.h",
+        "includes/partition.h",
+        "includes/projection.h",
+    ],
+    copts = COPTS_32BIT + select({
+        ":openmp_disabled": [],
+        "//conditions:default": ["-fopenmp"],
+    }),
+    includes = ["includes"],
+    deps = [
+        ":cache_sim",
+        ":iaf_params"
     ],
 )
 
 cc_library(
     name = "bounded_iaf",
-    hdrs = ["bounded_iaf.h"],
-    srcs = ["bounded_iaf.cc"],
+    srcs = ["src/bounded_iaf.cc"],
+    hdrs = ["includes/bounded_iaf.h"],
+    copts = COPTS_32BIT,
+    includes = ["includes"],
     deps = [
-        "@xxhash//:xxhash",
-        ":increment_and_freeze",
         ":iaf_params",
+        ":increment_and_freeze",
     ],
 )
 
-# Compile unit tests
+cc_library(
+    name = "iaf_api",
+    srcs = ["src/iaf_api.cc"],
+    hdrs = ["includes/iaf_api.h"],
+    copts = COPTS_32BIT,
+    includes = ["includes"],
+    deps = [
+        ":bounded_iaf",
+    ],
+)
+
 cc_test(
-  name = "unit_tests",
-  size = "small",
-  srcs = [
-        "unit_tests.cc",
-        "memory_cutoff_tests.cc"
-  ],
-  deps = [
-    "@googletest//:gtest_main",
-    ":cache_sim",
-    ":bounded_iaf",
-    ":ost_cache_sim",
-    ":container_cache_sim",
-  ],
-  linkopts = [
-      "-lgomp",
-  ]
+    name = "unit_tests",
+    size = "small",
+    srcs = [
+        "src/memory_cutoff_tests.cc",
+        "src/unit_tests.cc",
+    ],
+    linkopts = select({
+        ":openmp_disabled": [],
+        "//conditions:default": ["-lgomp"],
+    }),
+    deps = [
+        ":bounded_iaf",
+        ":container_cache_sim",
+        ":ost_cache_sim",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "api_test",
+    srcs = ["src/api_test.cc"],
+    copts = COPTS_32BIT,
+    linkopts = select({
+        ":openmp_disabled": [],
+        "//conditions:default": ["-lgomp"],
+    }),
+    deps = [
+        ":iaf_api",
+    ],
 )

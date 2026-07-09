@@ -22,11 +22,9 @@
 #include <ostream>
 #include <string>
 #include <tuple>
+#include <cassert>
 #include <type_traits>
 #include <utility>
-
-#include "glog/logging.h"
-#include "absl/memory/memory.h"
 
 namespace cachelib {
 
@@ -409,7 +407,7 @@ class RawOrderStatisticSet<Traits>::Iterator {
       : tree_(const_cast<RawOrderStatisticSet *>(tree)),
         idx_(idx),
         node_(node) {
-    DCHECK(idx <= tree->size());
+    assert(idx <= tree->size());
   }
 
   // Define an implicit converting constructor to turn an iterator into a
@@ -450,10 +448,10 @@ class RawOrderStatisticSet<Traits>::Iterator {
     // It's undefined behavior to go off the end, so we might as well check
     // fail.
     if (n < 0) {
-      CHECK_LE(-n, static_cast<ptrdiff_t>(idx_));  // Crash OK
+      assert(static_cast<ptrdiff_t>(idx_) >= -n);
       idx_ -= static_cast<size_t>(-n);
     } else {
-      CHECK_LE(idx_ + static_cast<size_t>(n), tree_->size());  // Crash OK
+      assert(idx_ + static_cast<size_t>(n) <= tree_->size());
       idx_ += static_cast<size_t>(n);
     }
     if (idx_ < tree_->size()) {
@@ -492,7 +490,7 @@ class RawOrderStatisticSet<Traits>::Iterator {
   friend bool operator==(const Iterator &a, const Iterator &b) {
     // C++ standard library says that that operator== on iterators from
     // different containers is undefined behavior.
-    DCHECK(a.tree_ == b.tree_);
+    assert(a.tree_ == b.tree_);
     // end is represented by any idx that's too big.
     size_t size = a.tree_->size();
     if (a.idx_ >= size && b.idx_ >= size) return true;
@@ -601,7 +599,7 @@ class RawNode {
     if (!n) {
       // Using new to access non-public constructor that make_unique cannot
       // access.
-      n = absl::WrapUnique(new Node(std::move(k)));
+      n = std::unique_ptr<Node>(new Node(std::move(k)));
       did_insert = true;
       new_node = n.get();
       new_rank = rank_so_far;
@@ -793,17 +791,15 @@ class RawNode {
   // keep the tree always balanced.  This should probably be called only in test
   // code.
   void Check(bool check_recursive, const key_compare &lessthan) {
-    CHECK_EQ(subtree_size_,  // Crash OK
-             1 + Size(left_) + Size(right_));
-    CHECK(IsInBalance());  // Crash OK
+    assert(subtree_size_ == 1 + Size(left_) + Size(right_));
+    assert(IsInBalance());  // Crash OK
     if (left_) {
-      CHECK(lessthan(Node::key(left_->value_),  // Crash OK
-                     Node::key(value_)));
+      assert(lessthan(Node::key(left_->value_),  // Crash OK
+                      Node::key(value_)));
       if (check_recursive) left_->Check(check_recursive, lessthan);
     }
     if (right_) {
-      CHECK(
-          lessthan(Node::key(value_), Node::key(right_->value_)));  // Crash OK
+      assert(lessthan(Node::key(value_), Node::key(right_->value_)));  // Crash OK
       if (check_recursive) right_->Check(check_recursive, lessthan);
     }
   }
@@ -850,7 +846,7 @@ class RawNode {
   // Returns the root of the revised subtree.
   static std::unique_ptr<Node> UnlinkRightMost(
       std::unique_ptr<Node> n, std::unique_ptr<Node> *removed_node) {
-    DCHECK(n);
+    assert(n);
     if (n->right_) {
       n->UpdateRight(UnlinkRightMost(std::move(n->right_), removed_node));
       return MaybeRebalance(std::move(n));
@@ -865,7 +861,7 @@ class RawNode {
   // containing the removed value.
   static std::pair<std::unique_ptr<Node>, node_type> DeleteNode(
       std::unique_ptr<Node> n) {
-    DCHECK(n);
+    assert(n);
     if (n->left_) {
       std::unique_ptr<Node> new_n;
       std::unique_ptr<Node> new_left =
@@ -938,7 +934,7 @@ class RawNode {
 
   // If needed, rebalances the tree at n, returning the new root.
   static std::unique_ptr<Node> MaybeRebalance(std::unique_ptr<Node> n) {
-    DCHECK(n);
+    assert(n);
     if (n->IsInBalance()) {
       n->RecomputeSummary();  // even if it's balanced the summary could be
                               // wrong after a modification.

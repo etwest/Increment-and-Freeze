@@ -26,7 +26,7 @@
 #include <vector>
 
 #include "cache_sim.h"
-#include "order_statistic_set.h"
+#include "../container/order_statistic_set.h"
 
 /*
  * An ContainerCacheSim simulates LRU running on every possible
@@ -40,7 +40,7 @@ class ContainerCacheSim : public CacheSim {
   cachelib::OrderStatisticSet<uint64_t, std::greater<>> LRU_queue; // order statistics tree for LRU depth
   std::unordered_map<req_count_t, uint64_t> page_table;  // map from addr to ts
  public:
-  ContainerCacheSim() = default;
+  ContainerCacheSim() = delete;
   ~ContainerCacheSim() = default;
 
   /*

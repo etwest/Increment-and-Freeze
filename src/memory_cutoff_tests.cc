@@ -28,7 +28,7 @@ using SuccessVector = CacheSim::SuccessVector;
 
 TEST(MemoryCutoffTests, AbsurdTest) {
   // use default chunk size of 16 and limit memory to 1 page
-  BoundedIAF sim_limit(0, size_t(-1), 16, 1);
+  BoundedIAF sim_limit(0, size_t(-1), 0, 16, 1);
 
   // add a few updates
   sim_limit.memory_access(1);
@@ -116,9 +116,9 @@ TEST(MemoryCutoffTests, MultipleSuccessCalls) {
 
 TEST(MemoryCutoffTests, CompareToIAF) {
   // default chunk size 512 with various memory limits
-  std::vector<BoundedIAF> sims{{0, size_t(-1), 512, 7},  {0, size_t(-1), 512, 11},
-                               {0, size_t(-1), 512, 16}, {0, size_t(-1), 512, 32},
-                               {0, size_t(-1), 512, 64}, {0, size_t(-1), 512}};
+  std::vector<BoundedIAF> sims{{0, size_t(-1), 0, 512, 7},  {0, size_t(-1), 0, 512, 11},
+                               {0, size_t(-1), 0, 512, 16}, {0, size_t(-1), 0, 512, 32},
+                               {0, size_t(-1), 0, 512, 64}, {0, size_t(-1), 0, 512}};
 
   // random number generator
   std::mt19937_64 gen(42);

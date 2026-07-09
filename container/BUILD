@@ -1,9 +1,8 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
 cc_library(
     name = "raw_order_statistic_set",
     hdrs = ["raw_order_statistic_set.h"],
-    deps = [
-        "@abseil-cpp//absl/memory",
-    ],
 )
 
 cc_library(
@@ -20,7 +19,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":raw_order_statistic_set",
-        "@glog//:glog",
     ],
 )
 
@@ -30,8 +28,6 @@ cc_library(
     hdrs = ["order_statistic_test_common.h"],
     deps = [
         ":raw_order_statistic_set",
-        "@abseil-cpp//absl/random",
-        "@abseil-cpp//absl/strings:str_format",
     ],
 )
 
@@ -44,10 +40,9 @@ cc_test(
         ":order_statistic_set",
         ":order_statistic_test_common",
         "@googletest//:gtest_main",
-        "@abseil-cpp//absl/random",
-        "@abseil-cpp//absl/strings",
     ],
-    linkopts = [
-	"-lgomp",
-    ]
+    linkopts = select({
+        "//:openmp_disabled": [],
+        "//conditions:default": ["-lgomp"],
+    }),
 )

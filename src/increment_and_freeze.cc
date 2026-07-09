@@ -28,9 +28,6 @@
 
 
 constexpr uint64_t prime_64b = 13208052345836349601ull;
-constexpr uint64_t rand_64b = 9316249495263525862ull;
-constexpr uint64_t prime_32b = 2147483647;
-
 
 bool IncrementAndFreeze::should_sample(req_count_t addr) {
   if (sample_mask > 0) {
