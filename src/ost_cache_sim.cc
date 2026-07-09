@@ -24,7 +24,7 @@
 constexpr uint64_t prime_64b = 13208052345836349601ull;
 
 // perform a memory access and use the LRU_queue to update the success function
-void OSTCacheSim::memory_access(req_count_t addr) {
+bool OSTCacheSim::memory_access(req_count_t addr) {
   uint64_t ts = access_number++;
 
   // attempt to find the addr in the OSTree
@@ -32,7 +32,7 @@ void OSTCacheSim::memory_access(req_count_t addr) {
     // this is not the first access to this page so lookup in the OSTree
     page_hits[move_front_queue(page_table[addr], ts)]++;
     page_table[addr] = ts;  // update the timestamp
-    return;
+    return true;
   }
 
   // new unique page increases the max memory (and is not a hit)
@@ -41,6 +41,7 @@ void OSTCacheSim::memory_access(req_count_t addr) {
 
   // put the page in the LRU_queue
   LRU_queue.insert(ts, addr);
+  return true;
 }
 
 // delete a page with a given timestamp from the LRU_queue and

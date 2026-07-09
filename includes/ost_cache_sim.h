@@ -54,9 +54,9 @@ class OSTCacheSim : public CacheSim {
    * updates the page_hits vector based upon where the page
    * was found within the LRU_queue
    * virtual_addr:   the virtual address to access
-   * returns         nothing
+   * returns  true if the stack distances are updated
    */
-  void memory_access(req_count_t addr);
+  bool memory_access(req_count_t addr);
 
   /*
    * Moves a page with a given timestamp to the front of the queue

@@ -47,9 +47,9 @@ bool IncrementAndFreeze::should_sample(req_count_t addr) {
   return true;
 }
 
-void IncrementAndFreeze::memory_access(req_count_t addr) {
+bool IncrementAndFreeze::memory_access(req_count_t addr) {
   ++access_number;
-  if (!should_sample(addr)) return;
+  if (!should_sample(addr)) return false;
   ++sample_access_number;
 
   // catch case where new request is the same as the last
@@ -60,6 +60,7 @@ void IncrementAndFreeze::memory_access(req_count_t addr) {
   } else {
     requests.push_back({addr, (req_count_t) requests.size() + 1});
   }
+  return false;
 }
 
 req_count_t IncrementAndFreeze::populate_operations(

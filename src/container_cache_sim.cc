@@ -22,7 +22,7 @@
 #include <utility>
 
 // perform a memory access and use the LRU_queue to update the success function
-void ContainerCacheSim::memory_access(req_count_t addr) {
+bool ContainerCacheSim::memory_access(req_count_t addr) {
   uint64_t ts = access_number++;
 
   // attempt to find the addr in the OSTree
@@ -30,15 +30,15 @@ void ContainerCacheSim::memory_access(req_count_t addr) {
     // this is not the first access to this page so lookup in the OSTree
     page_hits[move_front_queue(page_table[addr], ts)]++;
     page_table[addr] = ts;  // update the timestamp
-    return;
+  } else {
+    // new unique page increases the max memory (and is not a hit)
+    page_hits.push_back(0);
+    page_table[addr] = ts;  // new PTE
+
+    // put the page in the LRU_queue
+    LRU_queue.insert(ts);
   }
-
-  // new unique page increases the max memory (and is not a hit)
-  page_hits.push_back(0);
-  page_table[addr] = ts;  // new PTE
-
-  // put the page in the LRU_queue
-  LRU_queue.insert(ts);
+  return true;
 }
 
 // delete a page with a given timestamp from the LRU_queue and

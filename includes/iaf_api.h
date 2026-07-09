@@ -16,7 +16,8 @@ typedef struct Iaf_t* Iaf;
 #define IAF_ID_RESERVED_BOUNDARY 2 
 
 Iaf Iaf_create(int sampling_log2, size_t max_cache_size);
-void Iaf_write(Iaf h, void* addr);
+bool Iaf_write(Iaf h, void* addr);
+char* Iaf_stringify(Iaf h);
 void Iaf_print(Iaf h);
 void Iaf_destroy(Iaf* h);
 uint64_t Iaf_grab_id(Iaf h);

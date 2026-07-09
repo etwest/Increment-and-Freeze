@@ -104,7 +104,7 @@ class IncrementAndFreeze: public CacheSim {
   bool should_sample(req_count_t addr) override;
 
   // Logs a memory access to simulate. The order this function is called in matters.
-  void memory_access(req_count_t addr) override;
+  bool memory_access(req_count_t addr) override;
 
   /* Returns the success function.
    * Does *a lot* of work.

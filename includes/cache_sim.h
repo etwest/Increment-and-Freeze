@@ -93,7 +93,7 @@ class CacheSim {
    * returns  nothing
    */
   virtual bool should_sample(req_count_t addr) = 0;
-  virtual void memory_access(req_count_t addr) = 0;
+  virtual bool memory_access(req_count_t addr) = 0;
 
   virtual SuccessVector get_success_function() = 0;
   

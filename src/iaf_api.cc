@@ -5,6 +5,8 @@
 #include <mutex>
 #include <stdint.h>
 #include <atomic>
+#include <sstream>
+#include <cstring>
 
 #include "iaf_api.h"
 #include "bounded_iaf.h"
@@ -24,14 +26,14 @@ Iaf Iaf_create(int sampling_log2, size_t max_cache_size)
 }
 
 std::mutex iaf_lock;
-void Iaf_write(Iaf h, void* addr)
+bool Iaf_write(Iaf h, void* addr)
 {
     assert(addr != (void*)IAF_ID_UNINIT && "Uninitialized addr!");
     assert(addr != (void*)IAF_ID_NEED_REINIT && "Addr marked for reinit but never reinit!");
     if (addr == (void*)IAF_ID_IGNORE)
-        return;
+        return false;
     std::scoped_lock lock{iaf_lock};  //TODO: Remove this lock eventually?
-    h->b.memory_access((req_count_t)addr);
+    return h->b.memory_access((req_count_t)addr);
 }
 
 void Iaf_print(Iaf h)
@@ -39,6 +41,14 @@ void Iaf_print(Iaf h)
     //h->b.csv_success_function(std::cerr, h->b.get_success_function());
    h->b.print_small_csv(std::cerr, h->b.get_success_function());
 
+}
+
+char* Iaf_stringify(Iaf h)
+{
+    std::stringstream ss;
+    h->b.print_small_csv(ss, h->b.get_success_function());
+    const std::string& s = ss.str();
+    return strdup(s.c_str());
 }
 
 void Iaf_destroy(Iaf* h)

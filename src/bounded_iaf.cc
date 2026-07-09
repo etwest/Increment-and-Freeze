@@ -49,11 +49,11 @@ bool BoundedIAF::should_sample(req_count_t addr) {
   return true;
 }
 
-void BoundedIAF::memory_access(req_count_t addr) {
+bool BoundedIAF::memory_access(req_count_t addr) {
   auto &requests = chunk_input.requests;
 
   ++access_number;
-  if (!should_sample(addr)) return;
+  if (!should_sample(addr)) return false;
 
   
   ++sample_access_number;
@@ -71,8 +71,10 @@ void BoundedIAF::memory_access(req_count_t addr) {
       // }
 
       process_requests();
+      return true;
     }
   }
+  return false;
 }
 
 void print_result(IncrementAndFreeze::ChunkOutput& result) {

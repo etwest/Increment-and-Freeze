@@ -60,7 +60,7 @@ class BoundedIAF : public CacheSim {
   bool should_sample(req_count_t addr) override;
 
   // Logs a memory access to simulate. The order this function is called in matters.
-  void memory_access(req_count_t addr) override;
+  bool memory_access(req_count_t addr) override;
 
   /* Returns the success function after processing requests in the current chunk.
    * Does some work, up to u log u depending on the number of unprocessed requests.
