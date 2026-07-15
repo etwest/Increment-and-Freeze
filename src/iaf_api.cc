@@ -30,7 +30,7 @@ bool Iaf_write(Iaf h, void* addr)
 {
     assert(addr != (void*)IAF_ID_UNINIT && "Uninitialized addr!");
     assert(addr != (void*)IAF_ID_NEED_REINIT && "Addr marked for reinit but never reinit!");
-    if (addr == (void*)IAF_ID_IGNORE)
+    if (addr == (void*)IAF_ID_IGNORE || addr == (void*)IAF_PAGE_OVERFLOW)
         return false;
     std::scoped_lock lock{iaf_lock};  //TODO: Remove this lock eventually?
     return h->b.memory_access((req_count_t)addr);

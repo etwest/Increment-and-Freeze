@@ -226,7 +226,7 @@ void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence c
 
     switch(op.get_type()) {
       case Prefix:
-        for (req_count_t j = cur.start; j <= op.get_target(); j++)
+        for (req_count_t j = cur.start; j <= std::min(op.get_target(), cur.end); j++)
           local_distances[j - cur.start] += op.get_inc_amnt();
         break;
 
@@ -235,7 +235,7 @@ void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence c
           local_distances[j - cur.start] += op.get_inc_amnt();
 
         // Freeze target by incrementing hits_vector[stack_depth]
-        if (op.get_target() != 0) {
+        if (op.get_target() != 0 && op.get_target() >= cur.start && op.get_target() <= cur.end) {
           int64_t hit = local_distances[op.get_target() - cur.start] + full_amnt;
           // std::cout << "Freezing " << op << " = " << hit << std::endl;
           assert(hit > 0);
