@@ -43,6 +43,7 @@ cc_test(
     ],
     linkopts = select({
         "//:openmp_disabled": [],
+        "@bazel_tools//src/conditions:darwin": [],
         "//conditions:default": ["-lgomp"],
     }),
 )
