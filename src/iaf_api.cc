@@ -38,6 +38,7 @@ bool Iaf_write(Iaf h, void* addr)
 
 void Iaf_print(Iaf h)
 {
+    std::scoped_lock lock{iaf_lock};
     //h->b.csv_success_function(std::cerr, h->b.get_success_function());
    h->b.print_small_csv(std::cerr, h->b.get_success_function());
 
@@ -45,6 +46,7 @@ void Iaf_print(Iaf h)
 
 char* Iaf_stringify(Iaf h)
 {
+    std::scoped_lock lock{iaf_lock};
     std::stringstream ss;
     h->b.print_small_csv(ss, h->b.get_success_function());
     const std::string& s = ss.str();
@@ -53,6 +55,7 @@ char* Iaf_stringify(Iaf h)
 
 void Iaf_destroy(Iaf* h)
 {
+    std::scoped_lock lock{iaf_lock};
     delete *h;
     *h = nullptr;
 }
