@@ -142,6 +142,8 @@ req_count_t IncrementAndFreeze::populate_operations(
 // 'Main' function of IAF. Used to update a hits vector given a vector of requests
 void IncrementAndFreeze::update_hits_vector(std::vector<request>& reqs,
   SuccessVector& hits_vector, std::vector<request> *living_req) {
+  if (reqs.empty()) return;
+
   STARTTIME(update_hits_vector);
   STARTTIME(create_operations)
   req_count_t unique_ids = populate_operations(reqs, living_req);
