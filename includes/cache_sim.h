@@ -155,7 +155,8 @@ class CacheSim {
     size_t last_printed_page = 1;
 
     for (size_t i = 2; i < succ.size(); ++i) {
-        if (succ[i] >= last_printed_hits * 1.1) {
+        // Print if we have < 1000 total cache sizes, or if cache size grew by 5%, or hits grew by 1%
+        if (succ.size() < 1000 || i >= last_printed_page * 1.05 || succ[i] >= last_printed_hits * 1.01) {
             os << i << "," << succ[i] << std::endl;
             last_printed_hits = succ[i];
             last_printed_page = i;

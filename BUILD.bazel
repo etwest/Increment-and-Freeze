@@ -7,9 +7,9 @@ config_setting(
     define_values = {"addr_size": "32"},
 )
 
-COPTS_32BIT = select({
-    ":fast32bit": ["-DADDR_BIT32"],
-    "//conditions:default": [],
+COPTS_32BIT = [] + select({
+    ":fast32bit": ["-DFAST_32BIT"],
+    "@platforms//os:macos": [],
 })
 
 config_setting(
@@ -33,7 +33,7 @@ cc_binary(
     linkopts = select({
         ":openmp_disabled": [],
         "@bazel_tools//src/conditions:darwin": [],
-        "//conditions:default": ["-lgomp"],
+        "@platforms//os:macos": ["-lgomp"],
     }),
     deps = [
         ":bounded_iaf",
@@ -117,7 +117,7 @@ cc_library(
     copts = COPTS_32BIT + select({
         ":openmp_disabled": [],
         "@bazel_tools//src/conditions:darwin": [],
-        "//conditions:default": ["-fopenmp"],
+        "@platforms//os:macos": ["-fopenmp"],
     }),
     includes = ["includes"],
     deps = [
@@ -159,7 +159,7 @@ cc_test(
     linkopts = select({
         ":openmp_disabled": [],
         "@bazel_tools//src/conditions:darwin": [],
-        "//conditions:default": ["-lgomp"],
+        "@platforms//os:macos": ["-lgomp"],
     }),
     deps = [
         ":bounded_iaf",
@@ -176,7 +176,7 @@ cc_test(
     linkopts = select({
         ":openmp_disabled": [],
         "@bazel_tools//src/conditions:darwin": [],
-        "//conditions:default": ["-lgomp"],
+        "@platforms//os:macos": ["-lgomp"],
     }),
     deps = [
         ":iaf_api",
