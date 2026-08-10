@@ -22,7 +22,7 @@
 #include <utility>
 
 // perform a memory access and use the LRU_queue to update the success function
-bool ContainerCacheSim::memory_access(req_count_t addr) {
+bool ContainerCacheSim::memory_access(req_count_t addr, req_count_t nblocks) {
   uint64_t ts = access_number++;
 
   // attempt to find the addr in the OSTree

@@ -50,7 +50,7 @@ class ContainerCacheSim : public CacheSim {
    * virtual_addr:   the virtual address to access
    * returns         nothing
    */
-  bool memory_access(req_count_t addr);
+  bool memory_access(req_count_t addr, req_count_t nblocks = 1) override;
 
   /*
    * Moves a page with a given timestamp to the front of the queue

@@ -2,21 +2,25 @@
 #include <iostream>
 
 extern "C" {
-    int main()
-    {
-        Iaf h = nullptr;
-        h = Iaf_create(0, 1000);
-        Iaf_write(h, (void*)2);
-        Iaf_write(h, (void*)-1);
-        Iaf_print(h);
+int main() {
+  Iaf h = nullptr;
+  h = Iaf_create(0, 1000);
+ 
+  std::cout << "id: " << Iaf_grab_id(h) << std::endl;
 
-        std::cout << Iaf_stringify(h) << std::endl;
+  Iaf_write(h, (void *)Iaf_grab_id(h), 512);
+  Iaf_write(h, (void *)Iaf_grab_id(h), 256);
+  Iaf_print(h);
 
-        Iaf_destroy(&h);
+  Iaf_write(h, (void *)Iaf_grab_id(h), 512);
+  Iaf_write(h, (void *)-1, 256);
+  Iaf_write(h, (void *)(Iaf_grab_id(h)-2), 512);
+  Iaf_print(h);
 
-        std::cout << "h: " << h << std::endl;
+  std::cout << Iaf_stringify(h) << std::endl;
 
-        std::cout << "id: " << Iaf_grab_id(h) << std::endl;
+  Iaf_destroy(&h);
 
-    }
+  std::cout << "h: " << h << std::endl;
+}
 }

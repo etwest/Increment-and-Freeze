@@ -44,7 +44,7 @@ bool IncrementAndFreeze::should_sample(req_count_t addr) {
   return true;
 }
 
-bool IncrementAndFreeze::memory_access(req_count_t addr) {
+bool IncrementAndFreeze::memory_access(req_count_t addr, req_count_t nblocks) {
   ++access_number;
   if (!should_sample(addr)) return false;
   ++sample_access_number;
@@ -55,7 +55,7 @@ bool IncrementAndFreeze::memory_access(req_count_t addr) {
   if (requests.size() && addr == requests[requests.size() - 1].addr) {
     ++num_duplicates;
   } else {
-    requests.push_back({addr, (req_count_t) requests.size() + 1});
+    requests.push_back({addr, (req_count_t) requests.size() + 1, nblocks});
   }
   return false;
 }
@@ -68,6 +68,14 @@ req_count_t IncrementAndFreeze::populate_operations(
   STARTTIME(sort_requests);
   // sort requests by request id and then by access_number
   std::sort(reqs.begin(), reqs.end());
+
+  // TODO: Is this required?
+  // Ensure that size is constant for each unique address
+  for (req_count_t i = 1; i < reqs.size(); i++) {
+    if (reqs[i].addr == reqs[i-1].addr) {
+      reqs[i].nblocks = reqs[i-1].nblocks;
+    }
+  }
   STOPTIME(sort_requests);
 
   // Size of operations array is bounded by 2*reqs
@@ -83,21 +91,20 @@ req_count_t IncrementAndFreeze::populate_operations(
     std::vector<request> living_req_priv;
 #pragma omp for nowait // nowait removes the barrier, so the critical copying can happen ASAP
     for (req_count_t i = 0; i < reqs.size(); i++) {
-      auto [addr, access_num] = reqs[i];
-      auto [last_addr, last_access_num] = i == 0 ? request(0, 0): reqs[i-1];
+      auto [addr, access_num, nblocks] = reqs[i];
+      auto [last_addr, last_access_num, last_nblocks] = i == 0 ? request(0, 0, 1): reqs[i-1];
 
       // Using last, check if previous sorted access is the same
       if (last_access_num > 0 && addr == last_addr) {
         // prev is same id as us so create Prefix and Postfix
-        operations[2*access_num-2] = Op(access_num-1, -1); // Prefix  i-1, +1, Full -1
-        operations[2*access_num-1] = Op(last_access_num);  // Postfix prev(i), +1, Full 0
+        operations[2*access_num-2] = Op(access_num-1, -(int64_t)nblocks, nblocks); // Prefix  i-1, +size, Full -size
+        operations[2*access_num-1] = Op(last_access_num, nblocks);  // Postfix prev(i), +size, Full 0
       }
       else {
         // previous access is different. This is therefore first access to this id
         // so only create Prefix.
-        operations[2*access_num-2] = Op(access_num-1, 0); // Prefix  i-1, +1, Full 0
-        ++unique_ids;
-
+        operations[2*access_num-2] = Op(access_num-1, 0, nblocks); // Prefix  i-1, +size, Full 0
+        unique_ids += nblocks;
         // The previous request survives this chunk so add to living
         if (living_req != nullptr && i > 0) {
           living_req_priv.push_back(reqs[i-1]);
@@ -241,9 +248,13 @@ void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence c
           int64_t hit = local_distances[op.get_target() - cur.start] + full_amnt;
           // std::cout << "Freezing " << op << " = " << hit << std::endl;
           assert(hit > 0);
+          if ((size_t)hit >= hits_vector.size()) {
+            std::cout << "CRASH: hit=" << hit << " size=" << hits_vector.size() << std::endl;
+            abort();
+          }
           assert((size_t)hit < hits_vector.size());
 #pragma omp atomic update
-          hits_vector[hit]++;
+          hits_vector[hit] += op.get_inc_amnt();
         }
         break;
 

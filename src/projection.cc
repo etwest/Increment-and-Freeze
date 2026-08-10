@@ -22,7 +22,7 @@
 void ProjSequence::partition(ProjSequence& left, ProjSequence& right, req_count_t split_off_idx, PartitionState& state) {
   // pull relevant stuff out of PartitionState
   const double div_factor        = state.div_factor;
-  int& all_partitions_full_incr  = state.all_partitions_full_incr;
+  int64_t& all_partitions_full_incr  = state.all_partitions_full_incr;
   auto& partition_scratch_spaces = state.scratch_spaces;
   int& merge_into_idx            = state.merge_into_idx;
   int& cur_idx                   = state.cur_idx;
@@ -91,7 +91,7 @@ void ProjSequence::partition(ProjSequence& left, ProjSequence& right, req_count_
       
       // query for Postfix increments that are full increments in this partition and incr them
       req_count_t incrs = state.qry_and_upd_partition_incr(partition_target);
-      req_count_t stack_full_incr_sum = scratch_stack.back().get_full_amnt();
+      int64_t stack_full_incr_sum = scratch_stack.back().get_full_amnt();
       scratch_stack.back() = op;
       scratch_stack.back().add_full(incrs + all_partitions_full_incr - stack_full_incr_sum);
 

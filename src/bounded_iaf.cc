@@ -48,7 +48,7 @@ bool BoundedIAF::should_sample(req_count_t addr) {
   return true;
 }
 
-bool BoundedIAF::memory_access(req_count_t addr) {
+bool BoundedIAF::memory_access(req_count_t addr, req_count_t nblocks) {
   auto &requests = chunk_input.requests;
 
   ++access_number;
@@ -61,7 +61,7 @@ bool BoundedIAF::memory_access(req_count_t addr) {
   if (requests.size() && addr == requests[requests.size() - 1].addr) {
     ++num_duplicates;
   } else {
-    requests.push_back({addr, (req_count_t) requests.size() + 1});
+    requests.push_back({addr, (req_count_t) requests.size() + 1, nblocks});
 
     if (requests.size() >= get_u()) {
       // std::cout << "requests chunk array:" << std::endl;
@@ -113,14 +113,15 @@ void BoundedIAF::process_requests() {
   ChunkOutput& result = chunk_input.output;
   // print_result(result);
 
-  result.hits_vector.resize(1 + std::min(result.living_requests.size(), max_living_req));
-
-  // Resize the living requests if necessary to fit within max_living_req
-  if (result.living_requests.size() > max_living_req) {
-    auto it = result.living_requests.begin();
-    size_t size = result.living_requests.size();
-    result.living_requests.erase(it, it + (size - max_living_req));
+  // Truncate living requests from the front until the total block weight
+  // fits within max_living_req.
+  // TODO: Optimize this
+  size_t living_nblocks = result.hits_vector.size() - 1;
+  while (!result.living_requests.empty() && living_nblocks > max_living_req) {
+    living_nblocks -= result.living_requests.front().nblocks;
+    result.living_requests.erase(result.living_requests.begin());
   }
+  result.hits_vector.resize(1 + living_nblocks);
 
   // Fix the index of the living requests so they count up from 1
   size_t num_living = 0;
@@ -133,18 +134,21 @@ void BoundedIAF::process_requests() {
   // std::cout << "First index of distance histogram = " << chunk_input.output.hits_vector[1] << std::endl;
 
   // prepare for next iteration
-  update_u(chunk_input.output.living_requests.size());
+  update_u(living_nblocks);
   chunk_input.requests.reserve(get_u());
   chunk_input.requests.insert(chunk_input.requests.end(), result.living_requests.begin(), result.living_requests.end());
   STOPTIME(proc_req);
 }
 
-CacheSim::SuccessVector BoundedIAF::get_success_function() {
-  // Ensure all requests processed
+void BoundedIAF::flush() {
   if (chunk_input.requests.size() - chunk_input.output.living_requests.size() > 0) {
-    // std::cout << "Processing chunk of size " << chunk_input.requests.size() << " before get_success_function()." << std::endl;
     process_requests();
   }
+}
+
+CacheSim::SuccessVector BoundedIAF::get_success_function() {
+  // Ensure all requests processed
+  flush();
 
   // TODO: parallel prefix sum for integrating
 

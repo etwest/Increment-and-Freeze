@@ -47,8 +47,12 @@ inline uint8_t _depth = 0;
 // number of bits needed to specify number of requests
 #ifdef ADDR_BIT32
 typedef uint32_t req_count_t;
+typedef int32_t sign_req_count_t;
+constexpr size_t mask_bits = 31;
 #else
 typedef uint64_t req_count_t;
+typedef int64_t sign_req_count_t;
+constexpr size_t mask_bits = 63;
 #endif
 
 // ifs to use if some statements are likely to be true or false.
@@ -95,7 +99,7 @@ class CacheSim {
    * returns  nothing
    */
   virtual bool should_sample(req_count_t addr) = 0;
-  virtual bool memory_access(req_count_t addr) = 0;
+  virtual bool memory_access(req_count_t addr, req_count_t nblocks = 1) = 0;
 
   virtual SuccessVector get_success_function() = 0;
   

@@ -24,8 +24,10 @@
 constexpr uint64_t prime_64b = 13208052345836349601ull;
 
 // perform a memory access and use the LRU_queue to update the success function
-bool OSTCacheSim::memory_access(req_count_t addr) {
+bool OSTCacheSim::memory_access(req_count_t addr, req_count_t nblocks) {
   uint64_t ts = access_number++;
+
+  assert(nblocks == 1 && "OSTCache does not yet support nblocks!");
 
   // attempt to find the addr in the OSTree
   if (page_table.count(addr) > 0) {

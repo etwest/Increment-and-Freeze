@@ -42,15 +42,17 @@ class IncrementAndFreeze: public CacheSim {
   struct request {
     req_count_t addr;
     req_count_t access_number;
+    req_count_t nblocks = 1;
 
     inline bool operator< (request oth) const {
       return addr < oth.addr || (addr == oth.addr && access_number < oth.access_number);
     }
 
     request() = default;
-    request(req_count_t a, req_count_t n) : addr(a), access_number(n) {}
+    request(req_count_t a, req_count_t n) : addr(a), access_number(n), nblocks(1) {}
+    request(req_count_t a, req_count_t n, req_count_t b) : addr(a), access_number(n), nblocks(b) {}
   };
-  static_assert(sizeof(request) == 2*sizeof(req_count_t));
+  static_assert(sizeof(request) == 3*sizeof(req_count_t));
 
   struct ChunkOutput {
     std::vector<request> living_requests;
@@ -104,7 +106,7 @@ class IncrementAndFreeze: public CacheSim {
   bool should_sample(req_count_t addr) override;
 
   // Logs a memory access to simulate. The order this function is called in matters.
-  bool memory_access(req_count_t addr) override;
+  bool memory_access(req_count_t addr, req_count_t nblocks = 1) override;
 
   /* Returns the success function.
    * Does *a lot* of work.

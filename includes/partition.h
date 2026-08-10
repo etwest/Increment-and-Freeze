@@ -52,7 +52,7 @@ class PartitionState {
 
  public:
   const double div_factor;
-  int all_partitions_full_incr = 0;
+  int64_t all_partitions_full_incr = 0;
   std::array<std::vector<Op>, kIafBranching-1> scratch_spaces;
   int merge_into_idx;
   int cur_idx;
