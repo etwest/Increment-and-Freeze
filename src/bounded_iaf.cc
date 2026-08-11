@@ -59,7 +59,7 @@ bool BoundedIAF::memory_access(req_count_t addr, req_count_t nblocks) {
   
   // small optimization, first check that the request is not a repeated request
   if (requests.size() && addr == requests[requests.size() - 1].addr) {
-    num_duplicates += nblocks;
+    ++num_duplicates;
   } else {
     requests.push_back({addr, (req_count_t) requests.size() + 1, nblocks});
 

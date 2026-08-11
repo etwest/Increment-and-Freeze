@@ -45,15 +45,15 @@ bool IncrementAndFreeze::should_sample(req_count_t addr) {
 }
 
 bool IncrementAndFreeze::memory_access(req_count_t addr, req_count_t nblocks) {
-  access_number += nblocks;
+  ++access_number;
   if (!should_sample(addr)) return false;
-  sample_access_number += nblocks;
+  ++sample_access_number;
 
   // catch case where new request is the same as the last
   // in this case we can just drop this request and increment
   // success_function(1)
   if (requests.size() && addr == requests[requests.size() - 1].addr) {
-    num_duplicates += nblocks;
+    ++num_duplicates;
   } else {
     requests.push_back({addr, (req_count_t) requests.size() + 1, nblocks});
   }
@@ -254,7 +254,7 @@ void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence c
           }
           assert((size_t)hit < hits_vector.size());
 #pragma omp atomic update
-          hits_vector[hit] += op.get_inc_amnt();
+          hits_vector[hit] += 1;
         }
         break;
 
