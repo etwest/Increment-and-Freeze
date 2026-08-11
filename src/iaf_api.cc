@@ -44,9 +44,9 @@ bool Iaf_write(Iaf h, void* addr, size_t bytes)
 void Iaf_print(Iaf h)
 {
     std::scoped_lock lock{iaf_lock};
-    //h->b.csv_success_function(std::cerr, h->b.get_success_function());
-   h->b.print_small_csv(std::cerr, h->b.get_success_function());
-
+    h->b.flush();
+    std::ofstream out("/Users/danieldelayo/Gits/Increment-and-Freeze/data+plots/mongodb.hist", std::ios::app);
+    h->b.print_small_csv(out, h->b.get_success_function());
 }
 
 char* Iaf_stringify(Iaf h)
@@ -57,6 +57,11 @@ char* Iaf_stringify(Iaf h)
     h->b.print_small_csv(ss, h->b.get_success_function());
     const std::string& s = ss.str();
     return strdup(s.c_str());
+}
+
+void Iaf_free_string(char* s)
+{
+    free(s);
 }
 
 void Iaf_destroy(Iaf* h)

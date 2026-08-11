@@ -23,6 +23,7 @@ void Iaf_print(Iaf h);
 void Iaf_destroy(Iaf* h);
 void Iaf_flush(Iaf h);
 uint64_t Iaf_grab_id(Iaf h);
+void Iaf_free_string(char*);
 
 #ifdef __cplusplus
 }
