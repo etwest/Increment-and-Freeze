@@ -45,15 +45,15 @@ bool IncrementAndFreeze::should_sample(req_count_t addr) {
 }
 
 bool IncrementAndFreeze::memory_access(req_count_t addr, req_count_t nblocks) {
-  ++access_number;
+  access_number += nblocks;
   if (!should_sample(addr)) return false;
-  ++sample_access_number;
+  sample_access_number += nblocks;
 
   // catch case where new request is the same as the last
   // in this case we can just drop this request and increment
   // success_function(1)
   if (requests.size() && addr == requests[requests.size() - 1].addr) {
-    ++num_duplicates;
+    num_duplicates += nblocks;
   } else {
     requests.push_back({addr, (req_count_t) requests.size() + 1, nblocks});
   }

@@ -51,15 +51,15 @@ bool BoundedIAF::should_sample(req_count_t addr) {
 bool BoundedIAF::memory_access(req_count_t addr, req_count_t nblocks) {
   auto &requests = chunk_input.requests;
 
-  ++access_number;
+  access_number += nblocks;
   if (!should_sample(addr)) return false;
 
   
-  ++sample_access_number;
+  sample_access_number += nblocks;
   
   // small optimization, first check that the request is not a repeated request
   if (requests.size() && addr == requests[requests.size() - 1].addr) {
-    ++num_duplicates;
+    num_duplicates += nblocks;
   } else {
     requests.push_back({addr, (req_count_t) requests.size() + 1, nblocks});
 
