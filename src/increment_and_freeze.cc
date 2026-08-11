@@ -69,11 +69,15 @@ req_count_t IncrementAndFreeze::populate_operations(
   // sort requests by request id and then by access_number
   std::sort(reqs.begin(), reqs.end());
 
-  // TODO: Is this required?
-  // Ensure that size is constant for each unique address
-  for (req_count_t i = 1; i < reqs.size(); i++) {
-    if (reqs[i].addr == reqs[i-1].addr) {
-      reqs[i].nblocks = reqs[i-1].nblocks;
+  // Calculate maximum possible hit to safely bound hits_vector
+  req_count_t max_hit = 0;
+  for (req_count_t i = 0; i < reqs.size(); i++) {
+    if (i == 0 || reqs[i].addr != reqs[i-1].addr) {
+      req_count_t local_max = reqs[i].nblocks;
+      for (req_count_t j = i + 1; j < reqs.size() && reqs[j].addr == reqs[i].addr; j++) {
+        if (reqs[j].nblocks > local_max) local_max = reqs[j].nblocks;
+      }
+      max_hit += local_max;
     }
   }
   STOPTIME(sort_requests);
@@ -97,8 +101,8 @@ req_count_t IncrementAndFreeze::populate_operations(
       // Using last, check if previous sorted access is the same
       if (last_access_num > 0 && addr == last_addr) {
         // prev is same id as us so create Prefix and Postfix
-        operations[2*access_num-2] = Op(access_num-1, -(int64_t)nblocks, nblocks); // Prefix  i-1, +size, Full -size
-        operations[2*access_num-1] = Op(last_access_num, nblocks);  // Postfix prev(i), +size, Full 0
+        operations[2*access_num-2] = Op(access_num-1, -(sign_req_count_t)last_nblocks, last_nblocks); // Prefix  i-1, -last, Full -last
+        operations[2*access_num-1] = Op(last_access_num, last_nblocks);  // Postfix prev(i), +size, Full 0
       }
       else {
         // previous access is different. This is therefore first access to this id
@@ -132,7 +136,7 @@ req_count_t IncrementAndFreeze::populate_operations(
   STOPTIME(build_op_array);
 
   if (living_req == nullptr)
-    return unique_ids;
+    return max_hit;
 
   // very last item in reqs is an edge case. Manually add here
   living_req->push_back(reqs[reqs.size()-1]);
@@ -143,7 +147,7 @@ req_count_t IncrementAndFreeze::populate_operations(
     return left.access_number < right.access_number;
   });
   STOPTIME(sort_new_living);
-  return unique_ids;
+  return max_hit;
 }
 
 // 'Main' function of IAF. Used to update a hits vector given a vector of requests
@@ -153,13 +157,13 @@ void IncrementAndFreeze::update_hits_vector(std::vector<request>& reqs,
 
   STARTTIME(update_hits_vector);
   STARTTIME(create_operations)
-  req_count_t unique_ids = populate_operations(reqs, living_req);
+  req_count_t max_hit = populate_operations(reqs, living_req);
   STOPTIME(create_operations);
 
   STARTTIME(resize_hits_vector);
   // Make sure hits_vector has enough space
-  if (hits_vector.size() < unique_ids + 1)
-    hits_vector.resize(unique_ids + 1);
+  if (hits_vector.size() < max_hit + 1)
+    hits_vector.resize(max_hit + 1);
   STOPTIME(resize_hits_vector);
 
   // begin the recursive process
