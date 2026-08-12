@@ -10,12 +10,10 @@ int main() {
 
   Iaf_write(h, (void *)Iaf_grab_id(h), 512);
   Iaf_write(h, (void *)Iaf_grab_id(h), 256);
-  Iaf_print(h);
 
   Iaf_write(h, (void *)Iaf_grab_id(h), 512);
   Iaf_write(h, (void *)-1, 256);
   Iaf_write(h, (void *)(Iaf_grab_id(h)-2), 512);
-  Iaf_print(h);
 
   std::cout << Iaf_stringify(h) << std::endl;
 
