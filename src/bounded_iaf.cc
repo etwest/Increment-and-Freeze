@@ -101,7 +101,7 @@ void BoundedIAF::process_requests() {
 
   // auto start = std::chrono::high_resolution_clock::now();
 
-  iaf_alg.process_chunk(chunk_input);
+  iaf_alg.process_chunk(chunk_input, max_living_req);
 
   // update maximum memory usage
   if (iaf_alg.get_memory_usage() > memory_usage)
@@ -113,13 +113,9 @@ void BoundedIAF::process_requests() {
   ChunkOutput& result = chunk_input.output;
   // print_result(result);
 
-  // Truncate living requests from the front until the total block weight
-  // fits within max_living_req.
-  // TODO: Optimize this
-  size_t living_nblocks = result.hits_vector.size() - 1;
-  while (!result.living_requests.empty() && living_nblocks > max_living_req) {
-    living_nblocks -= result.living_requests.front().nblocks;
-    result.living_requests.erase(result.living_requests.begin());
+  size_t living_nblocks = 0;
+  for (auto &req : result.living_requests) {
+    living_nblocks += req.nblocks;
   }
   result.hits_vector.resize(1 + living_nblocks);
 

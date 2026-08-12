@@ -79,7 +79,7 @@ class IncrementAndFreeze: public CacheSim {
    * Precondition: requests must be properly populated.
    * Returns: number of unique ids in requests
    */
-  req_count_t populate_operations(std::vector<request> &req, std::vector<request> *living_req);
+  req_count_t populate_operations(std::vector<request> &req, std::vector<request> *living_req, size_t max_living_req = 0);
 
   /* Helper function for update_hits_vector
    * Recursively (and in parallel) populates the distance vector if the
@@ -100,7 +100,7 @@ class IncrementAndFreeze: public CacheSim {
    * hits_vector: A hits vector indicates the number of requests that required a given memory amount
    */
   void update_hits_vector(std::vector<request>& reqs, std::vector<req_count_t>& hits_vector,
-                          std::vector<request> *living_req=nullptr);
+                          std::vector<request> *living_req=nullptr, size_t max_living_req = 0);
  public:
   // Returns true if this address will be included
   bool should_sample(req_count_t addr) override;
@@ -118,7 +118,7 @@ class IncrementAndFreeze: public CacheSim {
    * Process a chunk of requests (called by IAF_Wrapper)
    * Return the new living requests and the success function
    */
-  void process_chunk(ChunkInput &input);
+  void process_chunk(ChunkInput &input, size_t max_living_req = 0);
 
   /* IncrementAndFreeze Constructor.
    * _sample_rate:  sample 1 in 2^sample_rate request addresses. > 0 to enable sampling.

@@ -61,7 +61,7 @@ bool IncrementAndFreeze::memory_access(req_count_t addr, req_count_t nblocks) {
 }
 
 req_count_t IncrementAndFreeze::populate_operations(
-    std::vector<request> &reqs, std::vector<request> *living_req) {
+    std::vector<request> &reqs, std::vector<request> *living_req, size_t max_living_req) {
 
   reqs.resize(reqs.size()); // get rid of empty requests to save memory
 
@@ -146,18 +146,29 @@ req_count_t IncrementAndFreeze::populate_operations(
   std::sort(living_req->begin(), living_req->end(), [](auto &left, auto &right) {
     return left.access_number < right.access_number;
   });
+
+  if (max_living_req > 0) {
+    size_t total_weight = 0;
+    auto it = living_req->rbegin();
+    while (it != living_req->rend() && total_weight + it->nblocks <= max_living_req) {
+      total_weight += it->nblocks;
+      ++it;
+    }
+    // Erase the oldest requests (prefix) in a single O(N) shift
+    living_req->erase(living_req->begin(), it.base());
+  }
   STOPTIME(sort_new_living);
   return max_hit;
 }
 
 // 'Main' function of IAF. Used to update a hits vector given a vector of requests
 void IncrementAndFreeze::update_hits_vector(std::vector<request>& reqs,
-  SuccessVector& hits_vector, std::vector<request> *living_req) {
+  SuccessVector& hits_vector, std::vector<request> *living_req, size_t max_living_req) {
   if (reqs.empty()) return;
 
   STARTTIME(update_hits_vector);
   STARTTIME(create_operations)
-  req_count_t max_hit = populate_operations(reqs, living_req);
+  req_count_t max_hit = populate_operations(reqs, living_req, max_living_req);
   STOPTIME(create_operations);
 
   STARTTIME(resize_hits_vector);
@@ -312,7 +323,7 @@ CacheSim::SuccessVector IncrementAndFreeze::get_success_function() {
   return success;
 }
 
-void IncrementAndFreeze::process_chunk(ChunkInput &input) {
+void IncrementAndFreeze::process_chunk(ChunkInput &input, size_t max_living_req) {
   input.output.living_requests.clear();
-  update_hits_vector(input.requests, input.output.hits_vector, &input.output.living_requests);
+  update_hits_vector(input.requests, input.output.hits_vector, &input.output.living_requests, max_living_req);
 }
