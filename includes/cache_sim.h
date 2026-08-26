@@ -105,6 +105,12 @@ class CacheSim {
   
   double get_memory_usage() { return get_max_mem_used(); }
   
+  virtual void reset() {
+    access_number = 1;
+    sample_access_number = 1;
+    memory_usage = 0;
+  }
+
   void inc_access(uint64_t count) {access_number += count;};
 
   void dump_success_function(std::ostream& os, SuccessVector succ, size_t stride=1) {

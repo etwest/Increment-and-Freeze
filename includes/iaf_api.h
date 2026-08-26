@@ -18,6 +18,7 @@ typedef struct Iaf_t* Iaf;
 
 Iaf Iaf_create(int sampling_log2, size_t max_cache_size);
 void Iaf_destroy(Iaf* h);
+void Iaf_reset(Iaf h);
 bool Iaf_write(Iaf h, void* addr, size_t bytes);
 char* Iaf_stringify(Iaf h);
 void Iaf_dump_file(Iaf h, const char* filepath);

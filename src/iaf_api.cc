@@ -29,6 +29,14 @@ Iaf Iaf_create(int sampling_log2, size_t max_cache_size)
 std::mutex iaf_lock;
 constexpr size_t kBlockSize = 256;
 
+void Iaf_reset(Iaf h)
+{
+    if (h == nullptr)
+        return;
+    std::scoped_lock lock{iaf_lock};
+    h->b.reset();
+}
+
 bool Iaf_write(Iaf h, void* addr, size_t bytes)
 {
     assert(addr != (void*)IAF_ID_UNINIT && "Uninitialized addr!");

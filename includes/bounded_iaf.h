@@ -70,8 +70,19 @@ class BoundedIAF : public CacheSim {
 
   void flush();
 
+  void reset() override {
+    CacheSim::reset();
+    chunk_input.requests.clear();
+    chunk_input.output.living_requests.clear();
+    chunk_input.output.hits_vector.clear();
+    num_duplicates = 0;
+    cur_u = initial_chunk_size;
+  }
+
   inline size_t get_u() { return cur_u; };
   inline size_t get_mem_limit() { return max_living_req; };
+
+  const size_t initial_chunk_size;
 
   /* BoundedIAF Constructor.
    * _sample_rate:    sample 1 in 2^sample_rate request addresses. > 0 to enable sampling.
@@ -90,7 +101,8 @@ class BoundedIAF : public CacheSim {
         : _sample_seed, _sample_partition),
         iaf_alg(_sample_rate, sample_seed),
         cur_u(min_chunk_size),
-        max_living_req(max_cache_size/(sample_mask+1)){};
+        max_living_req(max_cache_size/(sample_mask+1)),
+        initial_chunk_size(min_chunk_size){};
   ~BoundedIAF() = default;
 };
 
