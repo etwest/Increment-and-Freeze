@@ -51,6 +51,14 @@ char* Iaf_stringify(Iaf h)
     return strdup(s.c_str());
 }
 
+void Iaf_dump_file(Iaf h, const char* filepath)
+{
+    std::scoped_lock lock{iaf_lock};
+    std::ofstream out(filepath);
+    h->b.flush();
+    h->b.print_small_csv(out, h->b.get_success_function());
+}
+
 void Iaf_free_string(char* s)
 {
     free(s);
