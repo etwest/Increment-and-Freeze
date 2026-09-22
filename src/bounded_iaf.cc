@@ -142,6 +142,65 @@ void BoundedIAF::flush() {
   }
 }
 
+void BoundedIAF::print_small_csv_streaming(std::ostream& os) {
+  // Ensure all requests processed
+  flush();
+
+  const SuccessVector& hits = chunk_input.output.hits_vector;
+  const size_t samples_per_measure = sample_mask + 1;
+
+  // Size the success function would have had, without building it.
+  const size_t succ_size = hits.size() == 0 ? 1 : 1 + (hits.size() - 1) * samples_per_measure;
+  if (succ_size <= 1)
+    return;
+
+  size_t total_requests = access_number - 1;
+  if (sample_mask)
+    total_requests = (sample_access_number - 1) * samples_per_measure;
+
+  os << total_requests << "," << succ_size - 1 << "," << access_number - 1 << std::endl;
+  os << "Cache Size,Hits" << std::endl;
+
+  // succ[page] is the prefix sum of hits up to the entry covering that page. Without sampling that
+  // is one hits entry per page; with sampling each entry covers samples_per_measure pages and the
+  // count is scaled back up. Pages are visited in increasing order, so the prefix sum only ever
+  // moves forward.
+  size_t hits_idx = 0;
+  size_t running_count = num_duplicates;
+  auto succ_at = [&](size_t page) {
+    size_t want = sample_mask ? (page - 1) / samples_per_measure + 1 : page;
+    for (; hits_idx < want; ++hits_idx)
+      running_count += hits[hits_idx + 1];
+    return sample_mask ? running_count * samples_per_measure : running_count;
+  };
+
+  // Always print the first point.
+  size_t value = succ_at(1);
+  os << 1 << "," << value << std::endl;
+
+  double last_printed_hits = value;
+  size_t last_printed_page = 1;
+
+  for (size_t i = 2; i < succ_size; ++i) {
+    value = succ_at(i);
+    // Print if we have < 1000 total cache sizes, or if cache size grew by 5%, or hits grew by 1%.
+    // The 1% is a floor of one hit, since at 0 hits a ratio test would always pass.
+    double min_hits = last_printed_hits * 1.01;
+    if (min_hits < last_printed_hits + 1.0)
+      min_hits = last_printed_hits + 1.0;
+    if (succ_size < 1000 || i >= last_printed_page * 1.05 || value >= min_hits) {
+      os << i << "," << value << std::endl;
+      last_printed_hits = value;
+      last_printed_page = i;
+    }
+  }
+
+  // Always print the last point if it hasn't been printed.
+  if (succ_size - 1 > last_printed_page) {
+    os << succ_size - 1 << "," << value << std::endl;
+  }
+}
+
 CacheSim::SuccessVector BoundedIAF::get_success_function() {
   // Ensure all requests processed
   flush();

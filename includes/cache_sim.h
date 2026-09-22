@@ -113,7 +113,7 @@ class CacheSim {
 
   void inc_access(uint64_t count) {access_number += count;};
 
-  void dump_success_function(std::ostream& os, SuccessVector succ, size_t stride=1) {
+  void dump_success_function(std::ostream& os, const SuccessVector& succ, size_t stride=1) {
     assert(stride < succ.size());
     size_t total_requests = access_number - 1;
     if (sample_mask)
@@ -131,7 +131,7 @@ class CacheSim {
        << std::setw(16) << percent(misses, total_requests) << "%" << std::endl;
   }
   
-  void csv_success_function(std::ostream& os, SuccessVector succ, size_t stride=1) {
+  void csv_success_function(std::ostream& os, const SuccessVector& succ, size_t stride=1) {
     if (succ.size() == 0)
       return;
     assert(stride < succ.size());
@@ -147,7 +147,7 @@ class CacheSim {
     }
   }
 
-  void print_small_csv(std::ostream& os, SuccessVector succ) {
+  void print_small_csv(std::ostream& os, const SuccessVector& succ) {
     if (succ.size() <= 1)
       return;
 
@@ -165,8 +165,12 @@ class CacheSim {
     size_t last_printed_page = 1;
 
     for (size_t i = 2; i < succ.size(); ++i) {
-        // Print if we have < 1000 total cache sizes, or if cache size grew by 5%, or hits grew by 1%
-        if (succ.size() < 1000 || i >= last_printed_page * 1.05 || succ[i] >= last_printed_hits * 1.01) {
+        // Print if we have < 1000 total cache sizes, or if cache size grew by 5%, or hits grew by
+        // 1%. The 1% is a floor of one hit, since at 0 hits a ratio test would always pass.
+        double min_hits = last_printed_hits * 1.01;
+        if (min_hits < last_printed_hits + 1.0)
+          min_hits = last_printed_hits + 1.0;
+        if (succ.size() < 1000 || i >= last_printed_page * 1.05 || succ[i] >= min_hits) {
             os << i << "," << succ[i] << std::endl;
             last_printed_hits = succ[i];
             last_printed_page = i;

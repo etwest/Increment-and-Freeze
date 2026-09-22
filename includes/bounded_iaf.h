@@ -70,6 +70,11 @@ class BoundedIAF : public CacheSim {
 
   void flush();
 
+  /* Equivalent to print_small_csv(os, get_success_function()), but walks the success function as a
+   * running prefix sum of the hits vector instead of materializing it. The vector this avoids is
+   * the size of the hits vector, or (sample_mask+1) times larger when sampling. */
+  void print_small_csv_streaming(std::ostream& os);
+
   void reset() override {
     CacheSim::reset();
     chunk_input.requests.clear();
@@ -81,6 +86,16 @@ class BoundedIAF : public CacheSim {
 
   inline size_t get_u() { return cur_u; };
   inline size_t get_mem_limit() { return max_living_req; };
+
+  /* Largest cache size, in blocks, the curve can represent. Sampling scales the axis back up, so
+   * this is the sampled limit multiplied back out rather than max_living_req itself. */
+  inline size_t get_max_cache_size() { return max_living_req * (sample_mask + 1); };
+
+  /* Re-bound the curve. Raising the bound only affects requests from here on; history already
+   * dropped under a smaller bound is not recovered. */
+  inline void set_max_cache_size(size_t max_cache_size) {
+    max_living_req = max_cache_size / (sample_mask + 1);
+  };
 
   const size_t initial_chunk_size;
 

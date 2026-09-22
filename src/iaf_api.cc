@@ -8,6 +8,7 @@
 #include <sstream>
 #include <cstring>
 #include <fstream>
+#include <string_view>
 
 #include "iaf_api.h"
 #include "bounded_iaf.h"
@@ -27,7 +28,7 @@ Iaf Iaf_create(int sampling_log2, size_t max_cache_size)
 }
 
 std::mutex iaf_lock;
-constexpr size_t kBlockSize = 256;
+constexpr size_t kBlockSize = IAF_BLOCK_SIZE;
 
 void Iaf_reset(Iaf h)
 {
@@ -54,9 +55,17 @@ char* Iaf_stringify(Iaf h)
     std::scoped_lock lock{iaf_lock};
     std::stringstream ss;
     h->b.flush();
-    h->b.print_small_csv(ss, h->b.get_success_function());
-    const std::string& s = ss.str();
-    return strdup(s.c_str());
+    h->b.print_small_csv_streaming(ss);
+
+    // str() would copy the whole buffer only for strdup to copy it again; view() lets us do it
+    // once. Using malloc rather than new so the result stays free()-able by Iaf_free_string.
+    const std::string_view sv = ss.view();
+    char* out = (char*)malloc(sv.size() + 1);
+    if (out == nullptr)
+        return nullptr;
+    memcpy(out, sv.data(), sv.size());
+    out[sv.size()] = '\0';
+    return out;
 }
 
 void Iaf_dump_file(Iaf h, const char* filepath)
@@ -64,7 +73,7 @@ void Iaf_dump_file(Iaf h, const char* filepath)
     std::scoped_lock lock{iaf_lock};
     std::ofstream out(filepath);
     h->b.flush();
-    h->b.print_small_csv(out, h->b.get_success_function());
+    h->b.print_small_csv_streaming(out);
 }
 
 void Iaf_free_string(char* s)
@@ -77,6 +86,22 @@ void Iaf_destroy(Iaf* h)
     std::scoped_lock lock{iaf_lock};
     delete *h;
     *h = nullptr;
+}
+
+size_t Iaf_max_cache_blocks(Iaf h)
+{
+    if (h == nullptr)
+        return 0;
+    std::scoped_lock lock{iaf_lock};
+    return h->b.get_max_cache_size();
+}
+
+void Iaf_set_max_cache_blocks(Iaf h, size_t max_cache_blocks)
+{
+    if (h == nullptr || max_cache_blocks == 0)
+        return;
+    std::scoped_lock lock{iaf_lock};
+    h->b.set_max_cache_size(max_cache_blocks);
 }
 
 std::atomic<uint64_t> counter(IAF_ID_RESERVED_BOUNDARY); // Initialize an atomic counter to minimum value
