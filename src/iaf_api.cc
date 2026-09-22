@@ -8,7 +8,6 @@
 #include <sstream>
 #include <cstring>
 #include <fstream>
-#include <string_view>
 
 #include "iaf_api.h"
 #include "bounded_iaf.h"
@@ -57,15 +56,10 @@ char* Iaf_stringify(Iaf h)
     h->b.flush();
     h->b.print_small_csv_streaming(ss);
 
-    // str() would copy the whole buffer only for strdup to copy it again; view() lets us do it
-    // once. Using malloc rather than new so the result stays free()-able by Iaf_free_string.
-    const std::string_view sv = ss.view();
-    char* out = (char*)malloc(sv.size() + 1);
-    if (out == nullptr)
-        return nullptr;
-    memcpy(out, sv.data(), sv.size());
-    out[sv.size()] = '\0';
-    return out;
+    // strdup so the result stays free()-able by Iaf_free_string. stringstream::view() would save a
+    // copy of the string here, but it is C++20 and the bazel build does not pin a standard.
+    const std::string s = ss.str();
+    return strdup(s.c_str());
 }
 
 void Iaf_dump_file(Iaf h, const char* filepath)

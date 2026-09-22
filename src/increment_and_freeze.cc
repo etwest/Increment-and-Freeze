@@ -89,7 +89,9 @@ req_count_t IncrementAndFreeze::populate_operations(
   STOPTIME(allocate_ops);
 
   STARTTIME(build_op_array);
-  req_count_t unique_ids = 0;
+  // Counted but not returned any more -- populate_operations returns max_hit. Kept, with the
+  // reduction clause, in case a caller wants the unique-id count back.
+  [[maybe_unused]] req_count_t unique_ids = 0;
 #pragma omp parallel reduction(+:unique_ids)
   {
     std::vector<request> living_req_priv;
