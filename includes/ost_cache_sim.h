@@ -72,9 +72,8 @@ class OSTCacheSim : public CacheSim {
    * page faults with every memory size from 1 to MEM_SIZE
    * returns   the success function in a vector
    */
-  SuccessVector get_success_function();
+  SuccessVector get_success_function() override;
 
-  bool should_sample(req_count_t addr);
 
 };
 

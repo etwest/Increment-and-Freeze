@@ -85,6 +85,8 @@ class CacheSim {
   // determine which partition is used
   const size_t sample_partition;
 
+  static constexpr uint64_t sample_prime = 13208052345836349601ull;
+
  public:
   using SuccessVector = std::vector<req_count_t>;
 
@@ -94,11 +96,23 @@ class CacheSim {
   : sample_mask(_sample_mask), sample_seed(_sample_seed), sample_partition(_sample_partition)
    {};
   /*
+   * Returns true if addr falls in the sampled partition. The partition is the top log2(S) bits
+   * of prime * addr mod 2^64 (multiplicative hashing). Do not take the low bits of the high word
+   * instead: that is floor(addr * prime / 2^64) mod S, a comb over consecutive addresses whose
+   * S-1 fixed frequencies alias with periodic page weights.
+   */
+  bool should_sample(req_count_t addr) const {
+    if (sample_mask == 0)
+      return true;
+    const uint64_t hash = sample_prime * (uint64_t)addr;
+    return (hash >> (64 - __builtin_popcountll(sample_mask))) == sample_partition;
+  }
+
+  /*
    * Perform a memory access upon a given id
    * addr:    the id to access 
    * returns  nothing
    */
-  virtual bool should_sample(req_count_t addr) = 0;
   virtual bool memory_access(req_count_t addr, req_count_t nblocks = 1) = 0;
 
   virtual SuccessVector get_success_function() = 0;

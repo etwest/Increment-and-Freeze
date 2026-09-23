@@ -29,25 +29,6 @@
 
 #include "increment_and_freeze.h"
 
-constexpr uint64_t prime_64b = 13208052345836349601ull;
-//constexpr uint64_t prime_32b = 2147483647;
-  
-// Returns true if this address will be included
-bool BoundedIAF::should_sample(req_count_t addr) {
-  if (sample_mask > 0) {
-    // Universal Hashing from wikipedia
-    __int128_t hash_big = (__int128_t)prime_64b * addr;// + rand_64b;
-
-    uint64_t hash = hash_big >> 64;
-
-    // ignore all requests whose hash value is incorrect
-    // OLD VERSION
-    //likely_if ((hash & sample_mask) != sample_partition) return false;
-    return (hash & sample_mask) == sample_partition;
-  }
-  return true;
-}
-
 bool BoundedIAF::memory_access(req_count_t addr, req_count_t nblocks) {
   auto &requests = chunk_input.requests;
 
