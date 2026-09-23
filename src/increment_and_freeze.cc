@@ -36,8 +36,11 @@ bool IncrementAndFreeze::memory_access(req_count_t addr, req_count_t nblocks) {
 
   // catch case where new request is the same as the last
   // in this case we can just drop this request and increment
-  // success_function(1)
-  if (requests.size() && addr == requests[requests.size() - 1].addr) {
+  // success_function(1). Only valid for a single block, before and after: a wider request is a hit
+  // only once the cache holds all of it, and a request that changes size must go through IAF to
+  // update the size it is counted at.
+  if (nblocks == 1 && requests.size() && addr == requests.back().addr &&
+      requests.back().nblocks == 1) {
     ++num_duplicates;
   } else {
     requests.push_back({addr, (req_count_t) requests.size() + 1, nblocks});
@@ -67,6 +70,9 @@ req_count_t IncrementAndFreeze::populate_operations(
   }
   STOPTIME(sort_requests);
 
+  if (sample_mask > 0)
+    reuse_nblocks.assign(reqs.size() + 1, 0);
+
   // Size of operations array is bounded by 2*reqs
   operations.clear();
   STARTTIME(allocate_ops)
@@ -87,9 +93,14 @@ req_count_t IncrementAndFreeze::populate_operations(
 
       // Using last, check if previous sorted access is the same
       if (last_access_num > 0 && addr == last_addr) {
-        // prev is same id as us so create Prefix and Postfix
-        operations[2*access_num-2] = Op(access_num-1, -(sign_req_count_t)last_nblocks, last_nblocks); // Prefix  i-1, -last, Full -last
-        operations[2*access_num-1] = Op(last_access_num, last_nblocks);  // Postfix prev(i), +size, Full 0
+        // prev is same id as us so create Prefix and Postfix. Net effect on earlier accesses:
+        // [prev(i), i-1] see this id for the first time and gain its current size; [1, prev(i)-1]
+        // already counted it at last_nblocks and gain only the change in size; [i, inf) gain 0.
+        // The access at prev(i) freezes at the current size of everything since, itself included.
+        operations[2*access_num-2] = Op(access_num-1, -(sign_req_count_t)last_nblocks, nblocks); // Prefix  i-1, +size, Full -last
+        operations[2*access_num-1] = Op(last_access_num, last_nblocks);  // Postfix prev(i), +last, Full 0
+        if (sample_mask > 0)
+          reuse_nblocks[last_access_num] = nblocks;  // one reuse per access, so no two writers
       }
       else {
         // previous access is different. This is therefore first access to this id
@@ -250,6 +261,17 @@ void IncrementAndFreeze::do_base_case(SuccessVector& hits_vector, ProjSequence c
           int64_t hit = local_distances[op.get_target() - cur.start] + full_amnt;
           // std::cout << "Freezing " << op << " = " << hit << std::endl;
           assert(hit > 0);
+          if (sample_mask > 0) {
+            // hit is self + others: the reused id's own size plus the size of every sampled id
+            // accessed since. Only others is a sample, so only others scales up by S = 1/rate:
+            // the distance is S * others + self, not S * hit. hits_vector counts in units of S
+            // blocks, and bucket ceil(d / S) is read as covering caches of (bucket-1)*S+1 blocks
+            // and up; for a single block (self == 1) this is the bucket S * hit already landed in.
+            const int64_t S = sample_mask + 1;
+            const int64_t self = reuse_nblocks[op.get_target()];
+            assert(self > 0 && self <= hit);
+            hit = hit - self + (self + S - 1) / S;
+          }
           if ((size_t)hit >= hits_vector.size()) {
             std::cout << "CRASH: hit=" << hit << " size=" << hits_vector.size() << std::endl;
             abort();
@@ -280,20 +302,19 @@ CacheSim::SuccessVector IncrementAndFreeze::get_success_function() {
   if (sample_mask > 0) {
     SuccessVector downsampled_success = std::move(success);
     size_t samples_per_measure = sample_mask + 1;
-    success = SuccessVector(downsampled_success.size() * samples_per_measure);
+    success = SuccessVector(downsampled_success.size() ?
+                            1 + (downsampled_success.size() - 1) * samples_per_measure : 1);
 
-    // integrate to convert to success function
+    // integrate to convert to success function. As in BoundedIAF, bucket i covers the caches of
+    // [1 + (i-1) * samples_per_measure, 1 + i * samples_per_measure) blocks.
     req_count_t running_count = num_duplicates;
     for (req_count_t i = 1; i < downsampled_success.size(); i++) {
-      running_count += downsampled_success[i] * samples_per_measure;
-      running_count = std::min(running_count, access_number - 1);
+      running_count += downsampled_success[i];
 
-      size_t pos = i * samples_per_measure;
-      size_t num_to_update = std::min(success.size() - pos, samples_per_measure);
-
-      for (size_t j = 0; j < num_to_update; j++) {
-        success[pos + j] = running_count;
-      }
+      size_t start_pos = 1 + (i - 1) * samples_per_measure;
+      size_t end_pos = std::min<size_t>(1 + i * samples_per_measure, success.size());
+      for (size_t j = start_pos; j < end_pos; j++)
+        success[j] = running_count * samples_per_measure;
     }
   } else {
     // integrate to convert to success function

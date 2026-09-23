@@ -38,8 +38,11 @@ bool BoundedIAF::memory_access(req_count_t addr, req_count_t nblocks) {
   
   sample_access_number++;
   
-  // small optimization, first check that the request is not a repeated request
-  if (requests.size() && addr == requests[requests.size() - 1].addr) {
+  // small optimization, first check that the request is not a repeated request. Only valid for a
+  // single block, before and after: a wider request is a hit only once the cache holds all of it,
+  // and a request that changes size must go through IAF to update the size it is counted at.
+  if (nblocks == 1 && requests.size() && addr == requests.back().addr &&
+      requests.back().nblocks == 1) {
     ++num_duplicates;
   } else {
     requests.push_back({addr, (req_count_t) requests.size() + 1, nblocks});
@@ -98,7 +101,12 @@ void BoundedIAF::process_requests() {
   for (auto &req : result.living_requests) {
     living_nblocks += req.nblocks;
   }
-  result.hits_vector.resize(1 + living_nblocks);
+  // Trim only at the bound. The living set can total less than hits already recorded -- pages
+  // shrink -- and those hits are real, so do not size the vector down to the living set.
+  if (result.hits_vector.size() < 1 + living_nblocks)
+    result.hits_vector.resize(1 + living_nblocks);
+  else if (result.hits_vector.size() > 1 + max_living_req)
+    result.hits_vector.resize(1 + max_living_req);
 
   // Fix the index of the living requests so they count up from 1
   size_t num_living = 0;

@@ -67,7 +67,8 @@ bool Iaf_write(Iaf h, void* addr, size_t bytes)
 
     std::scoped_lock lock{iaf_lock};  //TODO: Remove this lock eventually?
     iaf_fold_unsampled(h);
-    req_count_t nblocks = (bytes + kBlockSize - 1) / kBlockSize;
+    // A zero-byte access still occupies a slot; a zero-block request would freeze at distance 0.
+    req_count_t nblocks = bytes == 0 ? 1 : (bytes + kBlockSize - 1) / kBlockSize;
     return h->b.memory_access((req_count_t)addr, nblocks);
 }
 

@@ -70,6 +70,10 @@ class IncrementAndFreeze: public CacheSim {
   // Vector of operations used in ProjSequence to store memory operations
   std::vector<Op> operations;
 
+  // When sampling: reuse_nblocks[p] is the size of the access that next reuses the id accessed at
+  // p, so that do_base_case can keep that size out of the part of the distance it scales up.
+  std::vector<req_count_t> reuse_nblocks;
+
   // Number of requests that require cache size 1
   // this enables optimization where these requests are dropped from the requests vector
   size_t num_duplicates = 0;

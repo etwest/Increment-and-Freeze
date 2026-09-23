@@ -71,11 +71,13 @@ class PartitionState {
     std::cout << std::endl;
   }
 
-  // Update path to partition_target+1 to represent an increment by 1 in range
-  // [partition_target+1, kIafBranching)
+  // Update path to partition_target+1 to represent an increment by amount in range
+  // [partition_target+1, kIafBranching), and return the increments already applied to
+  // partition_target. amount is the Postfix's increment, which is the request's size in blocks and
+  // not always 1; pass 0 to query only.
   // We represent this tree with the trick that root index = 0
   // left child = cur*2 + 1, right child = cur*2 + 2
-  inline req_count_t qry_and_upd_partition_incr(req_count_t partition_target) {
+  inline req_count_t qry_and_upd_partition_incr(req_count_t partition_target, req_count_t amount) {
     assert(partition_target < kIafBranching-1);
     size_t depth_shift = incr_tree_depth - 1;
     size_t idx = 0;
@@ -85,7 +87,7 @@ class PartitionState {
       assert(idx < kIafBranching);
       // if 0 go left, if 1 go right
       size_t leftright = (partition_target & (1 << depth_shift)) >> depth_shift;
-      incr_array[idx] += leftright ^ 1;                      // if go left add to tree node value
+      incr_array[idx] += amount & ((req_count_t)0 - (leftright ^ 1)); // if go left add to tree node value
       sum += incr_array[idx] & ((req_count_t)0 - leftright); // if go right add to sum
 
       idx = 2*idx + leftright + 1;
