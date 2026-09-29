@@ -1,0 +1,20 @@
+diff --git a/src/third_party/wiredtiger/BUILD.bazel b/src/third_party/wiredtiger/BUILD.bazel
+index c8bc7356395..1e3e3de66cb 100644
+--- a/src/third_party/wiredtiger/BUILD.bazel
++++ b/src/third_party/wiredtiger/BUILD.bazel
+@@ -26,6 +26,7 @@ selects.config_setting_group(
+ 
+ WT_DEFINES = [
+     "HAVE_VERBOSE",
++    "HAVE_ANALYZE_CACHE",
+     "HAVE_BUILTIN_EXTENSION_ZLIB",
+     "HAVE_BUILTIN_EXTENSION_SNAPPY",
+     "HAVE_BUILTIN_EXTENSION_ZSTD",
+@@ -158,6 +159,7 @@ mongo_cc_library(
+     ],
+     deps = [
+         "wiredtiger_checksum",
++        "//src/third_party/increment_and_freeze:iaf_api",
+         "//src/third_party/snappy",
+         "//src/third_party/zstandard:zstd",
+         "@zlib",

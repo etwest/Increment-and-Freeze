@@ -1,0 +1,2 @@
+# BUILD files under integrations/ are templates for other source trees, not packages of this one.
+integrations

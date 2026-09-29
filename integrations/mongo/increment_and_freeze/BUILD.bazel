@@ -1,0 +1,36 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+# Increment-and-Freeze reuse-distance simulator. Linked into WiredTiger when the
+# HAVE_ANALYZE_CACHE define is set; see src/third_party/wiredtiger/BUILD.bazel.
+#
+# This is a plain cc_library rather than mongo_cc_library because mongo_cc_library rejects a
+# per-target linkstatic=True ("the mongo build must link entirely statically or entirely
+# dynamically"), and the simulator has to end up inside the binary that uses it in every
+# configuration -- including the sanitizer configs, which build mongo's own libraries shared.
+# alwayslink keeps every object in the archive; only the Iaf_* entry points are referenced, and
+# they are referenced from C.
+#
+# The OpenMP pragmas in dist/src/increment_and_freeze.cc are inert without -fopenmp, which
+# matches how upstream's own CMake build compiles these files.
+cc_library(
+    name = "iaf_api",
+    srcs = [
+        "dist/includes/bounded_iaf.h",
+        "dist/includes/cache_sim.h",
+        "dist/includes/iaf_params.h",
+        "dist/includes/increment_and_freeze.h",
+        "dist/includes/op.h",
+        "dist/includes/partition.h",
+        "dist/includes/projection.h",
+        "dist/src/bounded_iaf.cc",
+        "dist/src/iaf_api.cc",
+        "dist/src/increment_and_freeze.cc",
+        "dist/src/projection.cc",
+    ],
+    hdrs = ["dist/includes/iaf_api.h"],
+    alwayslink = True,
+    includes = ["dist/includes"],
+    linkstatic = True,
+)
