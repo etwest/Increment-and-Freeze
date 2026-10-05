@@ -38,32 +38,54 @@ The patch adds `HAVE_ANALYZE_CACHE` to `WT_DEFINES` and makes the WiredTiger lib
 WiredTiger calls `Iaf_write` on every page access through `__wt_page_in`, whether or not the
 page was already cached, but skips cache-only lookups (`WT_READ_CACHE`). The size is the
 page's in-memory footprint. That footprint includes attached updates, so it is usually
-larger than the on-disk page. It then configures IAF as follows:
+larger than the on-disk page. Accesses to internal pages are also written to a second IAF
+instance, which produces a curve for internal pages alone. The instances are configured as
+follows (`src/include/analyze_cache_inline.h`):
 
-- **Sampling 1 in 4** (`WT_IAF_SAMPLING_LOG2 = 2` in `src/include/analyze_cache_inline.h`).
+- **Sampling:** the main curve is 4 disjoint samples of 1 in 16 (`WT_IAF_PARTITIONS = 4`,
+  `WT_IAF_SAMPLING_LOG2 = 4`), so 1 in 4 pages in all; their spread gives the curve an error bar.
+  The internal curve samples 1 in 4 (`WT_IAF_INTERNAL_SAMPLING_LOG2 = 2`). It misses the steep
+  drop the root and upper levels cause at the smallest sizes, but matches the unsampled curve above
+  its provable floor.
 - **Curve bound: 4 × `cache_size`**, set when the cache is created and again on reconfigure.
-- **Dumps** after each processed chunk and at connection close. Each dump covers the whole
-  connection so far. IAF state doesn't survive a close, so a run that populates, restarts and
+- **Dumps** after each chunk the main curve's first partition processes, and at connection
+  close. Each dump writes one record per partition of the main curve, then the internal curve, so
+  they line up in time. Each dump covers the whole connection so far. IAF state doesn't survive a close, so a run that populates, restarts and
   runs again produces two independent sequences. Use the last dump before the final shutdown.
 
 Each dump is a summary line followed by the CSV described in `tools/MRC-GUIDE.md`:
 
-    IAF-SUMMARY cache_bytes=1073741824,cache_blocks=4194304,curve_max_blocks=16777216,
-    curve_covers_cache=true,bytes_inuse=745567396,pages_requested=79344883,pages_read=25065,
-    hit_rate_pct=99.9684,stats_enabled=true
-    77173968,2705176,79344883
+    IAF-SUMMARY curve=all,partition=0,partitions=4,block_bytes=1024,grid_ratio=1.04,
+    sampling_log2=4,
+    cache_bytes=1073741824,cache_blocks=1048576,curve_max_blocks=4194304,
+    provable_floor_blocks=82759,provable_floor_blocks_by_pct=1:7890245|5:322373|10:82759|25:14232|50:4013|100:1219|200:426,
+    curve_covers_cache=true,bytes_inuse=745567396,
+    pages_requested=79344883,pages_read=25065,hit_rate_pct=99.9684,stats_enabled=true,
+    sampled_accesses=19293492,small_accesses=0,sampled_bytes=191006570832,
+    rounded_bytes=191016228864
+    76786752,676294,79344883
     Cache Size,Hits
     ...
 
 | field | meaning |
 |---|---|
+| `curve` | `all` for every page access, `internal` for internal pages only |
+| `partition`, `partitions` | which of the curve's disjoint samples this record holds, out of how many |
+| `block_bytes` | bytes per unit of the curve's cache-size axis (`IAF_BLOCK_SIZE`) |
+| `grid_ratio` | ratio between successive cache sizes in the rows (`IAF_GRID_RATIO`) |
+| `sampling_log2` | each partition samples 1 in 2^`sampling_log2` pages |
 | `cache_bytes`, `cache_blocks` | configured cache size, in bytes and in curve units |
 | `curve_max_blocks` | largest cache size the curve can represent |
+| `provable_floor_blocks` | smallest cache size at which the sampled curve is provably accurate to 10% |
+| `provable_floor_blocks_by_pct` | the same at 1, 5, 10, 25, 50, 100 and 200%, as `pct:blocks` separated by `\|` |
+| `provable_eps_at_cache` | the provable bias at the configured cache size, as a fraction (`inf` if over 16) |
 | `curve_covers_cache` | whether `cache_blocks <= curve_max_blocks` |
-| `bytes_inuse` | bytes currently in the cache |
-| `pages_requested`, `pages_read` | WiredTiger's page requests and cache misses |
+| `bytes_inuse` | bytes currently in the cache (internal pages only, for `curve=internal`) |
+| `pages_requested`, `pages_read` | WiredTiger's page requests and cache misses (likewise) |
 | `hit_rate_pct` | WiredTiger's measured hit rate |
 | `stats_enabled` | whether the three fields above are meaningful |
+| `sampled_accesses`, `small_accesses` | sampled accesses (all partitions), and those under a quarter block |
+| `sampled_bytes`, `rounded_bytes` | their total size, before and after rounding up to blocks |
 
 `cache_bytes` is WiredTiger's `cache_size`, i.e. `--wiredTigerCacheSizeGB` or its default, not
 the machine's memory.
@@ -87,12 +109,52 @@ truncated, raise the limit, e.g. `--setParameter maxLogSizeKB=64`.
 
     python3 $IAF/integrations/mongo/plot_mrc.py mongod.log mrc.png          # last dump
     python3 $IAF/integrations/mongo/plot_mrc.py mongod.log mrc.png --all    # every dump, overlaid
+    python3 $IAF/integrations/mongo/plot_mrc.py mongod.log mrc.png --windows  # each interval
+    python3 $IAF/integrations/mongo/plot_mrc.py mongod.log intl.png --curve internal
 
 `plot_mrc.py` needs only matplotlib (`pip install -r requirements.txt`). It also reads a plain
 WiredTiger log. It computes the miss-ratio curve as `tools/MRC-GUIDE.md` describes and
 plots cache size in GB. It marks the configured cache size (vertical line) and WiredTiger's
 observed miss ratio (horizontal line), and titles the plot with a warning when
 `curve_covers_cache=false`.
+
+Cache size is on a linear axis from 0, so the plot shows what each added GB buys. The main
+curve's smallest sizes rise steeply and run off the top: its miss-ratio axis is fitted from 10 MB
+up. `--log-x` uses a log axis instead, starting the main curve at 10 MB, and `--xmin-gb` sets the
+left edge either way. The internal curve omits the configured cache size, which is far beyond it.
+
+Horizontal bars on the whole-run curve show its provable bias: in expectation, the curve at C lies
+between the true curve at the bar's two ends, (1 − ε)C and (1 + ε)C, give or take 0.01 in miss
+ratio (see "Sampling" in `tools/MRC-GUIDE.md`). The red bar is at the configured cache, from
+`provable_eps_at_cache`; grey ones sit at a quarter, half, three quarters and the end of the axis,
+interpolated between the levels in `provable_floor_blocks_by_pct` (1, 5, 10, 25, 50, 100 and
+200%; `provable_floor_blocks` is the 10% one). IAF computes both from exact binomial tails. Bias
+above 200% isn't drawn. `--bias-levels 5,100` draws dotted vertical lines at those levels instead.
+Logs without these fields get neither.
+
+Every view of one log (the default, `--all`, `--windows`) uses the same axes, fitted to the
+whole-run curve and every window together, so plots of one run can be laid side by side. The
+95% band isn't drawn below 10 MB, where the partitions disagree too much for it to be legible. The
+miss-ratio axis stays within 0 to 1: values past 1 at the smallest sizes, a sampling artifact
+(see "Sampling" in `tools/MRC-GUIDE.md`), are drawn at 1. Curves
+are drawn as straight lines between the grid's cache sizes. Windows are drawn without their intervals, which overlap into a blur; `--window-bands` shades
+them. `--windows` drops intervals with fewer than 10,000 accesses, such as the short
+one before shutdown: their curves are mostly noise.
+
+The plotted curve is the mean of the partitions' curves. The shaded band is a 95% interval for
+that mean: t with k − 1 degrees of freedom times the partitions' spread over √k, times
+√(1 − k/2^`sampling_log2`) because disjoint samples of a fixed population vary less together than
+independent ones would. It covers the curve's variance, which dominates: above the floor, bias
+is a few percent of it. Expect the band to be wide at the smallest sizes, where a few hot pages
+decide the curve, and thin elsewhere.
+
+It also prints the share of small accesses and how much rounding to blocks inflated the sizes. If
+either is large, the block size is too coarse for the workload's pages.
+
+`--windows` differences consecutive dumps to plot each interval's curve on its own, which shows
+whether the workload changed during the run. Each window still uses reuse distances from the
+whole run, as a cache that was already warm would see them. The CSV rows are sparse, so a window
+that holds a small fraction of the run's accesses is noisy.
 
 To check the prediction, read the curve at `cache_blocks` and compare it with
 `1 - hit_rate_pct / 100`. If `curve_covers_cache=false`, the curve stops short of the

@@ -102,10 +102,16 @@ class CacheSim {
    * S-1 fixed frequencies alias with periodic page weights.
    */
   bool should_sample(req_count_t addr) const {
+    // Without sampling every address counts, whatever partition was asked for.
+    return sample_mask == 0 || partition_of(addr) == sample_partition;
+  }
+
+  /* The partition addr falls in, out of sample_mask + 1. Always 0 when sampling is off. */
+  size_t partition_of(req_count_t addr) const {
     if (sample_mask == 0)
-      return true;
+      return 0;
     const uint64_t hash = sample_prime * (uint64_t)addr;
-    return (hash >> (64 - __builtin_popcountll(sample_mask))) == sample_partition;
+    return hash >> (64 - __builtin_popcountll(sample_mask));
   }
 
   /*
@@ -126,6 +132,9 @@ class CacheSim {
   }
 
   void inc_access(uint64_t count) {access_number += count;};
+  void set_access_count(uint64_t count) { access_number = count + 1; }
+  uint64_t get_access_count() const { return access_number - 1; }
+  size_t get_samples_per_measure() const { return sample_mask + 1; }
 
   void dump_success_function(std::ostream& os, const SuccessVector& succ, size_t stride=1) {
     assert(stride < succ.size());

@@ -70,7 +70,13 @@ class BoundedIAF : public CacheSim {
   /* Equivalent to print_small_csv(os, get_success_function()), but walks the success function as a
    * running prefix sum of the hits vector instead of materializing it. The vector this avoids is
    * the size of the hits vector, or (sample_mask+1) times larger when sampling. */
-  void print_small_csv_streaming(std::ostream& os);
+  /* Ratio between successive cache sizes in a dump's rows. IAF_GRID_RATIO in iaf_api.h matches. */
+  static constexpr double kGridRatio = 1.04;
+
+  /* shift moves the sampled curve up by that many blocks before it is written: a continuity
+   * correction, which IAF's API sets to half a mean sampled page times the sampling factor. It is
+   * ignored without sampling, where every distance is exact. */
+  void print_small_csv_streaming(std::ostream& os, double shift = 0);
 
   void reset() override {
     CacheSim::reset();

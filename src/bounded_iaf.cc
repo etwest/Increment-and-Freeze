@@ -19,7 +19,9 @@
 
 #include "bounded_iaf.h"
 
+#include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
@@ -131,17 +133,22 @@ void BoundedIAF::flush() {
   }
 }
 
-void BoundedIAF::print_small_csv_streaming(std::ostream& os) {
+void BoundedIAF::print_small_csv_streaming(std::ostream& os, double shift) {
   // Ensure all requests processed
   flush();
 
   const SuccessVector& hits = chunk_input.output.hits_vector;
   const size_t samples_per_measure = sample_mask + 1;
+  if (!sample_mask)
+    shift = 0;
 
-  // Size the success function would have had, without building it.
-  const size_t succ_size = hits.size() == 0 ? 1 : 1 + (hits.size() - 1) * samples_per_measure;
-  if (succ_size <= 1)
+  // Size the success function would have had, without building it. The shift moves every entry
+  // up by that many blocks, so the curve runs that much further to keep its last entry.
+  const size_t unshifted_size =
+    hits.size() == 0 ? 1 : 1 + (hits.size() - 1) * samples_per_measure;
+  if (unshifted_size <= 1)
     return;
+  const size_t succ_size = unshifted_size + (size_t)std::ceil(shift);
 
   size_t total_requests = access_number - 1;
   if (sample_mask)
@@ -157,37 +164,37 @@ void BoundedIAF::print_small_csv_streaming(std::ostream& os) {
   size_t hits_idx = 0;
   size_t running_count = num_duplicates;
   auto succ_at = [&](size_t page) {
-    size_t want = sample_mask ? (page - 1) / samples_per_measure + 1 : page;
+    size_t want = page;
+    if (sample_mask) {
+      // Entry b covers caches of (b - 1) * S + 1 blocks and up, moved up by shift.
+      const double shifted = std::ceil((double)page - shift);
+      want = shifted < 1 ? 0 : ((size_t)shifted - 1) / samples_per_measure + 1;
+      // The last page rounds a fractional shift up, which can reach one entry past the end.
+      want = std::min(want, hits.size() - 1);
+    }
     for (; hits_idx < want; ++hits_idx)
       running_count += hits[hits_idx + 1];
     return sample_mask ? running_count * samples_per_measure : running_count;
   };
 
-  // Always print the first point.
-  size_t value = succ_at(1);
-  os << 1 << "," << value << std::endl;
-
-  double last_printed_hits = value;
-  size_t last_printed_page = 1;
-
-  for (size_t i = 2; i < succ_size; ++i) {
-    value = succ_at(i);
-    // Print if we have < 1000 total cache sizes, or if cache size grew by 5%, or hits grew by 1%.
-    // The 1% is a floor of one hit, since at 0 hits a ratio test would always pass.
-    double min_hits = last_printed_hits * 1.01;
-    if (min_hits < last_printed_hits + 1.0)
-      min_hits = last_printed_hits + 1.0;
-    if (succ_size < 1000 || i >= last_printed_page * 1.05 || value >= min_hits) {
-      os << i << "," << value << std::endl;
-      last_printed_hits = value;
-      last_printed_page = i;
-    }
+  // Rows sit on a fixed geometric grid of cache sizes, rounded to whole blocks: 1, then each
+  // kGridRatio times the last, up to the end of the curve. Every dump of a connection uses the
+  // same grid, so subtracting one dump's rows from the next gives an exact per-interval curve.
+  // The last size is written too, if the grid skips it.
+  size_t value = 0;
+  size_t last_printed = 0;
+  for (double g = 1;; g *= kGridRatio) {
+    const size_t size = (size_t)std::llround(g);
+    if (size <= last_printed)
+      continue;
+    if (size >= succ_size)
+      break;
+    value = succ_at(size);
+    os << size << "," << value << std::endl;
+    last_printed = size;
   }
-
-  // Always print the last point if it hasn't been printed.
-  if (succ_size - 1 > last_printed_page) {
-    os << succ_size - 1 << "," << value << std::endl;
-  }
+  if (succ_size - 1 > last_printed)
+    os << succ_size - 1 << "," << succ_at(succ_size - 1) << std::endl;
 }
 
 CacheSim::SuccessVector BoundedIAF::get_success_function() {
