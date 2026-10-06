@@ -15,7 +15,7 @@ set -vx
 NAME=increment_and_freeze
 UPSTREAM="git@github.com:etwest/Increment-and-Freeze.git"
 BRANCH="sampling"
-REVISION="9cb484c7ab82fd62c68667e6bb993e5f18903cc9"
+REVISION="718fa467058f046f7444afb6d230771185bd45c0"
 VERSION="0.0.0-$BRANCH-${REVISION:0:12}"
 
 # Translation units, matching IAF_SRCS in the upstream CMakeLists.txt.
