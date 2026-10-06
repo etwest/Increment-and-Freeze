@@ -106,6 +106,8 @@ truncated, raise the limit, e.g. `--setParameter maxLogSizeKB=64`.
     python3 $IAF/integrations/mongo/plot_mrc.py mongod.log mrc.png          # last dump
     python3 $IAF/integrations/mongo/plot_mrc.py mongod.log mrc.png --all    # every dump, overlaid
     python3 $IAF/integrations/mongo/plot_mrc.py mongod.log mrc.png --windows  # each interval
+    python3 $IAF/integrations/mongo/plot_mrc.py mongod.log --list             # list the dumps
+    python3 $IAF/integrations/mongo/plot_mrc.py mongod.log mrc.png --since 9  # after dump 9
     python3 $IAF/integrations/mongo/plot_mrc.py mongod.log intl.png --curve internal
 
 `plot_mrc.py` needs only matplotlib (`pip install -r requirements.txt`). It also reads a plain
@@ -119,8 +121,10 @@ curve's smallest sizes rise steeply and run off the top: its miss-ratio axis is 
 up. `--log-x` uses a log axis instead, starting the main curve at 10 MB, and `--xmin-gb` sets the
 left edge either way. The internal curve omits the configured cache size, which is far beyond it.
 
-Every view of one log (the default, `--all`, `--windows`) uses the same axes, fitted to the
-whole-run curve and every window together, so plots of one run can be laid side by side. The
+Every view of one log (the default, `--all`, `--windows`, `--since`) uses the same axes, fitted to the
+whole-run curve and every window together, so plots of one run can be laid side by side. `--all`
+draws the earlier dumps in the background, coloured in order and numbered by a colour bar, with
+the last dump on top; the legend names only the last dump and its band. The
 95% band isn't drawn below 10 MB, where the partitions disagree too much for it to be legible. The
 miss-ratio axis stays within 0 to 1: values past 1 at the smallest sizes, a sampling artifact
 (see "Sampling" in `tools/MRC-GUIDE.md`), are drawn at 1. Curves
@@ -138,10 +142,40 @@ decide the curve, and thin elsewhere.
 It also prints the share of small accesses and how much rounding to blocks inflated the sizes. If
 either is large, the block size is too coarse for the workload's pages.
 
-`--windows` differences consecutive dumps to plot each interval's curve on its own, which shows
-whether the workload changed during the run. Each window still uses reuse distances from the
-whole run, as a cache that was already warm would see them. The CSV rows are sparse, so a window
-that holds a small fraction of the run's accesses is noisy.
+### Load and task phases
+
+Dumps are cumulative, so the default plot covers the whole connection: if the task runs in the
+same `mongod` as the load before it, its curve includes the load. Read the task's curve alone, as
+the cache was sized for the task:
+
+1. `--list` prints one line per dump, numbered from 1: its time as logged, the page accesses since
+   the dump before, and over those accesses WiredTiger's measured miss ratio and the curve's
+   predicted one at the configured cache. A phase change shows up as a step in the miss ratios
+   and usually in the access rate. A restarted `mongod` is marked `new connection`; its dumps
+   start over, so the default plot of a log whose task followed a restart is the task alone.
+
+       dump  time                     accesses  observed  predicted
+          8  2026-10-06T10:00:34        884830    0.0000     0.0000
+          9  2026-10-06T10:00:34        888819    0.0000     0.0000
+         10  2026-10-06T10:00:40       1194893    0.3065     0.2977
+         11  2026-10-06T10:00:50       1424834    0.4441     0.4318
+
+   Here a hot phase ends and a cold one begins during dump 10's interval.
+
+2. `--since N` plots one curve for every access after dump N up to the last dump, with its 95%
+   band and WiredTiger's miss ratio over the same accesses. Pick the last dump before the task
+   starts; above, `--since 9`. The interval in which the phase changed is mixed, so starting one
+   dump later gives a cleaner but shorter curve.
+
+`--windows` plots each interval between consecutive dumps as its own curve, to see whether and when
+the workload changed. A colour bar numbers each window by the dump that ends it; the legend doesn't
+list them.
+It shows no observed miss ratio, as there is one per window; `--list` prints them.
+
+A window's or `--since` curve is exact on the grid: it is the difference of two dumps. It still
+uses reuse distances from the whole connection, as a cache that was already warm would see them,
+so the first accesses after a phase change are scored against pages the earlier phase touched.
+One that holds few accesses is noisy.
 
 To check the prediction, read the curve at `cache_blocks` and compare it with
 `1 - hit_rate_pct / 100`. If `curve_covers_cache=false`, the curve stops short of the

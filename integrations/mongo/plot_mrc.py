@@ -3,7 +3,8 @@
 
 Usage:
     plot_mrc.py <wiredtiger.log | mongod.log> [output.png]
-                [--all | --windows] [--curve all|internal] [--xmin-gb GB]
+                [--all | --windows | --since N | --list]
+                [--curve all|internal] [--xmin-gb GB]
                 [--log-x] [--window-bands]
 
 The log may be a plain WiredTiger log or a mongod JSON log; the format is
@@ -27,13 +28,18 @@ covers every page access, "internal" covers internal pages only. --curve picks
 one; the default is "all".
 
 Dumps are cumulative within a connection, so the last one covers the last
-connection's whole run. By default only the last is plotted; --all overlays
-every dump so you can see the curve converge. --windows instead plots each
-interval between consecutive dumps on its own, so a change in the workload
-shows up as a change in the curve. A window's curve still uses reuse distances
-from the whole run, i.e. a cache that was warm when the window began. Rows
-sit on a fixed grid (see MRC-GUIDE), so a window's curve is exact, but one that
-holds few accesses is noisy.
+connection's whole run, load phase included. Dumps are numbered from 1 in log
+order. By default only the last is plotted; --all overlays every dump so you
+can see the curve converge. --windows instead plots each interval between
+consecutive dumps on its own, so a change in the workload shows up as a change
+in the curve. --since N plots one curve for every access after dump N, e.g.
+the task without the load before it, with WiredTiger's miss ratio over the
+same accesses. --list prints each dump's time, the accesses since the dump
+before, and the observed and predicted miss ratios over them, to find where a
+phase starts. A window's or --since curve still uses reuse distances from the
+whole run, i.e. a cache that was warm when it began. Rows sit on a fixed grid
+(see MRC-GUIDE), so these curves are exact, but one that holds few accesses is
+noisy.
 
 Cache size is on a linear axis from 0, so the plot shows what each added GB
 buys. The main curve's smallest sizes rise steeply and run off the top; the
@@ -48,10 +54,12 @@ import bisect
 import json
 import re
 import sys
+import time
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 # IAF quantizes the cache-size axis to blocks of block_bytes (from the summary
 # line). A "Cache Size" of N in the CSV means N * block_bytes. Logs written
@@ -86,7 +94,8 @@ def is_mongod_log(path):
 
 
 def mongod_lines(f):
-    """Yield WiredTiger message text from a mongod JSON log, one line at a time.
+    """Yield (time, text) for WiredTiger message text in a mongod JSON log, one
+    line at a time. The time is the record's, as logged.
 
     Records that are not WiredTiger messages, or that don't parse, are turned
     into an empty line so that they terminate any dump in progress.
@@ -98,28 +107,44 @@ def mongod_lines(f):
             if isinstance(msg, dict):
                 msg = msg["msg"]
         except (ValueError, KeyError, TypeError):
-            yield ""
+            yield None, ""
             continue
         if not isinstance(msg, str):
-            yield ""
+            yield None, ""
             continue
+        t = rec.get("t")
+        t = t.get("$date", "")[:19] if isinstance(t, dict) else None
         for sub in msg.split("\n"):
-            yield sub
-        yield ""
+            yield t, sub
+        yield None, ""
+
+
+WT_TIME = re.compile(r"^\[(\d+):\d+\]")
+
+
+def wt_lines(f):
+    """Yield (time, text) for each line of a WiredTiger log. WiredTiger stamps
+    messages with seconds since the epoch; show them as local time."""
+    for line in f:
+        line = line.rstrip("\n")
+        m = WT_TIME.match(line)
+        t = time.strftime("%Y-%m-%dT%H:%M:%S",
+                          time.localtime(int(m.group(1)))) if m else None
+        yield t, line
 
 
 def parse(path):
-    """Return one dict per dump: summary, sz (blocks), hits, total, raw."""
+    """Return one dict per dump: summary, sz (blocks), hits, total, raw, time."""
     mongod = is_mongod_log(path)
     with open(path, errors="replace") as f:
-        lines = mongod_lines(f) if mongod else (l.rstrip("\n") for l in f)
+        lines = mongod_lines(f) if mongod else wt_lines(f)
         return parse_lines(lines)
 
 
 def parse_lines(lines):
     dumps = []
     pending = None
-    for line in lines:
+    for t, line in lines:
 
         m = SUMMARY.search(line)
         if m:
@@ -129,7 +154,7 @@ def parse_lines(lines):
                     k, v = kv.split("=", 1)
                     fields[k] = v
             pending = {"summary": fields, "sz": [], "hits": [], "total": None,
-                       "raw": None}
+                       "raw": None, "time": t}
             continue
 
         if pending is None:
@@ -204,24 +229,25 @@ def hits_at(d, size):
     return d["hits"][i] if i >= 0 else 0
 
 
-def windows(dumps):
-    """Difference consecutive cumulative dumps into one curve per interval.
+def difference(prev, cur):
+    """The curve of the accesses between two cumulative dumps of one partition."""
+    return {
+        "summary": cur["summary"],
+        "sz": cur["sz"],
+        "hits": [h - hits_at(prev, s) for s, h in zip(cur["sz"], cur["hits"])],
+        "total": cur["total"] - prev["total"],
+        "raw": cur["raw"] - prev["raw"],
+        "time": cur["time"],
+    }
 
-    A dump whose access count went down starts a new connection, so it is
-    not differenced against the one before it.
-    """
-    out = []
-    for prev, cur in zip(dumps, dumps[1:]):
-        if cur["raw"] <= prev["raw"]:
-            continue
-        out.append({
-            "summary": cur["summary"],
-            "sz": cur["sz"],
-            "hits": [h - hits_at(prev, s) for s, h in zip(cur["sz"], cur["hits"])],
-            "total": cur["total"] - prev["total"],
-            "raw": cur["raw"] - prev["raw"],
-        })
-    return out
+
+# Differencing the first dump of a connection against this leaves it as it is.
+NOTHING = {"summary": {}, "sz": [], "hits": [], "total": 0, "raw": 0, "time": None}
+
+
+def new_connection(evs, j):
+    """Whether dump j (from 0) starts a connection: its access count went down."""
+    return j == 0 or evs[j][0]["raw"] < evs[j - 1][0]["raw"]
 
 
 def events(dumps):
@@ -239,10 +265,66 @@ def events(dumps):
 
 
 def window_events(evs):
-    """Difference consecutive events partition by partition."""
-    k = min(len(e) for e in evs)
-    per_part = [windows([e[i] for e in evs]) for i in range(k)]
-    return [list(ws) for ws in zip(*per_part) if ws[0]["raw"] >= MIN_WINDOW_ACCESSES]
+    """Difference consecutive events partition by partition.
+
+    Returns (j, event) for the interval that ends at dump j (from 0). A dump
+    that starts a new connection isn't differenced against the one before it.
+    """
+    out = []
+    for j in range(1, len(evs)):
+        if new_connection(evs, j):
+            continue
+        ev = [difference(p, c) for p, c in zip(evs[j - 1], evs[j])]
+        if ev[0]["raw"] >= MIN_WINDOW_ACCESSES:
+            out.append((j, ev))
+    return out
+
+
+def since_event(evs, n):
+    """The curve of every access after dump n (from 1) up to the last dump.
+
+    Exact, like a window: the rows sit on the grid. Returns None if a new
+    connection starts after dump n, since the dumps no longer accumulate.
+    """
+    if any(new_connection(evs, j) for j in range(n, len(evs))):
+        return None
+    return [difference(p, c) for p, c in zip(evs[n - 1], evs[-1])]
+
+
+def observed_between(prev, cur):
+    """WiredTiger's measured miss ratio between two dumps' summaries, or None
+    without statistics or requests."""
+    if cur.get("stats_enabled") != "true" or "pages_requested" not in cur:
+        return None
+    req = int(cur["pages_requested"]) - int(prev.get("pages_requested", 0))
+    read = int(cur["pages_read"]) - int(prev.get("pages_read", 0))
+    return read / req if req > 0 else None
+
+
+def predicted_at(ev, blocks):
+    """The mean of an event's partitions' miss ratios at one cache size."""
+    return sum((d["total"] - hits_at(d, blocks)) / d["raw"] for d in ev) / len(ev)
+
+
+def list_dumps(evs):
+    """Print one line per dump: when, how many accesses since the dump before,
+    and the measured and predicted miss ratios over those accesses."""
+    print("%4s  %-19s  %12s  %8s  %9s" % ("dump", "time", "accesses", "observed",
+                                          "predicted"))
+    for j, ev in enumerate(evs):
+        restart = new_connection(evs, j)
+        prev = [NOTHING] * len(ev) if restart else evs[j - 1]
+        win = [difference(p, c) for p, c in zip(prev, ev)]
+        summ = ev[0]["summary"]
+        obs = observed_between(prev[0]["summary"], summ)
+        pred = None
+        if win[0]["raw"] > 0 and summ.get("curve_covers_cache") == "true":
+            pred = predicted_at(win, int(summ["cache_blocks"]))
+        print("%4d  %-19s  %12d  %8s  %9s%s" % (
+            j + 1, ev[0]["time"] or "", win[0]["raw"],
+            "%.4f" % obs if obs is not None else "-",
+            "%.4f" % pred if pred is not None else "-",
+            "  new connection" if restart and j > 0 else ""))
 
 
 # Two-sided 95% t quantiles by degrees of freedom. The band's spread is
@@ -282,17 +364,18 @@ def combine(ev):
     return sizes, mean, half
 
 
-def shared_limits(evs, yfit):
+def shared_limits(evs, yfit, extra=None):
     """(largest cache size in GB, largest miss ratio) over every view of a run.
 
     The whole-run curve (with its band), every cumulative dump and every
     window all count, so the default plot, --all and --windows of one log come
-    out on identical axes and can be compared side by side. Miss ratios count
-    from yfit up.
+    out on identical axes and can be compared side by side. A --since curve
+    (extra) also counts, with its band. Miss ratios count from yfit up.
     """
     curves = [(e, False) for e in evs[:-1]] + [(evs[-1], True)]
-    if len(evs) > 1:
-        curves += [(w, False) for w in window_events(evs)]
+    curves += [(w, False) for _, w in window_events(evs)]
+    if extra:
+        curves.append((extra, True))
     xmax = ymax = 0.0
     for ev, with_band in curves:
         sizes, mr, half = combine(ev)
@@ -314,6 +397,12 @@ def main():
                       help="overlay every cumulative dump")
     mode.add_argument("--windows", action="store_true",
                       help="plot each interval between consecutive dumps")
+    mode.add_argument("--since", type=int, metavar="N",
+                      help="plot only the accesses after dump N, e.g. to leave out a load "
+                      "phase (--list numbers the dumps)")
+    mode.add_argument("--list", action="store_true",
+                      help="list the dumps, with each interval's accesses and miss ratios, "
+                      "instead of plotting")
     ap.add_argument("--curve", choices=("all", "internal"), default="all")
     ap.add_argument("--window-bands", action="store_true",
                     help="with --windows, shade each window's 95%% interval")
@@ -335,18 +424,35 @@ def main():
     evs = events(dumps)
     nparts = len(evs[-1])
     print("Found %d curve=%s dump(s), %d partition(s) each." % (len(evs), args.curve, nparts))
+    if args.list:
+        list_dumps(evs)
+        return 0
+    since = None
+    # Dumps are numbered from 1 by their position in the log, as --list shows.
     if args.windows:
-        chosen = window_events(evs)
-        if not chosen:
+        wins = window_events(evs)
+        if not wins:
             print("Need at least two dumps from one connection for --windows.")
             return 1
-        labels = ["window %d (%d accesses)" % (i + 1, e[0]["raw"])
-                  for i, e in enumerate(chosen)]
+        chosen = [e for _, e in wins]
+        # Each window is coloured, and the colour bar numbered, by the dump that ends it.
+        ends = [j + 1 for j, _ in wins]
+        labels = [None] * len(wins)
+    elif args.since is not None:
+        if not 1 <= args.since < len(evs):
+            print("--since needs a dump from 1 to %d; the log has %d." % (len(evs) - 1, len(evs)))
+            return 1
+        since = since_event(evs, args.since)
+        if since is None:
+            print("A new connection starts after dump %d, so the dumps since don't add up."
+                  % args.since)
+            return 1
+        chosen = [since]
+        labels = ["after dump %d (%d accesses)" % (args.since, since[0]["raw"])]
     else:
         chosen = evs if args.all else [evs[-1]]
-        # Number dumps by their position in the log, not in the plotted subset.
-        labels = ["dump %d (%d accesses)" % (i + 1, e[0]["raw"])
-                  for i, e in enumerate(chosen, start=len(evs) - len(chosen))]
+        labels = ["dump %d (%d accesses)" % (i, e[0]["raw"])
+                  for i, e in enumerate(chosen, start=len(evs) - len(chosen) + 1)]
 
     last = chosen[-1][0]["summary"]
     xmin = args.xmin_gb
@@ -356,7 +462,7 @@ def main():
     # main curve's smallest sizes stay drawn but run off the top: they rise
     # steeply and depend mostly on which pages were sampled.
     yfit = xmin if xmin is not None else (DEFAULT_XMIN_GB if args.curve == "all" else 0)
-    xmax, yhi = shared_limits(evs, yfit)
+    xmax, yhi = shared_limits(evs, yfit, since)
 
     fig, ax = plt.subplots(figsize=(9, 5.5))
     observed_miss = None
@@ -373,14 +479,19 @@ def main():
         mr = [min(1.0, m) for m in mr]
         lo = [min(1.0, m) for m in lo]
         hi = [min(1.0, m) for m in hi]
+        last_one = i == len(chosen) - 1
         if args.windows:
             # Windows are peers, so colour them along a sequence, not by recency.
-            color = plt.cm.viridis(i / max(1, len(chosen) - 1))
-            ax.plot(gb, mr, lw=1.5, label=label, color=color)
+            color = plt.cm.viridis((ends[i] - ends[0]) / max(1, ends[-1] - ends[0]))
+            # The colour bar names windows, so the legend doesn't list them.
+            ax.plot(gb, mr, lw=1.5, color=color)
+        elif args.all and not last_one:
+            # Earlier dumps, likewise named by the colour bar, in the background.
+            color = plt.cm.viridis(i / max(1, len(chosen) - 2))
+            ax.plot(gb, mr, lw=1.0, alpha=0.5, color=color)
         else:
-            last_one = i == len(chosen) - 1
-            line, = ax.plot(gb, mr, lw=2.0 if last_one else 1.0,
-                            alpha=1.0 if last_one else 0.35, label=label)
+            line, = ax.plot(gb, mr, lw=2.0, label=label,
+                            color="k" if args.all and len(chosen) > 1 else None)
             color = line.get_color()
         # Band only the curve being read, so overlays stay legible. Windows
         # overlap too much for bands unless asked for.
@@ -405,10 +516,13 @@ def main():
                     xy=(cache_gb, 0.5), xycoords=("data", "axes fraction"),
                     xytext=(4, 0), textcoords="offset points",
                     color="#d62728", fontsize=9, va="center")
-    # The observed hit rate is cumulative, so it doesn't belong on a window.
-    if (not args.windows and last.get("stats_enabled") == "true"
-            and "hit_rate_pct" in last):
+    # The summary's hit rate covers the whole connection, so --since measures
+    # its own from the page counts, and windows, being many, get none.
+    if since is not None:
+        observed_miss = observed_between(evs[args.since - 1][0]["summary"], last)
+    elif not args.windows and last.get("stats_enabled") == "true" and "hit_rate_pct" in last:
         observed_miss = 1.0 - float(last["hit_rate_pct"]) / 100.0
+    if observed_miss is not None:
         # Labelled once the layout is final, clear of the legend (below).
         ax.axhline(observed_miss, color="#2ca02c", ls=":", lw=1.5, zorder=1)
 
@@ -432,12 +546,24 @@ def main():
     ax.set_xlabel("cache size (GB, log scale)" if args.log_x else "cache size (GB)")
     ax.set_ylabel("miss ratio")
     ax.grid(alpha=0.3)
-    if args.windows and len(chosen) > 8:
-        # Too many windows to name; a colour bar keeps the plot readable.
-        sm = plt.cm.ScalarMappable(cmap=plt.cm.viridis,
-                                   norm=plt.Normalize(1, len(chosen)))
-        fig.colorbar(sm, ax=ax, label="window")
-    else:
+    # A colour bar, numbered by dump, names the windows or the earlier dumps
+    # however many there are; a legend of them would crowd the plot.
+    scale = None
+    if args.windows:
+        scale = (ends[0], ends[-1], "window ending at dump", "window")
+    elif args.all and len(chosen) > 1:
+        scale = (1, len(chosen) - 1, "cumulative, ending at dump", "dump")
+    if scale:
+        lo, hi, what, noun = scale
+        lo, hi = (lo, hi) if hi > lo else (lo - 0.5, lo + 0.5)
+        sm = plt.cm.ScalarMappable(cmap=plt.cm.viridis, norm=plt.Normalize(lo, hi))
+        bar = fig.colorbar(sm, ax=ax, label=what)
+        bar.locator = MaxNLocator(integer=True)
+        bar.update_ticks()
+        # Say which way time runs along the bar.
+        bar.ax.set_title("later\n" + noun, fontsize=8)
+        bar.ax.set_xlabel("earlier\n" + noun, fontsize=8)
+    if ax.get_legend_handles_labels()[0]:
         ax.legend(fontsize=8)
     plt.tight_layout()
     if observed_miss is not None:
@@ -449,6 +575,8 @@ def main():
               "pages_requested", "pages_read", "hit_rate_pct", "stats_enabled"):
         if k in last:
             print("  %-20s %s" % (k, last[k]))
+    if since is not None and observed_miss is not None:
+        print("  %-20s %.4f" % ("miss ratio after %d" % args.since, observed_miss))
 
     # How well the block size fits the page sizes: the share of accesses under
     # a quarter block, and how much rounding up inflated the bytes written.
