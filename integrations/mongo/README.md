@@ -46,7 +46,7 @@ follows (`src/include/analyze_cache_inline.h`):
   `WT_IAF_SAMPLING_LOG2 = 4`), so 1 in 4 pages in all; their spread gives the curve an error bar.
   The internal curve samples 1 in 4 (`WT_IAF_INTERNAL_SAMPLING_LOG2 = 2`). It misses the steep
   drop the root and upper levels cause at the smallest sizes, but matches the unsampled curve above
-  its provable floor.
+  them.
 - **Curve bound: 4 × `cache_size`**, set when the cache is created and again on reconfigure.
 - **Dumps** after each chunk the main curve's first partition processes, and at connection
   close. Each dump writes one record per partition of the main curve, then the internal curve, so
@@ -58,7 +58,6 @@ Each dump is a summary line followed by the CSV described in `tools/MRC-GUIDE.md
     IAF-SUMMARY curve=all,partition=0,partitions=4,block_bytes=1024,grid_ratio=1.04,
     sampling_log2=4,
     cache_bytes=1073741824,cache_blocks=1048576,curve_max_blocks=4194304,
-    provable_floor_blocks=82759,provable_floor_blocks_by_pct=1:7890245|5:322373|10:82759|25:14232|50:4013|100:1219|200:426,
     curve_covers_cache=true,bytes_inuse=745567396,
     pages_requested=79344883,pages_read=25065,hit_rate_pct=99.9684,stats_enabled=true,
     sampled_accesses=19293492,small_accesses=0,sampled_bytes=191006570832,
@@ -76,9 +75,6 @@ Each dump is a summary line followed by the CSV described in `tools/MRC-GUIDE.md
 | `sampling_log2` | each partition samples 1 in 2^`sampling_log2` pages |
 | `cache_bytes`, `cache_blocks` | configured cache size, in bytes and in curve units |
 | `curve_max_blocks` | largest cache size the curve can represent |
-| `provable_floor_blocks` | smallest cache size at which the sampled curve is provably accurate to 10% |
-| `provable_floor_blocks_by_pct` | the same at 1, 5, 10, 25, 50, 100 and 200%, as `pct:blocks` separated by `\|` |
-| `provable_eps_at_cache` | the provable bias at the configured cache size, as a fraction (`inf` if over 16) |
 | `curve_covers_cache` | whether `cache_blocks <= curve_max_blocks` |
 | `bytes_inuse` | bytes currently in the cache (internal pages only, for `curve=internal`) |
 | `pages_requested`, `pages_read` | WiredTiger's page requests and cache misses (likewise) |
@@ -123,15 +119,6 @@ curve's smallest sizes rise steeply and run off the top: its miss-ratio axis is 
 up. `--log-x` uses a log axis instead, starting the main curve at 10 MB, and `--xmin-gb` sets the
 left edge either way. The internal curve omits the configured cache size, which is far beyond it.
 
-Horizontal bars on the whole-run curve show its provable bias: in expectation, the curve at C lies
-between the true curve at the bar's two ends, (1 − ε)C and (1 + ε)C, give or take 0.01 in miss
-ratio (see "Sampling" in `tools/MRC-GUIDE.md`). The red bar is at the configured cache, from
-`provable_eps_at_cache`; grey ones sit at a quarter, half, three quarters and the end of the axis,
-interpolated between the levels in `provable_floor_blocks_by_pct` (1, 5, 10, 25, 50, 100 and
-200%; `provable_floor_blocks` is the 10% one). IAF computes both from exact binomial tails. Bias
-above 200% isn't drawn. `--bias-levels 5,100` draws dotted vertical lines at those levels instead.
-Logs without these fields get neither.
-
 Every view of one log (the default, `--all`, `--windows`) uses the same axes, fitted to the
 whole-run curve and every window together, so plots of one run can be laid side by side. The
 95% band isn't drawn below 10 MB, where the partitions disagree too much for it to be legible. The
@@ -144,8 +131,8 @@ one before shutdown: their curves are mostly noise.
 The plotted curve is the mean of the partitions' curves. The shaded band is a 95% interval for
 that mean: t with k − 1 degrees of freedom times the partitions' spread over √k, times
 √(1 − k/2^`sampling_log2`) because disjoint samples of a fixed population vary less together than
-independent ones would. It covers the curve's variance, which dominates: above the floor, bias
-is a few percent of it. Expect the band to be wide at the smallest sizes, where a few hot pages
+independent ones would. It covers the curve's variance, which dominates: above the smallest
+sizes, sampling bias is a few percent of it. Expect the band to be wide at the smallest sizes, where a few hot pages
 decide the curve, and thin elsewhere.
 
 It also prints the share of small accesses and how much rounding to blocks inflated the sizes. If

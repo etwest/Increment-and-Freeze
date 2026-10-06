@@ -4,7 +4,7 @@
 Usage:
     plot_mrc.py <wiredtiger.log | mongod.log> [output.png]
                 [--all | --windows] [--curve all|internal] [--xmin-gb GB]
-                [--bias-levels PCTS] [--log-x] [--window-bands]
+                [--log-x] [--window-bands]
 
 The log may be a plain WiredTiger log or a mongod JSON log; the format is
 detected automatically. In a mongod log each dump is a single JSON record
@@ -35,15 +35,6 @@ from the whole run, i.e. a cache that was warm when the window began. Rows
 sit on a fixed grid (see MRC-GUIDE), so a window's curve is exact, but one that
 holds few accesses is noisy.
 
-Horizontal red and grey bars on the whole-run curve show its provable bias at
-the configured cache and at a few evenly spaced sizes: in expectation, the curve
-at C lies between the true curve at the bar's two ends, give or take 0.01 in
-miss ratio (see MRC-GUIDE, "Sampling"). IAF logs the bias at the configured
-cache (provable_eps_at_cache) and the sizes at which it reaches 1, 5, 10, 25,
-50, 100 and 200% (provable_floor_blocks_by_pct); the other bars interpolate
-between those. --bias-levels instead draws a dotted vertical line at each of
-the given levels. Logs without the fields, or unsampled ones, get neither.
-
 Cache size is on a linear axis from 0, so the plot shows what each added GB
 buys. The main curve's smallest sizes rise steeply and run off the top; the
 miss-ratio axis is fitted from 10 MB up. --log-x uses a log axis instead,
@@ -55,7 +46,6 @@ Only stdlib + matplotlib. No pandas.
 import argparse
 import bisect
 import json
-import math
 import re
 import sys
 
@@ -175,15 +165,8 @@ def miss_ratio(hits, total, raw):
     return [(total - h) / raw for h in hits]
 
 
-# Cache-size error levels to mark. IAF logs the floor for each one; logs that
-# only carry the 10% floor scale it as 1/eps^2, which is approximate.
-FLOOR_EPS = 0.1
-LOGGED_EPS = (0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0)
-MARK_EPS = (0.01, 0.05, 1.0, 2.0)
-# Bias bars drawn besides the one at the configured cache, as fractions of the x range.
-BAR_AT = (0.25, 0.5, 0.75, 0.97)
 # Windows with fewer accesses than this are too noisy to plot: about 9,000 is
-# the least that keeps the sd near 0.05 at the floor.
+# the least that keeps the sd near 0.05 at small cache sizes.
 MIN_WINDOW_ACCESSES = 10000
 
 # Default left edge of the x axis for the main curve. Smaller caches aren't
@@ -191,19 +174,13 @@ MIN_WINDOW_ACCESSES = 10000
 DEFAULT_XMIN_GB = 10 / 1024
 
 
-def label_observed(fig, ax, miss, bar_spans, avoid):
+def label_observed(fig, ax, miss):
     """Write the observed miss ratio on its line, at the first of: left end
-    above, right end above, left below, right below, that covers no bias bar,
-    bias label or legend; at the left end above if none is clear."""
+    above, right end above, left below, right below, that stays clear of the
+    legend; at the left end above if none is clear."""
     renderer = fig.canvas.get_renderer()
-    pad = 3 * fig.dpi / 72
-    boxes = [a.get_window_extent(renderer) for a in avoid]
-    if ax.get_legend():
-        boxes.append(ax.get_legend().get_window_extent(renderer))
-    for left, right, y in bar_spans:
-        (x0, y0), (x1, _) = ax.transData.transform([(left, y), (right, y)])
-        boxes.append(matplotlib.transforms.Bbox([[x0 - pad, y0 - 2 * pad],
-                                                 [x1 + pad, y0 + 2 * pad]]))
+    legend = ax.get_legend()
+    boxes = [legend.get_window_extent(renderer)] if legend else []
     frame = ax.get_window_extent(renderer)
     text = "observed miss ratio %.4f" % miss
     for x, ha, dy in ((0.02, "left", 4), (0.98, "right", 4),
@@ -218,59 +195,6 @@ def label_observed(fig, ax, miss, bar_spans, avoid):
         t.remove()
     ax.annotate(text, xy=(0.02, miss), xycoords=("axes fraction", "data"),
                 xytext=(0, 4), textcoords="offset points", color="#2ca02c", fontsize=9)
-
-
-def interp(x, xs, ys):
-    """Linear interpolation of ys over ascending xs, held flat past either end."""
-    i = bisect.bisect_left(xs, x)
-    if i == 0:
-        return ys[0]
-    if i == len(xs):
-        return ys[-1]
-    t = (x - xs[i - 1]) / (xs[i] - xs[i - 1])
-    return ys[i - 1] + t * (ys[i] - ys[i - 1])
-
-
-def bias_at_gb(d, gb):
-    """Provable bias eps at a cache of gb GB, or None where it exceeds 200% or
-    the log has no levels. Interpolates log eps against log size between the
-    logged levels; past the 1% level eps falls as 1/sqrt(size), as the floor
-    grows as 1/eps^2."""
-    pts = sorted((g, e) for e, g in provable_floors_gb(d, LOGGED_EPS))
-    if not pts or gb < pts[0][0]:
-        return None
-    lx, ly = [math.log(g) for g, _ in pts], [math.log(e) for _, e in pts]
-    x = math.log(gb)
-    if x >= lx[-1]:
-        return math.exp(ly[-1] - 0.5 * (x - lx[-1]))
-    return math.exp(interp(x, lx, ly))
-
-
-def provable_floors_gb(d, levels=MARK_EPS):
-    """[(eps, GB)] for each requested error level, or [] if the log has no floor."""
-    f = d["summary"]
-    gb = lambda blocks: int(blocks) * block_bytes(d) / (1024 ** 3)
-    if "provable_floor_blocks_by_pct" in f:
-        logged = {}
-        for item in f["provable_floor_blocks_by_pct"].split("|"):
-            pct, blocks = item.split(":")
-            if int(blocks):
-                logged[int(pct) / 100] = gb(blocks)
-        return [(e, logged[e]) for e in levels if e in logged]
-    floor = provable_floor_gb(d)
-    return [(e, floor * (FLOOR_EPS / e) ** 2) for e in levels] if floor else []
-
-
-def provable_floor_gb(d):
-    """Smallest cache size, in GB, at which the sampled curve is provably accurate.
-
-    IAF computes it (Iaf_provable_floor_blocks) and WiredTiger logs it as
-    provable_floor_blocks. Returns None for logs that predate the field.
-    """
-    try:
-        return int(d["summary"]["provable_floor_blocks"]) * block_bytes(d) / (1024 ** 3)
-    except (KeyError, ValueError):
-        return None
 
 
 def hits_at(d, size):
@@ -341,8 +265,8 @@ def combine(ev):
     The partitions are disjoint samples of rate q, so the mean of k of them is
     a single sample of rate kq, and their spread overstates its error; the
     finite-population factor sqrt(1 - kq) corrects for that. The interval
-    covers the variance of the mean, which dominates: bias above the floor is a
-    few percent of it.
+    covers the variance of the mean, which dominates: above the smallest sizes,
+    sampling bias is a few percent of it.
     """
     k = len(ev)
     sizes = sorted(set(s for d in ev for s in d["sz"]))
@@ -393,9 +317,6 @@ def main():
     ap.add_argument("--curve", choices=("all", "internal"), default="all")
     ap.add_argument("--window-bands", action="store_true",
                     help="with --windows, shade each window's 95%% interval")
-    ap.add_argument("--bias-levels", default="",
-                    help="draw vertical provable-bias lines at these percent errors in "
-                    "cache size instead of bias bars (logged: 1,5,10,25,50,100,200)")
     ap.add_argument("--log-x", action="store_true",
                     help="log cache-size axis instead of linear (main curve then starts at 10 MB)")
     ap.add_argument("--xmin-gb", type=float, default=None,
@@ -433,25 +354,12 @@ def main():
         xmin = DEFAULT_XMIN_GB
     # Fit the miss-ratio axis to the curve from here up. With a linear axis the
     # main curve's smallest sizes stay drawn but run off the top: they rise
-    # steeply and are below the provable floor anyway.
+    # steeply and depend mostly on which pages were sampled.
     yfit = xmin if xmin is not None else (DEFAULT_XMIN_GB if args.curve == "all" else 0)
-    levels = tuple(int(x) / 100 for x in args.bias_levels.split(",") if x.strip())
-    floors = provable_floors_gb(evs[-1][0], levels)
-    logged = provable_floors_gb(evs[-1][0], LOGGED_EPS)
-    if logged:
-        print("Provable within: " + ", ".join(
-            "%d%% above %.3g GB" % (round(100 * e), gb) for e, gb in logged))
-    if args.curve == "all" and "provable_eps_at_cache" in evs[-1][0]["summary"]:
-        print("Provable bias at the configured cache: ±%.3g%%"
-              % (100 * float(evs[-1][0]["summary"]["provable_eps_at_cache"])))
     xmax, yhi = shared_limits(evs, yfit)
 
     fig, ax = plt.subplots(figsize=(9, 5.5))
-    whole_gb = whole_mr = None
     observed_miss = None
-    # What the observed miss ratio's label must not cover: bias bars, in data
-    # coordinates as (left, right, y), and their labels.
-    bar_spans, avoid = [], []
     for i, (ev, label) in enumerate(zip(chosen, labels)):
         # Rows sit on a grid of cache sizes. The true curve is monotone between
         # grid points, so join them with straight lines rather than steps.
@@ -465,7 +373,6 @@ def main():
         mr = [min(1.0, m) for m in mr]
         lo = [min(1.0, m) for m in lo]
         hi = [min(1.0, m) for m in hi]
-        whole_gb, whole_mr = gb, mr
         if args.windows:
             # Windows are peers, so colour them along a sequence, not by recency.
             color = plt.cm.viridis(i / max(1, len(chosen) - 1))
@@ -502,7 +409,7 @@ def main():
     if (not args.windows and last.get("stats_enabled") == "true"
             and "hit_rate_pct" in last):
         observed_miss = 1.0 - float(last["hit_rate_pct"]) / 100.0
-        # Labelled once the layout is final, clear of the bias bars (below).
+        # Labelled once the layout is final, clear of the legend (below).
         ax.axhline(observed_miss, color="#2ca02c", ls=":", lw=1.5, zorder=1)
 
     title = "internal pages only" if args.curve == "internal" else ""
@@ -513,47 +420,6 @@ def main():
     elif title:
         ax.set_title(title)
 
-    # Provable bias as horizontal bars on the whole-run curve: the expected
-    # curve at C lies between the true curve at (1 - eps) C and (1 + eps) C,
-    # give or take 0.01. Windows share the whole run's sample, so the bars go
-    # on the whole-run curve only, and the vertical lines replace them.
-    if not args.windows and not floors and whole_gb:
-        bars = []
-        if args.curve == "all" and "cache_bytes" in last:
-            cache_gb = int(last["cache_bytes"]) / (1024 ** 3)
-            eps = float(last.get("provable_eps_at_cache", "inf"))
-            if eps < float("inf") and cache_gb <= xmax:
-                bars.append((cache_gb, eps, "#d62728"))
-        for f in BAR_AT:
-            g = f * xmax
-            if (xmin and g < xmin) or any(abs(g - b[0]) < 0.1 * xmax for b in bars):
-                continue
-            eps = bias_at_gb(evs[-1][0], g)
-            if eps:
-                bars.append((g, eps, "0.3"))
-        # Miss ratio per point of height, to place labels clear of the line.
-        ytop = min(1.0, yhi + 0.05 * (yhi or 1.0))
-        per_pt = ytop / (ax.get_window_extent().height * 72 / fig.dpi)
-        for g, eps, color in bars:
-            y = interp(g, whole_gb, whole_mr)
-            left = max(0.0, g * (1 - eps))
-            ax.errorbar([g], [y], xerr=[[g - left], [g * eps]], fmt="o", color=color,
-                        ms=4, capsize=4, lw=1.5, zorder=5)
-            # Label above the bar, or below it where the observed miss ratio's
-            # line would run through the label and there is room below.
-            above = (observed_miss is None
-                     or not 3 * per_pt <= observed_miss - y <= 20 * per_pt
-                     or y - 16 * per_pt < 0
-                     or -16 * per_pt <= observed_miss - y <= -3 * per_pt)
-            avoid.append(ax.annotate("±%.2g%%" % (100 * eps), xy=(g, y),
-                                     xytext=(0, 7 if above else -14), textcoords="offset points",
-                                     ha="center", color=color, fontsize=9))
-            bar_spans.append((left, g * (1 + eps), y))
-    # Markers off either edge are left out; the printed summary still lists them.
-    shown = [(e, gb) for e, gb in floors
-             if not (xmin and gb < xmin) and gb <= xmax * (1.1 if args.log_x else 1.02)]
-    for e, gb in shown:
-        ax.axvline(gb, color="0.45", ls=":", lw=1.2)
     # Fixed limits, the same in every view of this log (see shared_limits).
     if args.log_x:
         ax.set_xscale("log")
@@ -563,16 +429,6 @@ def main():
     # The axis stays within [0, 1], even where a band or a noisy window dips
     # below 0 or a sampled curve's smallest sizes rise past 1.
     ax.set_ylim(0, min(1.0, yhi + 0.05 * (yhi or 1.0)))
-    # Label the markers, skipping any that would print on top of the last one.
-    last_px = None
-    for e, gb in sorted(shown, key=lambda m: m[1]):
-        px = ax.transData.transform((gb, 0))[0]
-        if last_px is not None and px - last_px < 40:
-            continue
-        ax.annotate("±%d%%" % round(100 * e), xy=(gb, 1.0),
-                    xycoords=("data", "axes fraction"), xytext=(3, -12),
-                    textcoords="offset points", color="0.35", fontsize=8)
-        last_px = px
     ax.set_xlabel("cache size (GB, log scale)" if args.log_x else "cache size (GB)")
     ax.set_ylabel("miss ratio")
     ax.grid(alpha=0.3)
@@ -585,7 +441,7 @@ def main():
         ax.legend(fontsize=8)
     plt.tight_layout()
     if observed_miss is not None:
-        label_observed(fig, ax, observed_miss, bar_spans, avoid)
+        label_observed(fig, ax, observed_miss)
     plt.savefig(args.out, dpi=130)
     print("wrote %s" % args.out)
 

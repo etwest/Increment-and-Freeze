@@ -68,25 +68,6 @@ uint64_t Iaf_grab_id(Iaf h);
 void Iaf_get_size_stats(Iaf h, Iaf_size_stats* out);
 
 /*
- * Smallest cache size, in IAF_BLOCK_SIZE units, at which the sampled curve is provably accurate:
- * in expectation, the curve at size C lies between the true curve at (1 - eps) C and (1 + eps) C,
- * give or take 0.01 in miss ratio. Iaf_provable_floor_blocks is eps = 0.1. This bounds bias only;
- * the sampled curve also varies around its expectation. 0 when sampling is off, since every depth
- * is then exact. Below it the curve may be wrong, but those errors do not spread to larger sizes.
- * The bound counts pages; converting it to blocks uses the mean size of sampled accesses, so this
- * is an estimate of the bound rather than a bound itself. Computed from exact binomial tails.
- */
-size_t Iaf_provable_floor_blocks_at(Iaf h, double eps);
-size_t Iaf_provable_floor_blocks(Iaf h);
-
-/*
- * The inverse: the smallest eps for which that holds at a cache of blocks IAF_BLOCK_SIZE units, for
- * reading off how far the curve at one size, such as the configured cache, can be trusted. 0 when
- * sampling is off; HUGE_VAL when no eps up to 16 holds.
- */
-double Iaf_provable_eps_at(Iaf h, size_t blocks);
-
-/*
  * Largest cache size, in IAF_BLOCK_SIZE units, that the curve can represent. Requests older than
  * this are dropped, so the curve says nothing about cache sizes beyond it.
  */
