@@ -65,6 +65,14 @@ char* Iaf_stringify(Iaf h);
 void Iaf_dump_file(Iaf h, const char* filepath);
 void Iaf_flush(Iaf h);
 uint64_t Iaf_grab_id(Iaf h);
+
+/*
+ * The next ID Iaf_grab_id hands out, and setting it. IDs are process-wide, not per handle. A caller
+ * whose IDs outlive the process (WiredTiger stores them on disk) saves the next ID and sets it again
+ * at the next start, so IDs aren't reused.
+ */
+uint64_t Iaf_check_next_id(Iaf h);
+void Iaf_set_next_id(Iaf h, uint64_t id);
 void Iaf_get_size_stats(Iaf h, Iaf_size_stats* out);
 
 /*

@@ -231,3 +231,14 @@ uint64_t Iaf_grab_id(Iaf h)
 {
     return ++counter;
 }
+
+uint64_t Iaf_check_next_id(Iaf h)
+{
+    return counter + 1;
+}
+
+void Iaf_set_next_id(Iaf h, uint64_t id)
+{
+    if (id > IAF_ID_RESERVED_BOUNDARY)
+        counter = id - 1;
+}
