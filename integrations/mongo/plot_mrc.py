@@ -47,6 +47,11 @@ miss-ratio axis is fitted from 10 MB up. --log-x uses a log axis instead,
 starting the main curve at 10 MB. --xmin-gb sets the left edge either way.
 The internal curve omits the configured cache size, which is far beyond it.
 
+The dotted line marks WiredTiger's eviction target (eviction_target from the
+"Opening WiredTiger" config, else WiredTiger's default of 80%): eviction keeps
+the cache at about that fill, so compare the observed miss ratio with the
+curve there rather than at the configured size.
+
 Only stdlib + matplotlib. No pandas.
 """
 import argparse
@@ -131,6 +136,23 @@ def wt_lines(f):
         t = time.strftime("%Y-%m-%dT%H:%M:%S",
                           time.localtime(int(m.group(1)))) if m else None
         yield t, line
+
+
+# WiredTiger's default eviction_target: eviction keeps the cache at this
+# percentage of its configured size.
+DEFAULT_EVICTION_TARGET = 80.0
+
+
+def eviction_target(path):
+    """The eviction_target (percent) the log's wiredtiger_open configured, as
+    mongod logs it on "Opening WiredTiger", or WiredTiger's default."""
+    pat = re.compile(r"(?<![a-z_])eviction_target=(\d+(?:\.\d+)?)")
+    target = DEFAULT_EVICTION_TARGET
+    with open(path, errors="replace") as f:
+        for line in f:
+            for m in pat.finditer(line):
+                target = float(m.group(1))
+    return target
 
 
 def parse(path):
@@ -515,6 +537,15 @@ def main():
         ax.annotate("configured cache\n%.2f GB" % cache_gb,
                     xy=(cache_gb, 0.5), xycoords=("data", "axes fraction"),
                     xytext=(4, 0), textcoords="offset points",
+                    color="#d62728", fontsize=9, va="center")
+        # Eviction holds the cache at its target, so that is about how much
+        # the cache holds: read the curve there to compare with the observed.
+        target = eviction_target(args.log)
+        target_gb = cache_gb * target / 100.0
+        ax.axvline(target_gb, color="#d62728", ls=":", lw=1.5)
+        ax.annotate("eviction target\n%g%%, %.2f GB" % (target, target_gb),
+                    xy=(target_gb, 0.7), xycoords=("data", "axes fraction"),
+                    xytext=(-4, 0), textcoords="offset points", ha="right",
                     color="#d62728", fontsize=9, va="center")
     # The summary's hit rate covers the whole connection, so --since measures
     # its own from the page counts, and windows, being many, get none.

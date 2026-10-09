@@ -112,9 +112,14 @@ truncated, raise the limit, e.g. `--setParameter maxLogSizeKB=64`.
 
 `plot_mrc.py` needs only matplotlib (`pip install -r requirements.txt`). It also reads a plain
 WiredTiger log. It computes the miss-ratio curve as `tools/MRC-GUIDE.md` describes and
-plots cache size in GB. It marks the configured cache size (vertical line) and WiredTiger's
-observed miss ratio (horizontal line), and titles the plot with a warning when
-`curve_covers_cache=false`.
+plots cache size in GB. It marks the configured cache size (dashed vertical line), WiredTiger's
+eviction target (dotted vertical line) and WiredTiger's observed miss ratio (horizontal line), and
+titles the plot with a warning when `curve_covers_cache=false`.
+
+Compare the observed miss ratio with the curve at the eviction target, not at the configured size.
+Eviction keeps the cache at about its target (`eviction_target`, 80% by default), so that is
+roughly how much the cache holds. The plotter takes the target from the `wiredtiger_open`
+config that mongod logs on "Opening WiredTiger", or uses WiredTiger's default of 80%.
 
 Cache size is on a linear axis from 0, so the plot shows what each added GB buys. The main
 curve's smallest sizes rise steeply and run off the top: its miss-ratio axis is fitted from 10 MB
