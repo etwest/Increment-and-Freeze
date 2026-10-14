@@ -114,7 +114,8 @@ truncated, raise the limit, e.g. `--setParameter maxLogSizeKB=64`.
 WiredTiger log. It computes the miss-ratio curve as `tools/MRC-GUIDE.md` describes and
 plots cache size in GB. It marks the configured cache size (dashed vertical line), WiredTiger's
 eviction target (dotted vertical line) and WiredTiger's observed miss ratio (horizontal line), and
-titles the plot with a warning when `curve_covers_cache=false`.
+titles the plot with a warning when `curve_covers_cache=false`. The cache-size axis always reaches
+the configured cache, so a curve that stops short of it is drawn ending partway across.
 
 Compare the observed miss ratio with the curve at the eviction target, not at the configured size.
 Eviction keeps the cache at about its target (`eviction_target`, 80% by default), so that is

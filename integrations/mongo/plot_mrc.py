@@ -46,6 +46,8 @@ buys. The main curve's smallest sizes rise steeply and run off the top; the
 miss-ratio axis is fitted from 10 MB up. --log-x uses a log axis instead,
 starting the main curve at 10 MB. --xmin-gb sets the left edge either way.
 The internal curve omits the configured cache size, which is far beyond it.
+The main curve's axis always reaches the configured cache size, so a curve
+that stops short of it ends partway across.
 
 The dotted line marks WiredTiger's eviction target (eviction_target from the
 "Opening WiredTiger" config, else WiredTiger's default of 80%): eviction keeps
@@ -485,6 +487,13 @@ def main():
     # steeply and depend mostly on which pages were sampled.
     yfit = xmin if xmin is not None else (DEFAULT_XMIN_GB if args.curve == "all" else 0)
     xmax, yhi = shared_limits(evs, yfit, since)
+    # The cache lines (below) mark the configured cache, so the axis reaches it
+    # even when the curve stops short: a few accesses span only part of it.
+    if args.curve == "all":
+        cache_sizes = [int(e[0]["summary"]["cache_bytes"]) for e in evs
+                       if "cache_bytes" in e[0]["summary"]]
+        if cache_sizes:
+            xmax = max(xmax, max(cache_sizes) / (1024 ** 3))
 
     fig, ax = plt.subplots(figsize=(9, 5.5))
     observed_miss = None
@@ -534,9 +543,12 @@ def main():
     if "cache_bytes" in last and args.curve == "all":
         cache_gb = int(last["cache_bytes"]) / (1024 ** 3)
         ax.axvline(cache_gb, color="#d62728", ls="--", lw=1.5)
+        # Labelled on its right, unless the line is at the axis's right end.
+        at_end = cache_gb >= 0.9 * xmax
         ax.annotate("configured cache\n%.2f GB" % cache_gb,
                     xy=(cache_gb, 0.5), xycoords=("data", "axes fraction"),
-                    xytext=(4, 0), textcoords="offset points",
+                    xytext=(-4 if at_end else 4, 0), textcoords="offset points",
+                    ha="right" if at_end else "left",
                     color="#d62728", fontsize=9, va="center")
         # Eviction holds the cache at its target, so that is about how much
         # the cache holds: read the curve there to compare with the observed.
