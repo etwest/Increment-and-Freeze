@@ -20,3 +20,4 @@ data+plots
 parda
 .cache/
 build/
+*.pyc
