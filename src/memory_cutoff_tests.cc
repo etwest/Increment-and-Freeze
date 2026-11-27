@@ -146,3 +146,26 @@ TEST(MemoryCutoffTests, CompareToIAF) {
       ASSERT_EQ(svec[j], truth[j]);
   }
 }
+
+// A chunk is a number of requests, so it follows the number of living requests, not their size
+// in blocks.
+TEST(MemoryCutoffTests, ChunkFollowsLivingRequests) {
+  const size_t pages = 64, blocks_per_page = 32, min_chunk = 16;
+  // the bound holds every page: 2048 blocks living, in 64 requests
+  BoundedIAF sim(0, size_t(-1), 0, min_chunk, 4096);
+
+  for (size_t rep = 0; rep < 8; rep++)
+    for (size_t addr = 1; addr <= pages; addr++)
+      sim.memory_access(addr, blocks_per_page);
+  sim.flush();
+
+  // chunk <= max_u_mult * living requests (max_u_mult is 4), and above the living set itself
+  ASSERT_LE(sim.get_u(), 4 * pages);
+  ASSERT_GT(sim.get_u(), pages);
+
+  // every reuse is at distance 64 pages = 2048 blocks
+  SuccessVector svec = sim.get_success_function();
+  ASSERT_EQ(svec.size(), pages * blocks_per_page + 1);
+  ASSERT_EQ(svec[pages * blocks_per_page - 1], 0);
+  ASSERT_EQ(svec[pages * blocks_per_page], 7 * pages);
+}

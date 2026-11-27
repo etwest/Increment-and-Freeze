@@ -47,7 +47,8 @@ class BoundedIAF : public CacheSim {
   constexpr static size_t max_u_mult = 4;  // chunk <= max_u_mult * u
   constexpr static size_t min_u_mult = 3;  // chunk > min_u_mult * u
 
-  // Function to update value of u given a living requests size
+  // Function to update value of u given the number of living requests. Like the chunk it bounds,
+  // u counts requests, not blocks: a living request counts once however many blocks it covers.
   inline void update_u(size_t num_living) {
     size_t upper_u = max_u_mult * num_living;
     cur_u = num_living * min_u_mult < cur_u ? cur_u : upper_u;

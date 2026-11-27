@@ -120,8 +120,9 @@ void BoundedIAF::process_requests() {
   // std::cout << "Number of living requests = " << living.size() << std::endl;
   // std::cout << "First index of distance histogram = " << chunk_input.output.hits_vector[1] << std::endl;
 
-  // prepare for next iteration
-  update_u(living_nblocks);
+  // prepare for next iteration. A chunk is a number of requests, so it follows the number of
+  // living requests; their size in blocks only bounds the hits vector.
+  update_u(num_living);
   chunk_input.requests.reserve(get_u());
   chunk_input.requests.insert(chunk_input.requests.end(), result.living_requests.begin(), result.living_requests.end());
   STOPTIME(proc_req);
